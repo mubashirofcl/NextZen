@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Edit3, Loader2, CheckCircle2, ShieldAlert, Home, Briefcase } from 'lucide-react';
-import { nxToast } from '../../utils/toastProvider.jsx';
+import { nxToast } from '../../utils/userToast.jsx';
 
 const EditAddressModal = ({ isOpen, onClose, onUpdate, initialData }) => {
     const [addressType, setAddressType] = useState('Home');

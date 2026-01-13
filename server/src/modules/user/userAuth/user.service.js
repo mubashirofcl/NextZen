@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import userRepo from "../common/user.repository.js";
+import userRepo from "./user.repository.js";
 import * as otpService from "../common/otp.service.js";
 
 // ==================== SIGNUP OTP ====================
@@ -58,10 +58,12 @@ const loginUser = async (email, password) => {
   await userRepo.updateLastLogin(user._id);
 
   return {
-    accessToken: jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    accessToken: jwt.sign({ userId: user._id },
+      process.env.JWT_SECRET, {
       expiresIn: "15m",
     }),
-    refreshToken: jwt.sign({ userId: user._id }, process.env.JWT_REFRESH_SECRET, {
+    refreshToken: jwt.sign({ userId: user._id },
+      process.env.JWT_REFRESH_SECRET, {
       expiresIn: "7d",
     }),
   };

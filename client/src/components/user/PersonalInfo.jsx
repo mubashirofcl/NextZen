@@ -6,7 +6,7 @@ import { Edit2, ShieldCheck, Mail, Phone, User, Wallet, Users, Lock } from 'luci
 import EditProfileModal from './EditProfileModal';
 import { updateProfile } from '../../api/user/user.api';
 import { setUser } from '../../store/user/authSlice';
-import { nxToast } from '../../utils/toastProvider';
+import { nxToast } from '../../utils/userToast';
 
 const PersonalInfo = () => {
     const { user } = useSelector((state) => state.userAuth);
@@ -49,7 +49,7 @@ const PersonalInfo = () => {
                     <div>
                         <h3 className="text-xl font-black uppercase">Account Security</h3>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                            {user.googleId ? 'Google Linked Account' : 'Local Account'}
+                            {user.googleId ? 'Google Linked Account' : 'NEXTZEN Account'}
                         </p>
                     </div>
 

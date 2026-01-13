@@ -1,4 +1,4 @@
-import User from "../modules/user/common/user.model.js";
+import User from "../modules/user/userAuth/user.model.js";
 
 const checkBlockedUser = async (req, res, next) => {
   const user = await User.findById(req.user.userId);

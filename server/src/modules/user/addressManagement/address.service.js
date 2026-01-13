@@ -1,13 +1,10 @@
 import Address from "./address.model.js";
-import ApiError from "../../../utils/ApiError.js";
-
 
 export const createAddress = async (userId, data) => {
     if (!userId) {
-        throw new ApiError(401, "User not authenticated");
+        throw new Error(401, "User not authenticated");
     }
 
-    // 🔥 EXPLICIT MAPPING (NO SPREAD)
     const payload = {
         user: userId,
         fullName: data.fullName,
@@ -21,9 +18,8 @@ export const createAddress = async (userId, data) => {
         isDefault: data.isDefault || false,
     };
 
-    // 🔒 SAFETY CHECK (OPTIONAL BUT RECOMMENDED)
     if (!payload.fullName || !payload.addressLine) {
-        throw new ApiError(400, "Invalid address payload");
+        throw new Error(400, "Invalid address payload");
     }
 
     if (payload.isDefault) {
@@ -36,13 +32,11 @@ export const createAddress = async (userId, data) => {
     return Address.create(payload);
 };
 export const updateAddress = async (userId, addressId, data) => {
-    // 🔥 Build update payload safely
     const updatePayload = {};
 
     if (data.fullName) updatePayload.fullName = data.fullName;
     if (data.phone) updatePayload.phone = data.phone;
 
-    // 🔑 CRITICAL MAPPING
     if (data.address) updatePayload.addressLine = data.address;
 
     if (data.city) updatePayload.city = data.city;
@@ -61,7 +55,6 @@ export const updateAddress = async (userId, addressId, data) => {
         updatePayload.isDefault = data.isDefault;
     }
 
-    // Handle default logic
     if (data.isDefault === true) {
         await Address.updateMany(
             { user: userId },
@@ -74,12 +67,12 @@ export const updateAddress = async (userId, addressId, data) => {
         updatePayload,
         {
             new: true,
-            runValidators: true, // 🔒 IMPORTANT
+            runValidators: true,
         }
     );
 
     if (!address) {
-        throw new ApiError(404, "Address not found");
+        throw new Error(404, "Address not found");
     }
 
     return address;
@@ -93,7 +86,6 @@ export const getAddresses = async (userId) => {
 };
 
 export const setDefaultAddress = async (userId, addressId) => {
-    // unset all defaults
     await Address.updateMany(
         { user: userId },
         { isDefault: false }
@@ -106,7 +98,7 @@ export const setDefaultAddress = async (userId, addressId) => {
     );
 
     if (!address) {
-        throw new ApiError(404, "Address not found");
+        throw new Error(404, "Address not found");
     }
 
     return address;
@@ -120,6 +112,6 @@ export const deleteAddress = async (userId, addressId) => {
     });
 
     if (!deleted) {
-        throw new ApiError(404, "Address not found");
+        throw new Error(404, "Address not found");
     }
 };

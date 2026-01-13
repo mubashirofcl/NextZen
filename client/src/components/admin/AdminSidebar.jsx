@@ -7,6 +7,7 @@ import {
     Tag, Settings, BarChart3, Package,
     RefreshCcw, ChevronDown, LogOut
 } from "lucide-react";
+import { adminToast } from "../../utils/adminToast.jsx";
 
 const AdminSidebar = () => {
     const navigate = useNavigate();
@@ -27,6 +28,7 @@ const AdminSidebar = () => {
         try {
             await dispatch(logoutAdmin()).unwrap();
             navigate("/admin/login");
+            adminToast.success("You've logged out safely")
         } catch (error) {
             console.error("Logout failed:", error);
         }

@@ -8,7 +8,7 @@ import Footer from '../../components/user/Footer';
 import ChangePasswordModal from '../../components/user/ChangePasswordModal';
 import { changePassword, userLogout } from '../../api/user/user.api';
 import { clearUser } from '../../store/user/authSlice';
-import { nxToast } from '../../utils/toastProvider';
+import { nxToast } from '../../utils/userToast';
 
 const ProfileLayout = () => {
     const { user } = useSelector((state) => state.userAuth);

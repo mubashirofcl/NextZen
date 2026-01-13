@@ -4,8 +4,13 @@ import { loginAdmin, logoutAdmin, refreshAdminToken } from "./admin.controller.j
 import { loginAdminValidator } from "./admin.validation.js";
 import adminAuth from "../../../middlewares/adminAuth.middleware.js";
 
-// NEW IMPORT: Import the User Management Controller
-import * as userMgmtController from "../userManegment/userManegment.controller.js";
+import {
+  getUsers,
+  getStats,
+  handleBlock,
+  handleUnblock
+} from "../userManegment/userManegment.controller.js";
+
 
 const router = express.Router();
 
@@ -23,13 +28,10 @@ router.get("/me", adminAuth, (req, res) => {
 
 // ================= USER MANAGEMENT ROUTES =================
 
-router.get("/users", adminAuth, userMgmtController.getUsers);
-
-router.get("/users/stats", adminAuth, userMgmtController.getStats);
-
-router.patch("/users/:userId/block", adminAuth, userMgmtController.handleBlock);
-
-router.patch("/users/:userId/unblock", adminAuth, userMgmtController.handleUnblock);
+router.get("/users", adminAuth, getUsers);
+router.get("/users/stats", adminAuth, getStats);
+router.patch("/users/:userId/block", adminAuth, handleBlock);
+router.patch("/users/:userId/unblock", adminAuth, handleUnblock);
 
 
 // ================= DASHBOARD ROUTE =================

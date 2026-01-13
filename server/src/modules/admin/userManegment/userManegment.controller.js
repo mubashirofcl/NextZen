@@ -2,20 +2,34 @@ import * as userMgmtService from "./userManegment.service.js";
 
 export const getUsers = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search = "", status = "", sortBy = "createdAt", order = "desc" } = req.query;
+        let {
+            page = 1,
+            limit = 10,
+            search = "",
+            status = "",
+            sortBy = "createdAt",
+            order = "desc",
+        } = req.query;
+
+        search = typeof search === "string" ? search.trim() : "";
+        status = typeof status === "string" ? status.trim() : "";
+
         const result = await userMgmtService.getAllUsers({
-            page: parseInt(page),
-            limit: parseInt(limit),
+            page: parseInt(page, 10),
+            limit: parseInt(limit, 10),
             search,
             status,
             sortBy,
             order,
         });
+
         res.status(200).json({ success: true, ...result });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
 };
+
+
 
 export const handleBlock = async (req, res) => {
     try {

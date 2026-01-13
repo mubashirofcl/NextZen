@@ -24,35 +24,12 @@ const router = express.Router();
 router.use(userAuth);
 router.use(checkBlockedUser);
 
-// GET all addresses
+
 router.get("/", getAddresses);
+router.post("/", createAddressSchema, createAddress);
+router.patch("/:id", updateAddressSchema, updateAddress);
 
-// CREATE address
-router.post(
-  "/",
-  createAddressSchema,
-  createAddress
-);
-
-// UPDATE address
-router.patch(
-  "/:id",
-  updateAddressSchema,
-  updateAddress
-);
-
-// DELETE address
-router.delete(
-  "/:id",
-  addressIdParamSchema,
-  deleteAddress
-);
-
-// SET DEFAULT address
-router.patch(
-  "/:id/default",
-  addressIdParamSchema,
-  setDefaultAddress
-);
+router.delete("/:id", addressIdParamSchema, deleteAddress);
+router.patch("/:id/default", addressIdParamSchema, setDefaultAddress);
 
 export default router;

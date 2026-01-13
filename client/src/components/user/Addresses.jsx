@@ -20,7 +20,7 @@ import {
     deleteAddress,
     setDefaultAddress,
 } from "../../api/user/address.api";
-import { nxToast } from "../../utils/toastProvider";
+import { nxToast } from "../../utils/userToast";
 
 const Addresses = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);

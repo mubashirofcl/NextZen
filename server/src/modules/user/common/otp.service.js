@@ -1,4 +1,4 @@
-import userRepo from "./user.repository.js";
+import userRepo from "../userAuth/user.repository.js";
 import { generateOTP, sendOTPEmail } from "../../../utils/otp.util.js";
 
 // ==================== REQUEST OTP ====================

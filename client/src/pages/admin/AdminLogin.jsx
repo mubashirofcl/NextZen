@@ -5,6 +5,7 @@ import { Star, Twitter, Instagram, Facebook, Shield, Eye, EyeOff } from "lucide-
 import { useDispatch } from "react-redux";
 import { adminLogin } from "../../api/admin/admin.api";
 import { fetchAdmin } from "../../store/admin/authSlice";
+import { adminToast } from "../../utils/adminToast";
 
 const AdminLogin = () => {
     const navigate = useNavigate();
@@ -37,6 +38,7 @@ const AdminLogin = () => {
         try {
             await adminLogin(data);
             await dispatch(fetchAdmin()).unwrap();
+            adminToast.success("You've successfully signed in to the NEXTZEN panel")
             navigate(from, { replace: true });
         } catch (err) {
             setApiError("Invalid credentials");
@@ -46,14 +48,10 @@ const AdminLogin = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-white font-sans">
-            {/* Header omitted here as usually Admin Login is a standalone page, 
-                but you can add it back if your layout requires it */}
 
             <main className="flex-grow flex items-center justify-center py-12 px-4 bg-gray-50/50">
-                {/* Unified Card Container - Matches your clear User theme */}
                 <div className="max-w-[1000px] w-full flex bg-white border border-gray-100 shadow-2xl rounded-2xl overflow-hidden min-h-[600px]">
 
-                    {/* LEFT SIDE: Editorial Hero */}
                     <div className="hidden lg:block lg:w-[45%] relative">
                         <img
                             src="https://images.unsplash.com/photo-1550246140-5119ae4790b8?q=80&w=2070&auto=format&fit=crop"
@@ -82,7 +80,6 @@ const AdminLogin = () => {
                         </div>
                     </div>
 
-                    {/* RIGHT SIDE: Form Area */}
                     <div className="w-full lg:w-[55%] p-8 lg:p-12 flex flex-col justify-center">
                         <div className="max-w-sm mx-auto w-full">
                             <div className="text-center mb-10">
@@ -92,7 +89,6 @@ const AdminLogin = () => {
                                 <p className="text-gray-400 text-sm">Authentication required for dashboard access.</p>
                             </div>
 
-                            {/* API ERROR DISPLAY - Red left-border alert style */}
                             {apiError && (
                                 <div className="mb-6 p-3 bg-red-50 border-l-2 border-red-500 text-red-700 text-xs rounded-r-md italic">
                                     {apiError}
@@ -100,7 +96,6 @@ const AdminLogin = () => {
                             )}
 
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                                {/* EMAIL */}
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Corporate Email</label>
                                     <input
@@ -115,7 +110,6 @@ const AdminLogin = () => {
                                     {errors.email && <p className="text-[10px] text-red-500 font-medium mt-1 uppercase">{errors.email.message}</p>}
                                 </div>
 
-                                {/* PASSWORD */}
                                 <div className="space-y-1 relative">
                                     <div className="flex justify-between items-center mb-1">
                                         <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Security Key</label>

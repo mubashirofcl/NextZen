@@ -9,7 +9,7 @@ import {
   Briefcase,
   MapPin
 } from "lucide-react";
-import { nxToast } from "../../utils/toastProvider";
+import { nxToast } from "../../utils/userToast";
 
 const AddAddressModal = ({ isOpen, onClose, onSave }) => {
   const [addressType, setAddressType] = useState("Home");

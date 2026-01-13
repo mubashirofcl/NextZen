@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import User from "../common/user.model.js";
+import User from "../userAuth/user.model.js";
 import * as profileService from "./profile.service.js";
 
 // ==================== GET USER PROFILE ====================
@@ -89,8 +89,7 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    // 🔒 HARD BLOCK GOOGLE USERS
-    if (user.authSource === "google" || user.isGoogleUser) {
+    if (user.googleId) {
       return res.status(403).json({
         success: false,
         message: "Password change is not allowed for Google accounts",
@@ -115,11 +114,11 @@ export const changePassword = async (req, res) => {
       message: "Password updated successfully",
     });
   } catch (error) {
-  console.error("CHANGE_PASSWORD_ERROR:", error);
-  return res.status(500).json({
-    success: false,
-    message: error.message || "Failed to update password",
-  });
-}
+    console.error("CHANGE_PASSWORD_ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update password",
+    });
+  }
 
 };

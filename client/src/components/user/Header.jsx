@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Search, ShoppingBag, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { clearUser } from '../../store/user/authSlice';
 import { userLogout } from '../../api/user/user.api';
-import { nxToast } from '../../utils/toastProvider';
+import { nxToast } from '../../utils/userToast';
 
 const Header = () => {
     const navigate = useNavigate();
@@ -49,7 +49,7 @@ const Header = () => {
             </div>
 
             <header className="border-b mx-14 mt-3 border-gray-100 bg-white/40 backdrop-blur-xl shadow-sm rounded-[5rem]">
-                <div className="max-w-[1500px] mx-auto px-6 h-20 flex items-center justify-between relative">
+                <div className="max-w-[1500px] mx-auto px-4 h-20 flex items-center justify-between relative">
 
                     <nav className="hidden lg:flex items-center gap-10">
                         {categories.map((cat) => (
@@ -104,7 +104,7 @@ const Header = () => {
                                             <div className="absolute right-0 mt-4 w-56 bg-white border border-gray-100 rounded-2xl shadow-2xl py-3 z-20 animate-in fade-in zoom-in duration-200">
                                                 <div className="px-5 py-3 border-b border-gray-50 mb-2">
                                                     <p className="text-[9px] uppercase tracking-widest text-gray-400 font-black mb-1">Signed in as</p>
-                                                    <p className="text-xs font-black text-[#0F172A] truncate uppercase">{user.name}</p>
+                                                    <p className="text-xs font-black text-[#7a6af6] truncate uppercase">{user.name}</p>
                                                 </div>
                                                 <button onClick={() => navigate('/profile')} className="w-full px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-gray-50 flex items-center gap-3 transition-colors">
                                                     <Settings size={14} /> Profile
@@ -120,7 +120,7 @@ const Header = () => {
                             ) : (
                                 <button
                                     onClick={() => navigate('/login')}
-                                    className="text-[11px] font-black uppercase tracking-[0.2em] text-[#0F172A] px-6 py-2 border-2 border-[#0F172A] rounded-full hover:bg-[#0F172A] hover:text-white transition-all shadow-sm active:scale-95"
+                                    className="text-[11px] font-black uppercase tracking-[0.2em] text-[#ffffff] px-6 py-2 border-2 border-[#f8f8f8] rounded-full hover:bg-[#ffffff] hover:text-[#7a6af6] transition-all shadow-sm active:scale-95"
                                 >
                                     Login
                                 </button>

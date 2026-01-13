@@ -1,8 +1,8 @@
-import User from "../common/user.model.js";
-import userRepo from "../common/user.repository.js";
+import User from "../userAuth/user.model.js";
+import userRepo from "../userAuth/user.repository.js";
 import OTP from "../common/otp.model.js";
 import { uploadProfileImage, extractPublicId } from "../../../utils/uploadImage.js";
-import { sendOTPEmail } from "../../../utils/otp.util.js";
+import { generateOTP, sendOTPEmail } from "../../../utils/otp.util.js";
 
 /**
  * GET USER PROFILE
@@ -26,14 +26,9 @@ export const updateProfile = async (userId, payload) => {
     const user = await User.findById(userId);
     if (!user) throw new Error("User not found");
 
-    const isGoogleUser = user.authSource === "google" || user.isGoogleUser;
-    if (isGoogleUser) {
-        email = user.email;
-    }
-
     // ================= IMAGE HANDLING =================
 
-    let imageUrl = user.profilePicture || user.image;
+    let imageUrl = user.profilePicture;
 
     if (profilePicture && profilePicture.startsWith("data:image")) {
         const oldPublicId = imageUrl ? extractPublicId(imageUrl) : null;
@@ -70,7 +65,7 @@ export const updateProfile = async (userId, payload) => {
     const emailExists = await User.findOne({ email, _id: { $ne: userId } });
     if (emailExists) throw new Error("This email is already registered");
 
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpCode = generateOTP();
 
     const pendingProfileData = {
         name: name || user.name,

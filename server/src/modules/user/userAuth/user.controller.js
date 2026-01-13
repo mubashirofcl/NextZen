@@ -2,7 +2,7 @@ import { validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
 import userService from "./user.service.js";
 import { verifyOTPOnly } from "../common/otp.service.js";
-import userRepo from "../common/user.repository.js";
+import userRepo from "./user.repository.js";
 
 // ==================== SIGNUP OTP ====================
 

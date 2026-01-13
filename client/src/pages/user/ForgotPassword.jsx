@@ -5,7 +5,7 @@ import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
 import { requestForgotPassword } from "../../api/user/user.api";
 import Header from "../../components/user/Header";
 import Footer from "../../components/user/Footer";
-import { nxToast } from "../../utils/toastProvider";
+import { nxToast } from "../../utils/userToast";
 
 const ForgotPassword = () => {
     const navigate = useNavigate();
@@ -22,9 +22,9 @@ const ForgotPassword = () => {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-white font-sans selection:bg-[#7a6af6]/20">
+        <div className="flex flex-col min-h-screen bg-black/20 font-sans selection:bg-[#7a6af6]/20">
             <Header />
-            <main className="flex-grow flex items-center justify-center py-12 px-4 bg-gray-50/50">
+            <main className="flex-grow flex items-center justify-center py-12 px-4">
                 <div className="max-w-[380px] w-full bg-white border border-gray-100 shadow-[0_15px_40px_rgba(0,0,0,0.04)] rounded-[2rem] p-8 md:p-10 text-center">
 
                     <div className="w-14 h-14 bg-[#0F172A] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-[#0F172A]/10 text-white">

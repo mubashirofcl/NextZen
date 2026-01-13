@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Lock, Eye, EyeOff, ShieldAlert, Loader2, CheckCircle2 } from 'lucide-react';
-import { nxToast } from '../../utils/toastProvider';
+import { nxToast } from '../../utils/userToast';
 
 const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
     const [showCurrent, setShowCurrent] = useState(false);

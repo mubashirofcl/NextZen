@@ -1,31 +1,21 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Camera, AlertCircle, Loader2 } from 'lucide-react';
-import { nxToast } from '../../utils/toastProvider';
+import { nxToast } from '../../utils/userToast';
 
 const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
     const fileInputRef = useRef(null);
     const [previewImage, setPreviewImage] = useState(null);
     const [backendError, setBackendError] = useState("");
 
-    const isGoogleAccount = useMemo(() => {
-        if (!user) return false;
-        return !!(
-            user.googleId ||
-            user.authSource === 'google' ||
-            user.isGoogleUser === true ||
-            user.image?.includes('googleusercontent.com')
-        );
-    }, [user]);
+    const isGoogleAccount = !!user?.googleId;
 
     const {
         register,
         handleSubmit,
         reset,
         formState: { errors, isSubmitting }
-    } = useForm({
-        mode: "onBlur"
-    });
+    } = useForm({ mode: "onBlur" });
 
     useEffect(() => {
         if (isOpen && user) {
@@ -37,7 +27,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
             });
             setPreviewImage(user.profilePicture || user.image || null);
         }
-    }, [user, isOpen, reset]);
+    }, [isOpen, user, reset]);
 
     if (!isOpen) return null;
 
@@ -55,13 +45,13 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
 
         const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
         if (!validTypes.includes(file.type)) {
-            setBackendError("Invalid file type. Please select a JPG, PNG, or WebP image.");
+            setBackendError("Invalid file type. Use JPG, PNG or WebP.");
             e.target.value = null;
             return;
         }
 
         if (file.size > 5 * 1024 * 1024) {
-            setBackendError("Image is too large. Maximum size allowed is 5MB.");
+            setBackendError("Image must be under 5MB.");
             e.target.value = null;
             return;
         }
@@ -79,126 +69,117 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
                 name: data.name.trim(),
                 phone: data.phone.trim(),
                 email: isGoogleAccount ? user.email : data.email.trim(),
-
             };
 
-            if (previewImage && previewImage.startsWith('data:image')) {
+            if (previewImage?.startsWith('data:image')) {
                 payload.profilePicture = previewImage;
             }
 
             await onUpdate(payload);
         } catch (err) {
-            const msg = err.response?.data?.message || "Update failed. Please try again.";
-            nxToast.security("Update failed. Please try again.");
-            setBackendError(msg);
-
-
+            nxToast.security("Profile update failed");
+            setBackendError(err.response?.data?.message || "Update failed");
         }
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm transition-all">
-            <div className="bg-white w-full max-w-[400px] rounded-2xl shadow-2xl p-8 relative animate-in zoom-in duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-[400px] rounded-2xl shadow-2xl p-8 relative">
 
-                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-black transition-colors">
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-black">
                     <X size={20} />
                 </button>
 
                 <div className="mb-6">
-                    <h3 className="text-xl font-black text-[#0F172A] uppercase tracking-tight">Edit Profile</h3>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-                        {isGoogleAccount ? 'Identity Managed by Google' : 'NEXTZEN Security Management'}
+                    <h3 className="text-xl font-black uppercase">Edit Profile</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                        {isGoogleAccount ? 'Google Managed Account' : 'NEXTZEN Account'}
                     </p>
                 </div>
 
                 {backendError && (
                     <div className="mb-6 p-3 bg-red-50 border-l-4 border-red-500 flex items-center gap-3">
-                        <AlertCircle size={16} className="text-red-500 shrink-0" />
-                        <p className="text-[9px] font-black text-red-700 uppercase leading-tight">{backendError}</p>
+                        <AlertCircle size={16} className="text-red-500" />
+                        <p className="text-[9px] font-black text-red-700 uppercase">{backendError}</p>
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                    {/* Portrait Section */}
-                    <div className="flex justify-center mb-4">
-                        <div className="relative cursor-pointer group" onClick={() => fileInputRef.current.click()}>
-                            <div className="w-24 h-24 rounded-full border-4 border-slate-50 overflow-hidden shadow-lg bg-slate-100">
+                    {/* Avatar */}
+                    <div className="flex justify-center">
+                        <div
+                            className="relative cursor-pointer group"
+                            onClick={() => fileInputRef.current.click()}
+                        >
+                            <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100">
                                 <img
                                     src={previewImage || "https://avatar.iran.liara.run/public/boy"}
-                                    className="w-full h-full object-cover group-hover:opacity-75 transition-all"
                                     alt="Preview"
+                                    className="w-full h-full object-cover"
                                 />
                             </div>
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Camera size={20} className="text-white drop-shadow-md" />
-                            </div>
+                            <Camera className="absolute inset-0 m-auto text-white opacity-0 group-hover:opacity-100" />
                             <input
-                                type="file"
                                 ref={fileInputRef}
-                                className="hidden"
+                                type="file"
                                 accept="image/*"
                                 onChange={handleImageChange}
+                                className="hidden"
                             />
                         </div>
                     </div>
 
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Legal Name</label>
-                            <input
-                                {...register("name", {
-                                    required: "Full name is required",
-                                    minLength: { value: 2, message: "Name too short" },
-                                    pattern: { value: /^[A-Za-z\s]+$/, message: "Only letters allowed" }
-                                })}
-                                className={`w-full px-4 py-3 bg-slate-50 rounded-xl text-sm font-bold border-2 outline-none transition-all ${errors.name ? 'border-red-500 focus:border-red-500' : 'border-transparent focus:border-[#7a6af6]/20'}`}
-                            />
-                            {errors.name && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase ml-1 tracking-tighter">{errors.name.message}</p>}
-                        </div>
+                    {/* Name */}
+                    <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-400">Name</label>
+                        <input
+                            {...register("name", {
+                                required: "Name is required",
+                                minLength: { value: 2, message: "Too short" }
+                            })}
+                            className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold"
+                        />
+                        {errors.name && <p className="text-[9px] text-red-500">{errors.name.message}</p>}
+                    </div>
 
-                        {isGoogleAccount ? (
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Verified Email</label>
-                                <div className="w-full px-4 py-3 bg-slate-100 rounded-xl text-sm font-bold text-slate-400 border-2 border-transparent cursor-not-allowed italic">
-                                    {user?.email}
-                                </div>
-                            </div>
-                        ) : (
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email Identification</label>
-                                <input
-                                    {...register("email", {
-                                        required: "Email is required",
-                                        pattern: {
-                                            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                                            message: "Invalid email format"
-                                        }
-                                    })}
-                                    className={`w-full px-4 py-3 bg-slate-50 rounded-xl text-sm font-bold border-2 outline-none transition-all ${errors.email ? 'border-red-500 focus:border-red-500' : 'border-transparent focus:border-[#7a6af6]/20'}`}
-                                />
-                                {errors.email && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase ml-1 tracking-tighter">{errors.email.message}</p>}
-                            </div>
-                        )}
-
+                    {/* Email */}
+                    {isGoogleAccount ? (
                         <div>
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Security Phone</label>
-                            <input
-                                {...register("phone", {
-                                    required: "Phone number is required",
-                                    pattern: { value: /^[6-9]\d{9}$/, message: "Must be a valid 10-digit number" }
-                                })}
-                                className={`w-full px-4 py-3 bg-slate-50 rounded-xl text-sm font-bold border-2 outline-none transition-all ${errors.phone ? 'border-red-500 focus:border-red-500' : 'border-transparent focus:border-[#7a6af6]/20'}`}
-                            />
-                            {errors.phone && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase ml-1 tracking-tighter">{errors.phone.message}</p>}
+                            <label className="text-[10px] font-bold uppercase text-slate-400">Email</label>
+                            <div className="px-4 py-3 bg-slate-100 rounded-xl font-bold text-slate-400 italic">
+                                {user.email}
+                            </div>
                         </div>
+                    ) : (
+                        <div>
+                            <label className="text-[10px] font-bold uppercase text-slate-400">Email</label>
+                            <input
+                                {...register("email", { required: "Email required" })}
+                                className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold"
+                            />
+                            {errors.email && <p className="text-[9px] text-red-500">{errors.email.message}</p>}
+                        </div>
+                    )}
+
+                    {/* Phone */}
+                    <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-400">Phone</label>
+                        <input
+                            {...register("phone", {
+                                required: "Phone required",
+                                pattern: { value: /^[6-9]\d{9}$/, message: "Invalid phone" }
+                            })}
+                            className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold"
+                        />
+                        {errors.phone && <p className="text-[9px] text-red-500">{errors.phone.message}</p>}
                     </div>
 
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full py-4 bg-[#0F172A] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all active:scale-95 disabled:bg-slate-200 mt-4 flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-black text-white rounded-xl font-black uppercase"
                     >
-                        {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Syncing Account...</> : "Commit Changes"}
+                        {isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : "Save Changes"}
                     </button>
                 </form>
             </div>

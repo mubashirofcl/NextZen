@@ -1,13 +1,25 @@
 import * as userRepo from "./userManegment.repository.js";
 
-export const getAllUsers = async ({ page, limit, search, status, sortBy, order }) => {
+export const getAllUsers = async ({
+    page,
+    limit,
+    search,
+    status,
+    sortBy,
+    order
+}) => {
     const skip = (page - 1) * limit;
     const filter = {};
 
-    if (search) {
+    const escapeRegex = (text) =>
+        text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    if (search && search.length > 0) {
+        const safeSearch = escapeRegex(search);
+
         filter.$or = [
-            { name: { $regex: search, $options: "i" } },
-            { email: { $regex: search, $options: "i" } },
+            { name: { $regex: `^${safeSearch}`, $options: "i" } },
+            { email: { $regex: `^${safeSearch}`, $options: "i" } },
         ];
     }
 
@@ -15,7 +27,13 @@ export const getAllUsers = async ({ page, limit, search, status, sortBy, order }
     if (status === "blocked") filter.isBlocked = true;
 
     const sort = { [sortBy]: order === "asc" ? 1 : -1 };
-    const { users, totalUsers } = await userRepo.findAllUsers({ filter, sort, skip, limit });
+
+    const { users, totalUsers } = await userRepo.findAllUsers({
+        filter,
+        sort,
+        skip,
+        limit,
+    });
 
     return {
         users,
@@ -24,6 +42,7 @@ export const getAllUsers = async ({ page, limit, search, status, sortBy, order }
         currentPage: page,
     };
 };
+
 
 export const blockUser = async (userId, reason) => {
     const updateData = {

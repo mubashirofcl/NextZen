@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
-import User from "../common/user.model.js";
-import userRepo from "../../user/common/user.repository.js";
+import User from "../userAuth/user.model.js";
+import userRepo from "../userAuth/user.repository.js";
 import crypto from "crypto";
 
 const handleGoogleAuth = async (profile) => {

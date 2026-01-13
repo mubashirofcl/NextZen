@@ -7,7 +7,7 @@ import { useDispatch } from "react-redux";
 import { userLogin } from "../../api/user/user.api";
 import { fetchUser } from "../../store/user/authSlice";
 import BlockedModal from "../../components/admin/BlockedModal";
-import { nxToast } from "../../utils/toastProvider";
+import { nxToast } from "../../utils/userToast";
 
 const UserLogin = () => {
     const navigate = useNavigate();
@@ -28,7 +28,6 @@ const UserLogin = () => {
     } = useForm({
         defaultValues: { email: "", password: "" },
     });
-
 
     const handleGoogleSignIn = () => {
         window.location.href = "http://localhost:5000/api/auth/google";
@@ -68,14 +67,14 @@ const UserLogin = () => {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-white font-sans">
-            <main className="flex-grow flex items-center justify-center py-8 px-4 bg-gray-50/50">
+        <div className="flex flex-col min-h-screen bg-black/20 font-sans">
+            <main className="flex-grow flex items-center justify-center py-8 px-4 ">
 
-                <div className="max-w-[900px] w-full flex bg-white border border-gray-100 shadow-2xl rounded-2xl overflow-hidden min-h-[580px]">
+                <div className="max-w-[900px] w-full flex bg-white/60 shadow-2xl rounded-2xl overflow-hidden min-h-[580px]">
 
                     <div className="hidden lg:block lg:w-[42%] relative">
                         <img
-                            src="https://images.unsplash.com/photo-1550246140-5119ae4790b8?q=80&w=2070&auto=format&fit=crop"
+                            src="https://images.unsplash.com/photo-1675079505988-96936a80efb3?q=80&w=2070&auto=format&fit=crop"
                             alt="NextZen Lifestyle"
                             className="absolute inset-0 w-full h-full object-cover"
                         />
@@ -101,12 +100,12 @@ const UserLogin = () => {
                         </div>
                     </div>
 
-                    <div className="w-full lg:w-[58%] p-8 lg:px-10 flex flex-col justify-center bg-white">
+                    <div className="w-full lg:w-[58%] p-8 lg:px-10 flex flex-col justify-center bg-white/40">
                         <div className="max-w-xs mx-auto w-full">
 
                             <div className="text-center mb-10">
                                 <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight mb-1">Welcome Back</h2>
-                                <p className="text-gray-400 text-xs font-medium">Please sign in to your account.</p>
+                                <p className="text-gray text-xs font-medium">Please sign in to your account.</p>
                             </div>
 
                             {apiError && (
@@ -117,7 +116,7 @@ const UserLogin = () => {
 
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                                 <div className="space-y-1.5">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Email Address</label>
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Email Address</label>
                                     <input
                                         type="email"
                                         placeholder="Enter your email"
@@ -129,7 +128,7 @@ const UserLogin = () => {
 
                                 <div className="space-y-1.5 relative">
                                     <div className="flex justify-between items-center">
-                                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Password</label>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Password</label>
 
                                     </div>
                                     <div className="relative">
@@ -169,7 +168,7 @@ const UserLogin = () => {
                             <div className="relative my-8">
                                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-100"></span></div>
                                 <div className="relative flex justify-center text-[9px] uppercase tracking-widest font-bold">
-                                    <span className="bg-white px-3 text-gray-400">Or continue with</span>
+                                    <span className="bg-white px-3 text-gray">Or continue with</span>
                                 </div>
                             </div>
 

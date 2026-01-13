@@ -3,7 +3,7 @@ import { Eye, EyeOff, Star, Twitter, Instagram, Facebook, Shield } from "lucide-
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { requestSignupOTP } from "../../api/user/user.api";
-import { nxToast } from "../../utils/toastProvider";
+import { nxToast } from "../../utils/userToast";
 
 const UserSignup = () => {
     const navigate = useNavigate();
@@ -49,13 +49,13 @@ const UserSignup = () => {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-white font-sans">
-            <main className="flex-grow flex items-center justify-center py-8 px-4 bg-gray-50/50">
-                <div className="max-w-[900px] w-full flex bg-white border border-gray-100 shadow-2xl rounded-2xl overflow-hidden min-h-[580px]">
+        <div className="flex flex-col min-h-screen bg-black/20 font-sans">
+            <main className="flex-grow flex items-center justify-center py-8 px-4 ">
+                <div className="max-w-[900px] w-full flex bg-white/60 shadow-2xl rounded-2xl overflow-hidden min-h-[580px]">
 
                     <div className="hidden lg:block lg:w-[42%] relative">
                         <img
-                            src="https://images.unsplash.com/photo-1550246140-5119ae4790b8?q=80&w=2070&auto=format&fit=crop"
+                            src="https://images.unsplash.com/photo-1675079506207-668db5bb2e80?q=80&w=2070&auto=format&fit=crop"
                             alt="NextZen Lifestyle"
                             className="absolute inset-0 w-full h-full object-cover"
                         />
@@ -81,11 +81,11 @@ const UserSignup = () => {
                         </div>
                     </div>
 
-                    <div className="w-full lg:w-[58%] p-8 lg:px-10 flex flex-col justify-center bg-white">
+                    <div className="w-full lg:w-[58%] p-8 lg:px-10 flex flex-col justify-center">
                         <div className="max-w-xs mx-auto w-full">
                             <div className="text-center mb-6">
                                 <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight mb-1">Create Account</h2>
-                                <p className="text-gray-400 text-xs font-medium">Join the NEXTZEN community today.</p>
+                                <p className="text-black text-xs font-medium">Join the NEXTZEN community today.</p>
                             </div>
 
                             {serverError && (
@@ -96,7 +96,7 @@ const UserSignup = () => {
 
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Full Name</label>
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Full Name</label>
                                     <input
                                         type="text"
                                         placeholder="Enter your name"
@@ -107,7 +107,7 @@ const UserSignup = () => {
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Email Address</label>
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Email Address</label>
                                     <input
                                         type="email"
                                         placeholder="john@example.com"
@@ -119,7 +119,7 @@ const UserSignup = () => {
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1 relative">
-                                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Password</label>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Password</label>
                                         <input
                                             type={showPass ? "text" : "password"}
                                             placeholder="••••••••"
@@ -134,7 +134,7 @@ const UserSignup = () => {
                                     </div>
 
                                     <div className="space-y-1 relative">
-                                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Confirm</label>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Confirm</label>
                                         <input
                                             type={showConfirmPass ? "text" : "password"}
                                             placeholder="••••••••"
@@ -162,7 +162,7 @@ const UserSignup = () => {
                             <div className="relative my-5">
                                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-100"></span></div>
                                 <div className="relative flex justify-center text-[9px] uppercase tracking-widest font-bold">
-                                    <span className="bg-white px-3 text-gray-400">Or continue with</span>
+                                    <span className="bg-white px-3 text-gray">Or continue with</span>
                                 </div>
                             </div>
 

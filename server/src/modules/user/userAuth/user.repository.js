@@ -1,5 +1,5 @@
 import User from "./user.model.js";
-import OTP from "./otp.model.js";
+import OTP from "../common/otp.model.js";
 
 // ==================== USER OPERATIONS ====================
 

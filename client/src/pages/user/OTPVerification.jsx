@@ -8,7 +8,7 @@ import { verifyEmailChange, resendEmailChangeOTP } from '../../api/user/user.api
 import { setUser } from '../../store/user/authSlice';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
-import { nxToast } from '../../utils/toastProvider';
+import { nxToast } from '../../utils/userToast';
 
 const OTPVerification = () => {
     const location = useLocation();
@@ -40,14 +40,17 @@ const OTPVerification = () => {
     }, [timer]);
 
     const handleOtpChange = (index, value) => {
-        if (isNaN(value)) return;
+        if (!/^\d?$/.test(value)) return;
+
         const newOtp = [...otp];
-        newOtp[index] = value.slice(-1);
+        newOtp[index] = value;
         setOtp(newOtp);
+
         if (value && index < 5) {
             document.getElementById(`otp-${index + 1}`)?.focus();
         }
     };
+
 
     const handleKeyDown = (index, e) => {
         if (e.key === 'Backspace' && !otp[index] && index > 0) {
@@ -90,6 +93,7 @@ const OTPVerification = () => {
                     purpose: "FORGOT_PASSWORD"
                 });
                 navigate('/reset-password', { state: { email, otp: otpString } });
+                nxToast.success('Account verified successfully!');
             } else if (flow === 'email_change') {
                 response = await verifyEmailChange({
                     email,
@@ -135,9 +139,9 @@ const OTPVerification = () => {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-white font-sans selection:bg-[#7a6af6]/20">
+        <div className="flex flex-col min-h-screen bg-black/20 font-sans selection:bg-[#7a6af6]/20">
             <Header />
-            <main className="flex-grow flex items-center justify-center py-12 px-4 bg-gray-50/50">
+            <main className="flex-grow flex items-center justify-center py-12 px-4 ">
                 <div className="max-w-[400px] w-full bg-white border border-gray-100 shadow-[0_15px_40px_rgba(0,0,0,0.04)] rounded-[2.5rem] p-8 md:p-10 text-center">
 
                     <button
@@ -177,8 +181,8 @@ const OTPVerification = () => {
 
                     <button
                         onClick={handleVerify}
-                        disabled={isVerifying || otp.join('').length !== 6}
-                        className="w-full h-14 bg-[#0F172A] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.3em] shadow-lg hover:bg-black transition-all active:scale-[0.98] disabled:bg-gray-200 mb-6 flex items-center justify-center"
+                        disabled={isVerifying}
+                        className="w-full h-14 bg-[#0F172A] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.3em] shadow-lg hover:bg-black transition-all active:scale-[0.98] mb-6 flex items-center justify-center"
                     >
                         {isVerifying ? <Loader2 size={18} className="animate-spin" /> : 'Confirm Code'}
                     </button>
