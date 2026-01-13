@@ -133,6 +133,7 @@ const OTPVerification = () => {
             document.getElementById('otp-0')?.focus();
         } catch (error) {
             nxToast.security(error.response?.data?.message || 'Failed to resend code');
+            error("error.response?.data?.message || 'Failed to resend code'")
         } finally {
             setIsResending(false);
         }
@@ -174,7 +175,7 @@ const OTPVerification = () => {
                                 onChange={(e) => handleOtpChange(index, e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(index, e)}
                                 onPaste={handlePaste}
-                                className="w-11 h-14 text-center text-xl font-black bg-gray-50 border-2 border-transparent rounded-xl focus:border-[#7a6af6]/20 focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 outline-none transition-all text-[#0F172A]"
+                                className="w-11 h-14 text-center text-xl font-black bg-gray-300 border-2 border-transparent rounded-xl focus:border-[#7a6af6]/20 focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 outline-none transition-all text-[#0F172A]"
                             />
                         ))}
                     </div>
