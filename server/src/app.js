@@ -3,8 +3,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import passport from "./config/passport.js";
 
-import adminRoutes from "./modules/admin/adminAuth/admin.routes.js";
-import userRoutes from "./modules/user/userAuth/user.routes.js";
+import adminRoutes from "./modules/admin/adminCore/admin.routes.js";
+import userRoutes from "./modules/user/userCore/user.routes.js";
 import profileRoutes from "./modules/user/profileManagement/profile.routes.js";
 import authRoutes from "./modules/user/googleAuth/auth.routes.js";
 import addressRoutes from "./modules/user/addressManagement/address.routes.js";

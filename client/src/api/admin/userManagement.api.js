@@ -14,7 +14,7 @@ export const fetchAllUsers = async ({ page = 1, limit = 5, search = "", status =
 export const getUserStats = async () => {
     try {
         const response = await baseAxios.get('/admin/users/stats');
-        return response.data;
+        return responsae.data;
     } catch (error) {
         throw error.response?.data || { message: "Failed to load statistics" };
     }

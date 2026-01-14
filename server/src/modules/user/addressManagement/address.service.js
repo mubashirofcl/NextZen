@@ -1,8 +1,15 @@
 import Address from "./address.model.js";
 
 export const createAddress = async (userId, data) => {
+
     if (!userId) {
-        throw new Error(401, "User not authenticated");
+        throw new Error("User not authenticated");
+    }
+
+    const count = await Address.countDocuments({ user: userId });
+
+    if (count === 0) {
+        data.isDefault = true;
     }
 
     const payload = {
@@ -19,7 +26,7 @@ export const createAddress = async (userId, data) => {
     };
 
     if (!payload.fullName || !payload.addressLine) {
-        throw new Error(400, "Invalid address payload");
+        throw new Error("Invalid address payload");
     }
 
     if (payload.isDefault) {
@@ -31,6 +38,8 @@ export const createAddress = async (userId, data) => {
 
     return Address.create(payload);
 };
+
+
 export const updateAddress = async (userId, addressId, data) => {
     const updatePayload = {};
 

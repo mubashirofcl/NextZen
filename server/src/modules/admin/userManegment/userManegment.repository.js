@@ -1,4 +1,4 @@
-import User from "../../user/userAuth/user.model.js";
+import User from "../../user/userCore/user.model.js";
 
 export const findAllUsers = async ({ filter, sort, skip, limit }) => {
     const [users, totalUsers] = await Promise.all([

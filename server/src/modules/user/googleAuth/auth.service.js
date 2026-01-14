@@ -1,7 +1,6 @@
 import jwt from "jsonwebtoken";
-import User from "../userAuth/user.model.js";
-import userRepo from "../userAuth/user.repository.js";
-import crypto from "crypto";
+import User from "../userCore/user.model.js";
+import userRepo from "../userCore/user.repository.js";
 
 const handleGoogleAuth = async (profile) => {
     const email = profile.emails[0].value.toLowerCase();

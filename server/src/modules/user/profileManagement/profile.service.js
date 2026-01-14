@@ -1,5 +1,5 @@
-import User from "../userAuth/user.model.js";
-import userRepo from "../userAuth/user.repository.js";
+import User from "../userCore/user.model.js";
+import userRepo from "../userCore/user.repository.js";
 import OTP from "../common/otp.model.js";
 import { uploadProfileImage, extractPublicId } from "../../../utils/uploadImage.js";
 import { generateOTP, sendOTPEmail } from "../../../utils/otp.util.js";

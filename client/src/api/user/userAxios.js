@@ -20,11 +20,11 @@ userAxios.interceptors.response.use(
 
     // ================= BLOCKED USER =================
     if (status === 403 && data?.blocked) {
-      window.dispatchEvent(
-        new CustomEvent("USER_BLOCKED", {
-          detail: data.reason || "Your account has been blocked",
-        })
+      sessionStorage.setItem(
+        "BLOCKED_MESSAGE",
+        data.reason || "Your account has been blocked"
       );
+      window.location.replace("/login");
       return Promise.reject(error);
     }
 

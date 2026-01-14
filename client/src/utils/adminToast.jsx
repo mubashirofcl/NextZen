@@ -7,7 +7,6 @@ const baseAdminToast = (render, options = {}) => {
     toast.custom(render, { duration: 4000, ...options });
 };
 
-// Admin-Specific Confirm Modal (Matches Dashboard Cards)
 const AdminConfirmContent = ({ id, title, message, onConfirm }) => {
     const [isPending, setIsPending] = useState(false);
 

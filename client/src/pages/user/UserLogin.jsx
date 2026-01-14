@@ -6,7 +6,7 @@ import { useDispatch } from "react-redux";
 
 import { userLogin } from "../../api/user/user.api";
 import { fetchUser } from "../../store/user/authSlice";
-import BlockedModal from "../../components/admin/BlockedModal";
+import BlockedModal from "../../components/user/BlockedModal";
 import { nxToast } from "../../utils/userToast";
 
 const UserLogin = () => {
@@ -38,6 +38,15 @@ const UserLogin = () => {
         if (params.get("blocked") === "true") {
             setBlockedReason(params.get("reason") || "Your account has been restricted.");
             setShowBlockedModal(true);
+        }
+
+        const blockedReason = sessionStorage.getItem("BLOCKED_MESSAGE");
+
+        if (blockedReason) {
+            setBlockedReason(blockedReason);
+            setShowBlockedModal(true);
+  
+            sessionStorage.removeItem("BLOCKED_MESSAGE");
         }
     }, [location.search]);
 

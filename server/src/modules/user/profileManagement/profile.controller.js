@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import User from "../userAuth/user.model.js";
+import User from "../userCore/user.model.js";
 import * as profileService from "./profile.service.js";
 
 // ==================== GET USER PROFILE ====================

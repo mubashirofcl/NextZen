@@ -11,6 +11,7 @@ const ResetPassword = () => {
     const { state } = useLocation();
     const navigate = useNavigate();
     const [showPass, setShowPass] = useState(false);
+    const [showConfirmPass, setShowConfirmPass] = useState(false);
 
     const {
         register,
@@ -37,7 +38,6 @@ const ResetPassword = () => {
 
             navigate("/login", {
                 state: { message: "Security updated. Please sign in." },
-
             });
 
             nxToast.success(
@@ -86,14 +86,23 @@ const ResetPassword = () => {
 
                         <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 ml-1">Confirm Password</label>
-                            <input
-                                type="password"
-                                placeholder="••••••••"
-                                {...register("confirmPassword", {
-                                    validate: v => v === watch('password') || "Passwords do not match"
-                                })}
-                                className="w-full h-14 px-5 bg-gray-50 border-none rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showConfirmPass ? "text" : "password"} // Linked to showConfirmPass
+                                    placeholder="••••••••"
+                                    {...register("confirmPassword", {
+                                        validate: v => v === watch('password') || "Passwords do not match"
+                                    })}
+                                    className="w-full h-14 px-5 bg-gray-50 border-none rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPass(!showConfirmPass)} // Toggle button for confirm field
+                                    className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#7a6af6]"
+                                >
+                                    {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
                             {errors.confirmPassword && (
                                 <p className="text-red-500 text-[9px] font-bold mt-1 ml-1 uppercase italic tracking-tighter">
                                     {errors.confirmPassword.message}
