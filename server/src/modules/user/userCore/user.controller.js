@@ -3,6 +3,18 @@ import jwt from "jsonwebtoken";
 import userService from "./user.service.js";
 import { verifyOTPOnly } from "../common/otp.service.js";
 import userRepo from "./user.repository.js";
+import User from "./user.model.js";
+
+// ==================== COOKIE CONFIG ====================
+
+const isProduction = process.env.NODE_ENV === "production";
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: isProduction,                 // false on localhost
+  sameSite: isProduction ? "none" : "lax",
+  path: "/",
+};
 
 // ==================== SIGNUP OTP ====================
 
@@ -62,19 +74,13 @@ export const verifySignupOTP = async (req, res) => {
     const { accessToken, refreshToken, user } =
       await userService.verifySignupOTP(email, otp, name, password);
 
-    const isProduction = process.env.NODE_ENV === "production";
-
     res.cookie("userAccessToken", accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
+      ...COOKIE_OPTIONS,
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("userRefreshToken", refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
+      ...COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -118,19 +124,13 @@ export const loginUser = async (req, res) => {
     const { accessToken, refreshToken } =
       await userService.loginUser(email, password);
 
-    const isProduction = process.env.NODE_ENV === "production";
-
     res.cookie("userAccessToken", accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
+      ...COOKIE_OPTIONS,
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("userRefreshToken", refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
+      ...COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -143,19 +143,24 @@ export const loginUser = async (req, res) => {
 // ==================== REFRESH TOKEN ====================
 
 export const refreshUserToken = async (req, res) => {
-  const refreshToken = req.cookies.userRefreshToken;
-  if (!refreshToken) {
+  const cookieRefreshToken = req.cookies.userRefreshToken;
+
+  if (!cookieRefreshToken) {
     return res.status(401).json({ success: false, message: "Refresh token missing" });
   }
 
   try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    const user = await userRepo.findById(decoded.userId);
+    const decoded = jwt.verify(
+      cookieRefreshToken,
+      process.env.JWT_REFRESH_SECRET
+    );
 
-    if (!user || user.isBlocked) {
-      res.clearCookie("userAccessToken");
-      res.clearCookie("userRefreshToken");
-      return res.status(403).json({ blocked: true });
+    const user = await User.findById(decoded.userId).select("+refreshToken");
+
+    if (!user || user.isBlocked || user.refreshToken !== cookieRefreshToken) {
+      res.clearCookie("userAccessToken", COOKIE_OPTIONS);
+      res.clearCookie("userRefreshToken", COOKIE_OPTIONS);
+      return res.status(403).json({ success: false });
     }
 
     const newAccessToken = jwt.sign(
@@ -170,26 +175,22 @@ export const refreshUserToken = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    const isProduction = process.env.NODE_ENV === "production";
+    await userRepo.updateRefreshToken(user._id, newRefreshToken);
 
     res.cookie("userAccessToken", newAccessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
+      ...COOKIE_OPTIONS,
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("userRefreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
+      ...COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     return res.status(200).json({ success: true });
   } catch {
-    res.clearCookie("userAccessToken");
-    res.clearCookie("userRefreshToken");
+    res.clearCookie("userAccessToken", COOKIE_OPTIONS);
+    res.clearCookie("userRefreshToken", COOKIE_OPTIONS);
     return res.status(401).json({ success: false });
   }
 };
@@ -206,7 +207,6 @@ export const requestForgotPasswordOTP = async (req, res) => {
 };
 
 export const resendForgotPasswordOTP = requestForgotPasswordOTP;
-
 
 export const verifyForgotPasswordOTP = async (req, res) => {
   try {
@@ -232,7 +232,17 @@ export const resetPassword = async (req, res) => {
 
 // ==================== LOGOUT ====================
 
-export const logoutUser = (req, res) => {
-  res.clearCookie("userAccessToken").clearCookie("userRefreshToken");
-  return res.status(200).json({ success: true });
+export const logoutUser = async (req, res) => {
+  try {
+    if (req.user?.userId) {
+      await userRepo.updateRefreshToken(req.user.userId, null);
+    }
+
+    res.clearCookie("userAccessToken", COOKIE_OPTIONS);
+    res.clearCookie("userRefreshToken", COOKIE_OPTIONS);
+
+    return res.status(200).json({ success: true });
+  } catch {
+    return res.status(200).json({ success: true });
+  }
 };

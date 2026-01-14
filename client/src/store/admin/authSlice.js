@@ -21,9 +21,13 @@ export const fetchAdmin = createAsyncThunk(
 // =======================
 export const logoutAdmin = createAsyncThunk(
   "adminAuth/logoutAdmin",
-  async (_, { dispatch }) => {
-    await adminLogout();
-    dispatch(clearAdmin());
+  async (_, { rejectWithValue }) => {
+    try {
+      await adminLogout();
+      return true;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Logout failed");
+    }
   }
 );
 
@@ -51,13 +55,18 @@ const adminAuthSlice = createSlice({
       })
       .addCase(fetchAdmin.fulfilled, (state, action) => {
         state.admin = action.payload;
-        state.loading = false;
         state.isAuthenticated = true;
+        state.loading = false;
       })
       .addCase(fetchAdmin.rejected, (state) => {
         state.admin = null;
-        state.loading = false;
         state.isAuthenticated = false;
+        state.loading = false; // This gets you off the spinner
+      })
+      .addCase(logoutAdmin.fulfilled, (state) => {
+        state.admin = null;
+        state.isAuthenticated = false;
+        state.loading = false;
       });
   },
 });

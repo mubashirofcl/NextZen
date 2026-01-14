@@ -1,10 +1,10 @@
 import React, { useEffect } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { Toaster } from "sonner";
 
 import { fetchUser } from "./store/user/authSlice";
-import { fetchAdmin } from "./store/admin/authSlice";
+import { fetchAdmin, clearAdmin } from "./store/admin/authSlice";
 
 // ===== ROUTE GUARDS =====
 import AuthRoute from "./routes/user/AuthRoute";
@@ -36,31 +36,63 @@ import MainLayout from "./components/user/MainLayout.jsx";
 export const App = () => {
   const dispatch = useDispatch();
   const location = useLocation();
+  const navigate = useNavigate();
+
   const userAuth = useSelector((s) => s.userAuth);
   const adminAuth = useSelector((s) => s.adminAuth);
 
+  const isAdminPath = location.pathname.startsWith("/admin");
+
+  // 1. INITIAL SESSION FETCH
   useEffect(() => {
-    const isAdminRoute = location.pathname.startsWith("/admin");
-    if (!userAuth.user && userAuth.loading !== false) {
+    // Fetch User session if not already loaded
+    if (userAuth.loading) {
       dispatch(fetchUser());
     }
-    if (isAdminRoute && !adminAuth.admin && adminAuth.loading !== false) {
+
+    // Fetch Admin session only if on admin path and not already loaded
+    if (isAdminPath && adminAuth.loading) {
       dispatch(fetchAdmin());
     }
-  }, [dispatch, userAuth.loading, adminAuth.loading, location.pathname]);
+  }, [dispatch, isAdminPath]); // Minimal dependencies to prevent re-fetch loops
 
-  const isAdminPath = location.pathname.startsWith("/admin");
+  // 2. GLOBAL AUTH EVENT LISTENERS
+  useEffect(() => {
+    const handleAdminLogout = () => {
+      dispatch(clearAdmin());
+      if (location.pathname.startsWith("/admin")) {
+        navigate("/admin/login");
+      }
+    };
+
+    window.addEventListener("ADMIN_LOGOUT", handleAdminLogout);
+    return () => window.removeEventListener("ADMIN_LOGOUT", handleAdminLogout);
+  }, [dispatch, navigate, location.pathname]);
+
+  // 3. GLOBAL LOADING STATE (STOPS THE "STUCK" ISSUE)
+  if (isAdminPath && adminAuth.loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-[#7a6af6] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Verifying Admin Identity</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
       <Toaster
-  position="bottom-right"
-  containerStyle={{
-    top: '80px',
-    right: '20px',
-    zIndex: 999999, 
-  }}
-/>
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            borderRadius: '1rem',
+            border: '1px solid #f1f5f9',
+            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)',
+          },
+        }}
+      />
 
       {isAdminPath ? (
         /* ================= ADMIN SIDE ================= */
@@ -68,11 +100,14 @@ export const App = () => {
           <Route element={<AdminAuthRoute />}>
             <Route path="/admin/login" element={<AdminLogin />} />
           </Route>
+
           <Route path="/admin" element={<AdminProtectedRoute />}>
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="customers" element={<UserManagement />} />
           </Route>
+
+          <Route path="*" element={<Navigate to="/admin/login" replace />} />
         </Routes>
       ) : (
         /* ================= USER SIDE ================= */
@@ -98,6 +133,7 @@ export const App = () => {
                 <Route path="address" element={<Addresses />} />
               </Route>
             </Route>
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </MainLayout>

@@ -1,20 +1,28 @@
 import authService from "./auth.service.js";
+import userRepo from "../userCore/user.repository.js";
+
+const isProduction = process.env.NODE_ENV === "production";
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  path: "/",
+};
 
 export const googleCallback = async (req, res) => {
   try {
     if (!req.user) {
       return res.redirect(
-        `${process.env.FRONTEND_URL}/login?error=auth_failed`
+        `${process.env.FRONTEND_URL}/login?error=google_auth_failed`
       );
     }
 
     const user = req.user;
 
-    // 🔥 BLOCK CHECK — MUST BE BEFORE TOKENS
     if (user.isBlocked) {
-      // ensure no cookies exist
-      res.clearCookie("userAccessToken");
-      res.clearCookie("userRefreshToken");
+      res.clearCookie("userAccessToken", COOKIE_OPTIONS);
+      res.clearCookie("userRefreshToken", COOKIE_OPTIONS);
 
       return res.redirect(
         `${process.env.FRONTEND_URL}/login?blocked=true&reason=${encodeURIComponent(
@@ -23,33 +31,29 @@ export const googleCallback = async (req, res) => {
       );
     }
 
-    // ✅ ONLY NON-BLOCKED USERS GET TOKENS
     const { accessToken, refreshToken } =
       authService.generateTokens(user._id);
 
-    const isProduction = process.env.NODE_ENV === "production";
+    await userRepo.updateRefreshToken(user._id, refreshToken);
 
     res.cookie("userAccessToken", accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
+      ...COOKIE_OPTIONS,
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie("userRefreshToken", refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
+      ...COOKIE_OPTIONS,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     return res.redirect(`${process.env.FRONTEND_URL}/`);
-  } catch (error) {
+  } catch {
     return res.redirect(`${process.env.FRONTEND_URL}/login`);
   }
 };
 
-
 export const googleFailure = (req, res) => {
-  res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed`);
+  return res.redirect(
+    `${process.env.FRONTEND_URL}/login?error=google_auth_failed`
+  );
 };

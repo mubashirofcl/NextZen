@@ -23,6 +23,10 @@ const updateLastLogin = async (userId) => {
   );
 };
 
+const updateRefreshToken = async (userId, token) => {
+  return await User.findByIdAndUpdate(userId, { refreshToken: token });
+};
+
 // ==================== OTP OPERATIONS ====================
 
 const createOTP = async (email, otp, purpose) => {
@@ -71,6 +75,7 @@ export default {
   findById,
   createUser,
   updateLastLogin,
+  updateRefreshToken,
   createOTP,
   findValidOTP,
   markOTPAsUsed,

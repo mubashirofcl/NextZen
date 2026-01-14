@@ -43,6 +43,9 @@ const verifySignupOTP = async (email, otp, name, password) => {
     { expiresIn: "7d" }
   );
 
+  // Save Refresh Token to DB
+  await userRepo.updateRefreshToken(user._id, refreshToken);
+
   return { accessToken, refreshToken, user };
 };
 
@@ -57,16 +60,20 @@ const loginUser = async (email, password) => {
 
   await userRepo.updateLastLogin(user._id);
 
-  return {
-    accessToken: jwt.sign({ userId: user._id },
-      process.env.JWT_SECRET, {
-      expiresIn: "15m",
-    }),
-    refreshToken: jwt.sign({ userId: user._id },
-      process.env.JWT_REFRESH_SECRET, {
-      expiresIn: "7d",
-    }),
-  };
+  const accessToken = jwt.sign({ userId: user._id },
+    process.env.JWT_SECRET, {
+    expiresIn: "15m",
+  });
+
+  const refreshToken = jwt.sign({ userId: user._id },
+    process.env.JWT_REFRESH_SECRET, {
+    expiresIn: "7d",
+  });
+
+  // Save Refresh Token to DB
+  await userRepo.updateRefreshToken(user._id, refreshToken);
+
+  return { accessToken, refreshToken };
 };
 
 // ==================== FORGOT PASSWORD ====================
