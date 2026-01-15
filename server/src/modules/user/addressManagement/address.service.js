@@ -115,12 +115,30 @@ export const setDefaultAddress = async (userId, addressId) => {
 
 
 export const deleteAddress = async (userId, addressId) => {
-    const deleted = await Address.findOneAndDelete({
+
+    const deletedAddress = await Address.findOneAndDelete({
         _id: addressId,
         user: userId,
     });
 
-    if (!deleted) {
+    if (!deletedAddress) {
         throw new Error(404, "Address not found");
     }
+
+    if (!deletedAddress.isDefault) {
+        return;
+    }
+
+    const nextDefault = await Address.findOne({ user: userId }).sort({ createdAt: 1 });
+
+    if (!nextDefault) {
+        return;
+    }
+
+    await Address.updateMany(
+        { user: userId },
+        { isDefault: false }
+    );
+    nextDefault.isDefault = true;
+    await nextDefault.save();
 };
