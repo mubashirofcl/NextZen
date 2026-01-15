@@ -10,9 +10,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import AddAddressModal from "./AddAddressModal";
-import EditAddressModal from "./EditAddressModal";
-
 import {
     fetchAddresses,
     createAddress,
@@ -21,6 +18,7 @@ import {
     setDefaultAddress,
 } from "../../api/user/address.api";
 import { nxToast } from "../../utils/userToast";
+import AddressModal from "./AddressModal";
 
 const Addresses = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -118,7 +116,7 @@ const Addresses = () => {
                                 : "border-slate-50 hover:border-slate-200"
                                 }`}
                         >
-        
+
                             <div className="flex items-start gap-4 flex-1">
                                 <div
                                     className={`p-3 rounded-xl shrink-0 ${addr.isDefault
@@ -159,7 +157,7 @@ const Addresses = () => {
                                 </div>
                             </div>
 
-        
+
                             <div className="flex items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0 border-slate-100">
                                 {!addr.isDefault && (
                                     <button
@@ -203,27 +201,27 @@ const Addresses = () => {
             )}
 
             {/* ==================== MODALS ==================== */}
-            <AddAddressModal
+            <AddressModal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
-                onSave={async (data) => {
+                mode="add"
+                onSubmit={async (data) => {
                     const res = await createAddress(data);
                     setAddresses((prev) => [...prev, res.data]);
-                    setIsAddModalOpen(false);
                 }}
             />
 
-            <EditAddressModal
+            <AddressModal
                 isOpen={isEditModalOpen}
                 onClose={() => setIsEditModalOpen(false)}
+                mode="edit"
                 initialData={selectedAddress}
-                onUpdate={async (data) => {
-                    const res = await updateAddress(data.id, data);
+                onSubmit={async (data) => {
+                    const res = await updateAddress(selectedAddress._id, data);
                     setAddresses((prev) =>
-                        prev.map((a) => (a._id === data.id ? res.data : a))
+                        prev.map((a) => (a._id === selectedAddress._id ? res.data : a))
                     );
                 }}
-
             />
         </div>
     );
