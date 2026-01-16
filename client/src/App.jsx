@@ -15,7 +15,8 @@ import AdminAuthRoute from "./routes/admin/AdminAuthRoute";
 // ===== ADMIN =====
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import UserManagement from "./pages/admin/userManagement";
+import UserManagement from "./pages/admin/userManagement.jsx";
+import CategoryManagement from "./pages/admin/CategoryManagement.jsx";
 
 // ===== USER =====
 import UserSignup from "./pages/user/UserSignup";
@@ -32,6 +33,8 @@ import PersonalInfo from "./components/user/PersonalInfo.jsx";
 import ChangePasswordModal from "./components/user/ChangePasswordModal.jsx";
 import Addresses from "./components/user/Addresses.jsx";
 import MainLayout from "./components/user/MainLayout.jsx";
+
+
 
 export const App = () => {
   const dispatch = useDispatch();
@@ -105,6 +108,7 @@ export const App = () => {
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="customers" element={<UserManagement />} />
+            <Route path="category" element={<CategoryManagement />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/admin/login" replace />} />
