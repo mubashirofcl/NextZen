@@ -1,4 +1,4 @@
-import adminAxios from "../../api/admin/adminAxios";
+import adminAxios from "./adminAxios";
 
 /* ================= FETCH ================= */
 
@@ -19,6 +19,11 @@ export const fetchAdminCategories = async ({
     },
   });
 
+  return data;
+};
+
+export const fetchCategoriesSelection = async (params) => {
+  const { data } = await adminAxios.get("/admin/categories/selection", { params });
   return data;
 };
 

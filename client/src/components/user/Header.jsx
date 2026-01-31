@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { Search, ShoppingBag, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { ShoppingBag, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { clearUser } from '../../store/user/authSlice';
 import { userLogout } from '../../api/user/user.api';
 import { nxToast } from '../../utils/userToast';
@@ -11,117 +11,114 @@ const Header = () => {
     const dispatch = useDispatch();
     const location = useLocation();
 
-    const { user, loading, isAuthenticated } = useSelector((state) => state.userAuth);
+    const { user, isAuthenticated } = useSelector((state) => state.userAuth);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            // Trigger transition after 20px of scrolling
+            setIsScrolled(window.scrollY > 20);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     useEffect(() => {
         setIsDropdownOpen(false);
     }, [location.pathname]);
 
-    const categories = [
-        { name: 'Apparel', path: '/category/apparel' },
-        { name: 'Oversized', path: '/category/oversized-t-shirts' },
-        { name: 'Hoodies', path: '/category/hoodies' },
-        { name: 'Accessories', path: '/category/accessories' },
-    ];
-
     const handleLogout = async () => {
         try {
             await userLogout();
             dispatch(clearUser());
-            nxToast.success(
-                "Successfully Logged out."
-            );
+            nxToast.success("Successfully Logged out.");
             navigate('/');
         } catch (error) {
             dispatch(clearUser());
-            nxToast.security(
-                "Filed to Logout."
-            );
             navigate('/');
         }
     };
 
     return (
-        <div className="w-full sticky top-0 z-50 font-sans">
-            <div className="bg-[#0F172A] text-white py-2 text-center text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase px-4">
-                Free Shipping on Orders Above ₹1999 <span className="ml-4 text-[#7a6af6]">Code: ZEN25</span>
+        <div className="w-full fixed top-0 z-50 font-sans">
+            {/* --- BLACK MARQUEE (Hides on Scroll) --- */}
+            <div className={`bg-black text-white overflow-hidden transition-all duration-500 ease-in-out ${isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'}`}>
+                <div className="py-1.5 whitespace-nowrap flex animate-marquee gap-20">
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="flex gap-20 items-center">
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em]">
+                                Free Shipping Above ₹1999 <span className="ml-2 text-[#7a6af6]">ZEN25</span>
+                            </p>
+                        </div>
+                    ))}
+                </div>
             </div>
 
-            <header className="border-b mx-14 mt-3 border-gray-100 bg-white/40 backdrop-blur-xl shadow-sm rounded-[5rem]">
-                <div className="max-w-[1500px] mx-auto px-4 h-20 flex items-center justify-between relative">
-
-                    <nav className="hidden lg:flex items-center gap-10">
-                        {categories.map((cat) => (
+            {/* --- MAIN NAVIGATION HEADER --- */}
+            <header className={`w-full transition-all duration-500 border-b border-white/10 ${
+                isScrolled 
+                ? 'bg-black/40 backdrop-blur-2xl shadow-2xl rounded-b-[1.2rem]' // SMALL RADIUS ADDED HERE
+                : 'bg-black/60 rounded-b-none'
+            }`}>
+                <div className="max-w-[1500px] mx-auto px-6 h-14 flex items-center justify-between relative">
+                    
+                    {/* LEFT NAV */}
+                    <nav className="hidden lg:flex items-center gap-8">
+                        {['Shop', 'Apparel', 'Accessories'].map((name) => (
                             <button
-                                key={cat.name}
-                                onClick={() => navigate(cat.path)}
-                                className="text-[11px] font-black uppercase tracking-[0.2em] text-[#fff] hover:text-[#7a6af6] transition-all relative group"
+                                key={name}
+                                onClick={() => navigate(`/${name.toLowerCase()}`)}
+                                className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60 hover:text-white transition-all relative group"
                             >
-                                {cat.name}
+                                {name}
                                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#7a6af6] transition-all group-hover:w-full"></span>
                             </button>
                         ))}
                     </nav>
 
-                    <div onClick={() => navigate('/')} className="absolute left-1/2 -translate-x-1/2 cursor-pointer">
-                        <h1 className="text-2xl font-black tracking-tighter leading-none text-[#dedede] uppercase">
+                    {/* LOGO */}
+                    <div onClick={() => navigate('/')} className="absolute left-1/2 -translate-x-1/2 cursor-pointer group">
+                        <h1 className="text-lg md:text-xl font-black tracking-tighter text-white uppercase italic group-hover:scale-105 transition-transform">
                             NEXT<span className="text-[#7a6af6]">ZEN</span>
                         </h1>
                     </div>
 
+                    {/* RIGHT ACTIONS */}
                     <div className="flex items-center gap-6">
-                        <div className="relative group cursor-pointer" onClick={() => navigate('/cart')}>
-                            <ShoppingBag size={22} strokeWidth={2} className="text-[#ffffff] group-hover:text-[#7a6af6] transition-colors" />
-                            <span className="absolute -top-2 -right-2 bg-[#7a6af6] text-white text-[9px] w-5 h-5 rounded-full flex items-center justify-center font-black shadow-lg">0</span>
+                        <div className="relative cursor-pointer group p-1" onClick={() => navigate('/cart')}>
+                            <ShoppingBag size={18} className="text-white group-hover:text-[#7a6af6] transition-colors" />
+                            <span className="absolute -top-1 -right-1 bg-[#7a6af6] text-white text-[7px] w-4 h-4 rounded-full flex items-center justify-center font-black">0</span>
                         </div>
 
-                        {/* AUTH SECTION START */}
-                        <div className="flex items-center min-w-[100px] justify-end">
-                            {loading ? (
-                                <div className="w-9 h-9 rounded-full bg-gray-100 animate-pulse border border-gray-200"></div>
-                            ) : (isAuthenticated && user) ? (
+                        <div className="flex items-center justify-end">
+                            {isAuthenticated ? (
                                 <div className="relative">
-                                    <button
-                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                        className="flex items-center gap-2 group outline-none"
-                                    >
-                                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center transition-all overflow-hidden border-2 border-transparent group-hover:border-[#7a6af6] shadow-sm">
-                                            {user.profilePicture ? (
-                                                <img src={user.profilePicture} className="w-full h-full object-cover" alt="profile" />
-                                            ) : (
-                                                <div className="w-full h-full bg-[#0F172A] flex items-center justify-center text-white text-xs font-black uppercase">
-                                                    {user.name?.charAt(0) || 'U'}
-                                                </div>
-                                            )}
+                                    <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-2 outline-none group">
+                                        <div className="w-8 h-8 rounded-full border border-white/10 overflow-hidden bg-white/5 group-hover:border-[#7a6af6] transition-colors">
+                                            <div className="w-full h-full flex items-center justify-center text-white text-[10px] font-black uppercase">
+                                                {user?.name?.charAt(0)}
+                                            </div>
                                         </div>
-                                        <ChevronDown size={14} className={`text-gray-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                                        <ChevronDown size={12} className={`text-white/40 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                                     </button>
-
+                                    
                                     {isDropdownOpen && (
                                         <>
                                             <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)}></div>
-                                            <div className="absolute right-0 mt-4 w-56 bg-white border border-gray-100 rounded-2xl shadow-2xl py-3 z-20 animate-in fade-in zoom-in duration-200">
-                                                <div className="px-5 py-3 border-b border-gray-50 mb-2">
-                                                    <p className="text-[9px] uppercase tracking-widest text-gray-400 font-black mb-1">Signed in as</p>
-                                                    <p className="text-xs font-black text-[#7a6af6] truncate uppercase">{user.name}</p>
-                                                </div>
-                                                <button onClick={() => navigate('/profile')} className="w-full px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-gray-50 flex items-center gap-3 transition-colors">
-                                                    <Settings size={14} /> Profile
+                                            <div className="absolute right-0 mt-3 w-44 bg-black/95 backdrop-blur-3xl border border-white/10 rounded-xl py-2 shadow-2xl z-20 animate-in fade-in zoom-in duration-150">
+                                                <button onClick={() => navigate('/profile')} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/5 flex items-center gap-3 transition-all">
+                                                    <Settings size={12} /> Profile
                                                 </button>
-                                                <div className="h-[1px] bg-gray-50 my-2 mx-5"></div>
-                                                <button onClick={handleLogout} className="w-full px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-50 flex items-center gap-3 transition-colors">
-                                                    <LogOut size={14} /> Sign Out
+                                                <button onClick={handleLogout} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase tracking-widest text-red-400 hover:text-red-500 hover:bg-red-500/10 flex items-center gap-3 transition-all">
+                                                    <LogOut size={12} /> Sign Out
                                                 </button>
                                             </div>
                                         </>
                                     )}
                                 </div>
                             ) : (
-                                <button
-                                    onClick={() => navigate('/login')}
-                                    className="text-[11px] font-black uppercase tracking-[0.2em] text-[#ffffff] px-6 py-2 border-2 border-[#f8f8f8] rounded-full hover:bg-[#ffffff] hover:text-[#7a6af6] transition-all shadow-sm active:scale-95"
-                                >
+                                <button onClick={() => navigate('/login')} className="text-[9px] font-black uppercase tracking-[0.2em] text-white px-5 py-1.5 border border-white/20 rounded-full hover:bg-white hover:text-black transition-all">
                                     Login
                                 </button>
                             )}
@@ -129,6 +126,11 @@ const Header = () => {
                     </div>
                 </div>
             </header>
+
+            <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+                .animate-marquee { animation: marquee 25s linear infinite; display: flex; width: max-content; }
+            `}} />
         </div>
     );
 };

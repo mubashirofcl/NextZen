@@ -32,7 +32,7 @@ const AdminSidebar = () => {
 
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
                 <NavItem icon={<LayoutDashboard size={16} />} label="Dashboard" active={isActive("/admin/dashboard")} onClick={() => navigate("/admin/dashboard")} />
-                
+
                 <DropdownItem
                     icon={<Package size={16} />}
                     label="Products"

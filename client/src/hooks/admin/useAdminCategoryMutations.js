@@ -1,9 +1,9 @@
-// src/hooks/admin/useCategoryMutations.js
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   createAdminCategory,
   updateAdminCategory,
   deleteAdminCategory,
+  fetchAdminSubCategories,
 } from "../../api/admin/category.api";
 
 /* ================= CREATE ================= */
@@ -41,6 +41,10 @@ export const useUpdateCategory = () => {
         queryKey: ["admin-categories"],
         exact: false,
       });
+      qc.invalidateQueries({
+        queryKey: ["categories-dropdown"],
+        exact: false,
+      });
 
       qc.invalidateQueries({
         queryKey: ["admin-subcategories"],
@@ -71,3 +75,6 @@ export const useDeleteCategory = () => {
     },
   });
 };
+
+/* ================= SUBCATEGORY ================= */
+

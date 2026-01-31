@@ -1,0 +1,38 @@
+import mongoose from "mongoose";
+
+const sizeSchema = new mongoose.Schema(
+    {
+        size: String,
+        stock: Number,
+        originalPrice: Number,
+        salePrice: Number,
+        isActive: Boolean,
+    },
+    { _id: false }
+);
+
+const variantSchema = new mongoose.Schema(
+    {
+        productId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Product",
+            required: true,
+            // ❌ REMOVE unique:true if present
+        },
+        color: String,
+        hex: String,
+        images: [String],
+        sizes: [sizeSchema],
+        isDeleted: {
+            type: Boolean,
+            default: false,
+        },
+    },
+    { timestamps: true }
+);
+
+// ✅ OPTIONAL (but good)
+// Allows fast queries without blocking multiples
+variantSchema.index({ productId: 1 });
+
+export default mongoose.model("Variant", variantSchema);

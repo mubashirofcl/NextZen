@@ -1,126 +1,210 @@
 import React from 'react';
-import { Star, ArrowUpRight, ShoppingBag } from 'lucide-react';
+import { Star, ArrowUpRight, ShoppingBag, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
+import { useProducts } from "../../hooks/user/useProducts";
+import { useUserCategories } from '../../hooks/user/useUserCategories';
+
+/* ---------------- INDUSTRIAL RIB COMPONENT ---------------- */
+const NewCollectionRib = ({ rotation, top, text = "NEW COLLECTION" }) => (
+    <div
+        className="absolute w-[180%] py-3 md:py-5 bg-[#8676ff] flex overflow-hidden whitespace-nowrap border-y border-black/20 z-20 shadow-[0_10px_40px_rgba(0,0,0,0.3)] select-none pointer-events-none"
+        style={{ transform: `rotate(${rotation}deg)`, top: top, left: '-40%' }}
+    >
+        <div className="animate-marquee-slow flex items-center">
+            {[...Array(15)].map((_, i) => (
+                <span key={i} className="text-black font-black text-[14px] md:text-[22px] italic tracking-tighter mx-6 flex items-center gap-4">
+                    {text} <div className="w-1.5 h-1.5 bg-black rounded-full" />
+                </span>
+            ))}
+        </div>
+    </div>
+);
 
 const Home = () => {
-    return (
-        <div className="relative min-h-screen font-sans text-[#333] selection:bg-[#7a6af6]/20">
+    const navigate = useNavigate();
+    const { data: categories = [], isLoading: catLoading } = useUserCategories();
+    const { data: allProductsData } = useProducts({ limit: 50 });
+    const { data: featuredData } = useProducts({ limit: 4, isFeatured: true, sort: "createdAt" });
+    const { data: freshData } = useProducts({ limit: 4, sort: "createdAt" });
 
+    const featuredProducts = featuredData?.products || [];
+    const freshArrivals = freshData?.products || [];
+    const allProducts = allProductsData?.products || [];
+
+    const getCategoryImage = (catId, index) => {
+        const product = allProducts?.find(p =>
+            String(p.categoryId?._id || p.categoryId) === String(catId)
+        );
+        if (product?.thumbnail) return product.thumbnail;
+        const menFallbacks = [
+            "https://images.unsplash.com/photo-1681091638047-4e91651c7a31?q=80&w=1000",
+            "https://images.unsplash.com/photo-1578681994506-b8f463449011?q=80&w=1000",
+            "https://plus.unsplash.com/premium_photo-1673125287363-b4e837f1215f?q=80&w=1000"
+        ];
+        return menFallbacks[index % menFallbacks.length];
+    };
+
+    return (
+        <div className="relative min-h-screen font-sans text-white selection:bg-[#7a6af6]/20 overflow-x-hidden pt-20 mt-15">
             <Header />
 
-            <div className="mx-auto relative z-10 px-4">
 
-                <section className="pt-10 px-4">
-                    <h1 className="text-[18vw] md:text-[15vw] font-black tracking-tighter leading-[0.85] text-center uppercase  text-gray-100 text-white/60 mb-8">
-                        NEXT<span className="text-[#7a6af6a8]">ZEN</span> <br /> OUTFIT
-                    </h1>
-                    <br /><br /><br />
-                    <div className="flex flex-col md:flex-row items-center justify-between border-t border-b border-gray-100 py-6 gap-4 backdrop-blur-md bg-white/20 rounded-full px-8">
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white">Est. 2026 // Premium Quality</p>
-                        <div className="flex gap-8">
-                            <button className="text-[10px] text-white uppercase tracking-[0.3em] hover:text-[#7a6af6] transition-colors">New Season</button>
-                            <button className="text-[10px] text-white uppercase tracking-[0.3em] hover:text-[#7a6af6] transition-colors">Exclusives</button>
-                        </div>
-                    </div>
-                </section>
 
-                <section className="px-4 my-12">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <CategoryTile title="Hoodies" count="12 Items" img="https://images.unsplash.com/photo-1642935553837-5894a54bfbc2?q=80&w=600" />
-                        <CategoryTile title="T-Shirts" count="08 Items" img="https://images.unsplash.com/photo-1618453292459-53424b66bb6a?q=80&w=600" />
-                        <CategoryTile title="Beanies" count="15 Items" img="https://plus.unsplash.com/premium_photo-1673356302032-60c80e0b590b?q=80&w=600" />
-                        <CategoryTile title="bracelets" count="05 Items" img="https://images.unsplash.com/photo-1581299976481-2fb7c23862f8?q=80&w=600" />
-                    </div>
-                </section>
+            <section className="relative h-[65vh] md:h-[85vh] flex items-center justify-center mb-28 mt-4 overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none z-20">
+                    <NewCollectionRib rotation={-8} top="35%" />
+                    <NewCollectionRib rotation={7} top="48%" />
+                </div>
 
-                <div className="bg-[#fcfcfc92] text-white py-3 overflow-hidden whitespace-nowrap flex my-12 font-black text-[10px] tracking-[0.5em] uppercase mb-12">
-                    {[...Array(10)].map((_, i) => (
-                        <span key={i} className="flex items-center gap-6 animate-marquee">
-                            SHOP NOW <Star size={10} className="fill-[#7a6af6] text-[#7a6af6]" />
-                            GRAB NOW <Star size={10} className="fill-[#7a6af6] text-[#7a6af6]" />
-                            COLLECT NOW
-                        </span>
-                    ))}
+                <div className="absolute inset-x-4 md:inset-x-10 inset-y-0 rounded-[2rem] md:rounded-[3.5rem] overflow-hidden border border-white/5 shadow-2xl bg-[#414141] z-10">
+                    <img
+                        src="https://images.unsplash.com/photo-1507680434567-5739c80be1ac?q=80&w=2000"
+                        alt="Background"
+                        className="w-full h-full object-cover"
+                    />
+
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-[#050505]/40" />
                 </div>
 
 
-                <section className="px-4 mb-20">
-                    <div className="relative h-[600px] rounded-[2.5rem] overflow-hidden group shadow-2xl">
-                        <img
-                            src="https://images.unsplash.com/photo-1624222244232-5f1ae13bbd53?q=80&w=1200"
-                            alt="Minimalist Essentials"
-                            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent flex flex-col items-start justify-center p-12 md:p-20 text-white">
-                            <p className="text-[10px] font-black tracking-[0.5em] uppercase mb-6 text-[#7a6af6]">New Drop 2026</p>
-                            <h3 className="text-5xl md:text-7xl font-black mb-10 tracking-tighter uppercase leading-[0.9] max-w-lg">
-                                MINIMALIST <br /> ESSENTIALS
-                            </h3>
-                            <div className="flex flex-wrap gap-4">
-                                <button className="bg-white text-[#0F172A] px-10 py-4 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-[#7a6af6] hover:text-white transition-all shadow-xl">Shop Collection</button>
-                                <button className="backdrop-blur-xl bg-white/10 border border-white/20 px-10 py-4 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-white/20 transition-all">Lookbook</button>
-                            </div>
-                        </div>
+                <div className="relative z-30 text-center select-none px-4">
+                    <h1 className="text-[clamp(3.5rem,14vw,10rem)] font-black uppercase italic leading-[0.82] tracking-tighter text-white drop-shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
+                        ARCHIVE STORE<br />
+                        <span className="text-transparent text-outline-white opacity-50">FOR YOUR SOUL</span>
+                    </h1>
+                </div>
+            </section>
+
+            <main className="max-w-[1600px] mx-auto px-6 md:px-12 relative z-10">
+                
+                {/* --- CATEGORY GRID --- */}
+                <section className="w-full mb-32">
+                    <div className="flex flex-wrap lg:flex-nowrap gap-6">
+                        {!catLoading && categories.slice(0, 4).map((cat, index) => (
+                            <CategoryTile
+                                key={cat._id}
+                                title={cat.name}
+                                img={getCategoryImage(cat._id, index)}
+                                onClick={() => navigate(`/shop?category=${cat._id}`)}
+                            />
+                        ))}
                     </div>
                 </section>
 
-                <section className="px-4 py-20 backdrop-blur-md bg-white/10 border border-white/20 rounded-[2.5rem] mb-20">
-                    <div className="flex flex-col md:flex-row justify-between items-baseline mb-16 gap-4">
+                {/* --- FEATURED ARCHIVE --- */}
+                <section className="mb-32">
+                    <div className="flex justify-between items-end mb-12 border-b border-white/10 pb-8">
                         <div className="space-y-2">
-                            <h3 className="text-4xl font-black uppercase tracking-tighter text-[#ffffff]">Fresh Arrivals</h3>
-                            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.3em]">The latest in premium street aesthetics</p>
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 bg-[#7a6af6] rounded-full animate-pulse" />
+                                <span className="text-[#7a6af6] text-[10px] font-black uppercase tracking-[0.4em]">Segment 26 // Selection</span>
+                            </div>
+                            <h3 className="text-5xl font-black uppercase tracking-tighter italic">Featured Archive</h3>
                         </div>
-                        <button className="text-[10px] font-black uppercase tracking-[0.4em] text-[#7a6af6] border-b-2 border-[#7a6af6] pb-1 hover:text-white hover:border-white transition-all">Explore All</button>
+                        <button onClick={() => navigate('/shop')} className="group flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">
+                            View Collection <ArrowRight size={16} className="group-hover:translate-x-2 transition-transform" />
+                        </button>
                     </div>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10">
-                        <ReferenceProductCard name="OffWhite T-shirts" price="₹1,299" img="https://images.unsplash.com/photo-1660997351262-6c31d8a35b6c?q=80&w=600" />
-                        <ReferenceProductCard name="White T-Shirts" price="1,099" img="https://images.unsplash.com/photo-1627225793904-a2f900a6e4cf?q=80&w=600" />
-                        <ReferenceProductCard name="Summer T-Shirts" price="₹999" img="https://images.unsplash.com/photo-1592955715335-32e7a2c35def?q=80&w=600" />
-                        <ReferenceProductCard name="OffWite T-Shirts" price="₹899" img="https://images.unsplash.com/photo-1742654230442-98d89399b484?q=80&w=600" />
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+                        {featuredProducts.map((prod) => (
+                            <StandardProductCard key={prod._id} prod={prod} tag="Curated" />
+                        ))}
                     </div>
                 </section>
-            </div>
+
+                {/* --- MARQUEE --- */}
+                <div className="w-[150vw] -ml-[25vw] border-y border-white/5 bg-white/[0.01] py-6 overflow-hidden flex font-black text-[12px] tracking-[0.6em] uppercase mb-32 italic">
+                    <div className="flex items-center gap-16 animate-marquee shrink-0">
+                        {[...Array(10)].map((_, i) => (
+                            <span key={i} className="flex items-center gap-16 text-white/20">
+                                NEXTZEN ARCHIVE <Star size={12} className="fill-[#7a6af6] text-[#7a6af6]" />
+                                LIMITED DROP 2026 <Star size={12} className="fill-[#7a6af6] text-[#7a6af6]" />
+                            </span>
+                        ))}
+                    </div>
+                </div>
+
+                {/* --- LATEST SEGMENTS --- */}
+                <section className="p-12 md:p-20 backdrop-blur-3xl bg-white/[0.01] border border-white/5 rounded-[4rem] mb-32 shadow-[0_40px_100px_rgba(0,0,0,0.5)] relative overflow-hidden">
+                    <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#7a6af6]/5 blur-[120px] rounded-full" />
+                    <div className="flex justify-between items-center mb-16 relative z-10">
+                        <h3 className="text-4xl font-black uppercase tracking-tighter italic">Latest Segments</h3>
+                        <button onClick={() => navigate('/shop')} className="px-8 py-3 bg-white text-black rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[#7a6af6] hover:text-white transition-all shadow-xl">Explore Drops</button>
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
+                        {freshArrivals.map((prod) => (
+                            <StandardProductCard key={prod._id} prod={prod} tag="Fresh Arrival" />
+                        ))}
+                    </div>
+                </section>
+            </main>
 
             <Footer />
+
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .text-outline-white { -webkit-text-stroke: 1px rgba(255,255,255,0.3); }
+                @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+                @keyframes marquee-slow { 0% { transform: translateX(0); } 100% { transform: translateX(-30%); } }
+                .animate-marquee { animation: marquee 25s linear infinite; }
+                .animate-marquee-slow { animation: marquee-slow 35s linear infinite; }
+            `}} />
         </div>
     );
 };
 
-const CategoryTile = ({ title, count, img }) => (
-    <div className="relative h-[550px] group cursor-pointer overflow-hidden rounded-[2rem] transition-all duration-700">
-        <img src={img} alt={title} className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all duration-1000 group-hover:scale-110" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0F172A]/90 via-transparent to-transparent flex flex-col justify-end p-8">
-            <p className="text-[#7a6af6] text-[9px] font-black uppercase tracking-[0.3em] mb-2 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">{count}</p>
-            <h3 className="text-white font-black text-2xl tracking-tighter leading-tight uppercase mb-4">
-                {title}
-            </h3>
-            <div className="bg-white/10 backdrop-blur-xl border border-white/20 w-12 h-12 rounded-xl flex items-center justify-center transition-all group-hover:bg-[#7a6af6] group-hover:border-transparent group-hover:rotate-45">
-                <ArrowUpRight size={20} className="text-white" />
+const CategoryTile = ({ title, img, onClick }) => (
+    <div
+        onClick={onClick}
+        className="relative h-[600px] flex-1 min-w-[320px] group cursor-pointer overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#0a0a0a] transition-all duration-700 hover:shadow-2xl"
+    >
+        <img
+            src={img}
+            alt={title}
+            className="w-full h-full object-cover transition-all duration-1000 scale-105 group-hover:scale-110  group-hover:grayscale-0 opacity-40 group-hover:opacity-100"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col justify-end p-10">
+            <div className="mb-6">
+                <div className="w-16 h-16 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-xl bg-white/5 group-hover:bg-white group-hover:border-white transition-all duration-500">
+                    <ArrowUpRight size={32} className="text-white group-hover:text-black transition-colors" strokeWidth={2} />
+                </div>
             </div>
+            <h3 className="text-white font-black text-6xl tracking-tighter uppercase leading-[0.85] mb-4 italic transition-transform group-hover:-translate-y-2 duration-500">{title}</h3>
+            <p className="text-[10px] leading-relaxed text-white/40 font-bold uppercase tracking-wider max-w-[260px] opacity-0 group-hover:opacity-100 transition-all duration-700 translate-y-4 group-hover:translate-y-0">
+                Synchronizing the latest archival patterns for the current season.
+            </p>
         </div>
     </div>
 );
 
-const ReferenceProductCard = ({ name, price, img }) => (
-    <div className="group cursor-pointer">
-        <div className="relative aspect-[3/4] mb-6 overflow-hidden rounded-[2rem] bg-gray-50/20 backdrop-blur-sm group-hover:shadow-2xl transition-all duration-500 border border-white/20">
-            <img src={img} alt={name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
-            <div className="absolute top-5 right-5 translate-x-10 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-500">
-                <button className="bg-white p-4 rounded-2xl shadow-xl hover:bg-[#7a6af6] hover:text-white transition-colors">
-                    <ShoppingBag size={18} />
-                </button>
+const StandardProductCard = ({ prod, tag }) => {
+    const navigate = useNavigate();
+    return (
+        <div className="group cursor-pointer" onClick={() => navigate(`/product/${prod._id}`)}>
+            <div className="relative aspect-[3/4] mb-6 overflow-hidden rounded-[2rem] bg-white/[0.02] border border-white/5 transition-all duration-500 hover:border-[#7a6af6]/40">
+                <img src={prod.thumbnail} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90 group-hover:opacity-100" />
+                <div className="absolute top-6 right-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
+                    <div className="bg-white p-4 rounded-2xl shadow-2xl hover:bg-[#7a6af6] hover:text-white transition-colors">
+                        <ShoppingBag size={18} className="text-black group-hover:text-white" />
+                    </div>
+                </div>
+                <div className="absolute bottom-6 left-6 bg-black/60 backdrop-blur-md text-[#7a6af6] text-[8px] font-black px-5 py-2 rounded-full uppercase tracking-[0.2em] border border-white/10 shadow-2xl">
+                    {tag}
+                </div>
             </div>
-            <div className="absolute bottom-5 left-5 bg-[#7a6af6] text-white text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.2em]">
-                Limited
+            <div className="space-y-2 px-3">
+                <h4 className="text-[13px] font-black text-white/60 uppercase tracking-tighter truncate italic group-hover:text-white transition-colors">{prod.name}</h4>
+                <div className="flex items-center gap-4">
+                    <p className="text-[18px] font-black text-[#7a6af6] italic">₹{prod.minSalePrice || prod.minPrice}</p>
+                    {prod.minPrice > prod.minSalePrice && (
+                        <p className="text-[12px] text-white/20 line-through italic font-bold">₹{prod.minPrice}</p>
+                    )}
+                </div>
             </div>
         </div>
-        <div className="space-y-1.5 px-2">
-            <h4 className="text-[9px] font-black uppercase tracking-[0.3em] text-[#7a6af6]">New Collection</h4>
-            <h4 className="text-lg font-black text-[#ffffff] uppercase tracking-tighter leading-none group-hover:text-[#7a6af6] transition-colors">{name}</h4>
-            <p className="text-sm text-gray-500 font-bold tracking-tighter italic">{price}</p>
-        </div>
-    </div>
-);
+    );
+};
 
 export default Home;
