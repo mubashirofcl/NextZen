@@ -9,7 +9,7 @@ import {
   getStats,
   handleBlock,
   handleUnblock
-} from "../userManegment/userManegment.controller.js";
+} from "../userManagement/userManegment.controller.js";
 
 
 const router = express.Router();

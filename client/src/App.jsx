@@ -15,7 +15,8 @@ import AdminAuthRoute from "./routes/admin/AdminAuthRoute";
 // ===== ADMIN =====
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import UserManagement from "./pages/admin/userManagement";
+import UserManagement from "./pages/admin/userManagement.jsx";
+import CategoryManagement from "./pages/admin/CategoryManagement.jsx";
 
 // ===== USER =====
 import UserSignup from "./pages/user/UserSignup";
@@ -32,6 +33,13 @@ import PersonalInfo from "./components/user/PersonalInfo.jsx";
 import ChangePasswordModal from "./components/user/ChangePasswordModal.jsx";
 import Addresses from "./components/user/Addresses.jsx";
 import MainLayout from "./components/user/MainLayout.jsx";
+import ProductManagement from "./pages/admin/ProductManagement.jsx";
+import ProductForm from "./pages/admin/ProductForm.jsx";
+import BrandManagement from "./pages/admin/BrandManagement.jsx";
+import Shop from "./pages/user/Shop.jsx";
+import ProductDetails from "./pages/user/ProductDetails.jsx";
+
+
 
 export const App = () => {
   const dispatch = useDispatch();
@@ -103,9 +111,20 @@ export const App = () => {
 
           <Route path="/admin" element={<AdminProtectedRoute />}>
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
+
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="customers" element={<UserManagement />} />
+            <Route path="category" element={<CategoryManagement />} />
+            <Route path="brand" element={<BrandManagement />} />
+
+            {/* PRODUCTS */}
+            <Route path="products">
+              <Route index element={<ProductManagement />} />
+              <Route path="add" element={<ProductForm />} />
+              <Route path="edit/:id" element={<ProductForm />} />
+            </Route>
           </Route>
+
 
           <Route path="*" element={<Navigate to="/admin/login" replace />} />
         </Routes>
@@ -115,6 +134,8 @@ export const App = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/auth/google/success" element={<GoogleAuthSuccess />} />
+            <Route path="/shop" element={<Shop />} />
+            <Route path="/product/:id" element={<ProductDetails />} />
 
             <Route element={<AuthRoute />}>
               <Route path="/login" element={<UserLogin />} />
@@ -136,7 +157,7 @@ export const App = () => {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </MainLayout>
+        </MainLayout >
       )}
     </>
   );

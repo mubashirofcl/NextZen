@@ -39,7 +39,7 @@ const ProfileLayout = () => {
     const isGoogleUser = Boolean(user?.googleId);
 
     return (
-        <div className="min-h-screen text-[#0F172A]">
+        <div className="min-h-screen text-[#0F172A] mt-20">
             <Header />
 
             <main className="max-w-[1200px] mx-auto pt-16 pb-24 px-6 flex flex-col md:flex-row gap-10">
