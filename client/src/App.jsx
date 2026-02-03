@@ -38,6 +38,8 @@ import ProductForm from "./pages/admin/ProductForm.jsx";
 import BrandManagement from "./pages/admin/BrandManagement.jsx";
 import Shop from "./pages/user/Shop.jsx";
 import ProductDetails from "./pages/user/ProductDetails.jsx";
+import CartPage from "./pages/user/CartPage.jsx";
+import WishlistPage from "./pages/user/WishlistPage.jsx";
 
 
 
@@ -97,7 +99,7 @@ export const App = () => {
           style: {
             borderRadius: '1rem',
             border: '1px solid #f1f5f9',
-            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)',
+            boxShadow: '0 10px 1px -3px rgba(0,0,0,0.05)',
           },
         }}
       />
@@ -147,6 +149,10 @@ export const App = () => {
             <Route path="/verify-otp" element={<OTPVerification />} />
 
             <Route element={<UserProtectedRoute />}>
+
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/wishlist" element={<WishlistPage />} />
+
               <Route path="/profile" element={<ProfileLayout />}>
                 <Route index element={<Navigate to="info" replace />} />
                 <Route path="info" element={<PersonalInfo />} />

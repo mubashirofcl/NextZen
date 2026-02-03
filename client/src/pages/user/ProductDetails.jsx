@@ -1,13 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     ShoppingBag, Heart, ChevronRight, Minus, Plus,
-    ShieldCheck, Truck, List, AlertCircle
+    ShieldCheck, Truck, List, AlertCircle, Loader2
 } from 'lucide-react';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
 import { useProductDetails } from '../../hooks/user/useProductDetails';
 import { useRecommended } from '../../hooks/user/useRecommended';
+
+// --- NEW HOOKS ---
+import { useCart } from '../../hooks/user/useCart';
+import { useWishlist } from '../../hooks/user/useWishlist';
+import { nxToast } from '../../utils/userToast';
+import { useSelector } from 'react-redux';
 
 const ProductDetails = () => {
     const { id } = useParams();
@@ -15,6 +21,9 @@ const ProductDetails = () => {
     const imgRef = useRef(null);
 
     const { data: product, isLoading, error } = useProductDetails(id);
+    const { addItem, updateQty: isUpdatingCart } = useCart();
+    const { toggle, wishlist } = useWishlist();
+
     const activeVariants = product?.variants?.filter(v => v.isDeleted === false) || [];
 
     const { data: recommendedData = [] } = useRecommended(
@@ -31,17 +40,20 @@ const ProductDetails = () => {
     const currentVariant = activeVariants[selectedVariantIdx];
     const isOutOfStock = !selectedSize || selectedSize.stock === 0;
 
+    // Check if current variant is wishlisted
+    const isWishlisted = wishlist?.some(p =>
+        p.productId?._id === id && p.variantId?._id === currentVariant?._id
+    );
+
     useEffect(() => {
         if (error || (product && product.isActive === false)) {
             navigate('/shop', { replace: true });
         }
     }, [product, error, navigate]);
 
-    // --- BUG FIX: Sync size and images when variant changes ---
     useEffect(() => {
         if (currentVariant) {
             setActiveImg(currentVariant.images[0]);
-            // Auto-select first available size or fall back to index 0
             const autoSize = currentVariant.sizes.find(s => s.stock > 0) || currentVariant.sizes[0];
             setSelectedSize(autoSize);
             setQty(1);
@@ -58,6 +70,62 @@ const ProductDetails = () => {
         setZoomPos({ x, y, show: true });
     };
 
+
+    const location = useLocation();
+    const { isAuthenticated } = useSelector((state) => state.userAuth);
+
+    const handleAddToCart = async () => {
+        if (!isAuthenticated) {
+            nxToast.security("Can't added to Cart", "Please login to sync this item to your cart.");
+        }
+
+        if (!selectedSize) {
+            return nxToast.security("Selection Required", "Please choose a dimension before archiving.");
+        }
+
+        if (qty > selectedSize.stock) {
+            return nxToast.security("Warehouse Limit", `We only have ${selectedSize.stock} units left in the archive.`);
+        }
+
+        if (qty > 5) {
+            return nxToast.security("Purchase Protocol", "Archive limits allow a maximum of 5 units per user.");
+        }
+
+        try {
+            await addItem.mutateAsync({
+                productId: id,
+                variantId: currentVariant._id,
+                size: selectedSize.size,
+                quantity: qty
+            });
+
+            nxToast.success("Archive Synced", "This item has been secured in your archive.");
+        } catch (err) {
+            const errMsg = err.response?.data?.message || "Communication interrupted with the archive.";
+        }
+    };
+
+    const handleWishlistToggle = () => {
+        if (!isAuthenticated) {
+            nxToast.security(
+                "Can't added to wishlist",
+                "Please login to sync this item with your wishlist."
+            );
+
+        }
+
+
+        toggle.mutate({
+            productId: id,
+            variantId: currentVariant._id
+        }, {
+            onSuccess: (data) => {
+                const actionLabel = data.action === 'added' ? "Secured in Wishlist" : "Removed from Wishlist";
+                nxToast.success(actionLabel, "Your archive manifest has been updated.");
+            }
+        });
+    };
+
     if (isLoading) return <div className="h-screen flex items-center justify-center text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Initialising Archive...</div>;
     if (!product || activeVariants.length === 0) return null;
 
@@ -70,8 +138,7 @@ const ProductDetails = () => {
             <Header />
 
             <main className="w-full px-4 md:px-8 lg:px-10 py-6 relative z-10">
-
-                {/* 1. BREADCRUMBS (Added Shop) */}
+                {/* 1. BREADCRUMBS */}
                 <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.3em] text-white/20 mb-6 pl-1">
                     <span onClick={() => navigate('/')} className="hover:text-white cursor-pointer transition-colors">Home</span>
                     <ChevronRight size={8} />
@@ -188,19 +255,52 @@ const ProductDetails = () => {
 
                             <div className="space-y-4 pt-4">
                                 <div className="flex gap-2 h-12">
+                                    {/* --- UPDATED QUANTITY SECTION --- */}
                                     <div className={`flex items-center bg-white/[0.03] border border-white/5 rounded-lg px-4 gap-4 ${isOutOfStock ? 'opacity-10 pointer-events-none' : ''}`}>
-                                        <button onClick={() => setQty(q => Math.max(1, q - 1))} className="text-white/20 hover:text-white"><Minus size={14} /></button>
+                                        <button
+                                            onClick={() => setQty(q => Math.max(1, q - 1))}
+                                            className="text-white/20 hover:text-white transition-colors"
+                                        >
+                                            <Minus size={14} />
+                                        </button>
+
                                         <span className="text-[10px] font-black w-3 text-center italic">{qty}</span>
-                                        <button onClick={() => setQty(q => q + 1)} className="text-white/20 hover:text-white"><Plus size={14} /></button>
+
+                                        <button
+                                            onClick={() => setQty(q => {
+                                                if (q >= 5) {
+                                                    nxToast.security("Limit Reached", "You've reached the maximum archive limit for this item.");
+                                                    return q;
+                                                }
+                                                if (q >= selectedSize?.stock) {
+                                                    nxToast.security("Stock Alert", "No more units available in the current warehouse.");
+                                                    return q;
+                                                }
+                                                return q + 1;
+                                            })}
+                                            className="text-white/20 hover:text-white transition-colors"
+                                        >
+                                            <Plus size={14} />
+                                        </button>
                                     </div>
                                     <button
-                                        disabled={isOutOfStock}
+                                        onClick={handleAddToCart}
+                                        disabled={isOutOfStock || addItem.isPending}
                                         className={`flex-1 rounded-lg font-black uppercase tracking-[0.1em] text-[10px] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg ${isOutOfStock ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-[#7a6af6] text-white hover:bg-[#6858e0] shadow-[#7a6af6]/10'}`}
                                     >
-                                        {isOutOfStock ? <><AlertCircle size={16} /> Archive Empty</> : <><ShoppingBag size={16} /> Commit To Archive</>}
+                                        {addItem.isPending ? (
+                                            <Loader2 size={16} className="animate-spin" />
+                                        ) : isOutOfStock ? (
+                                            <><AlertCircle size={16} /> Archive Empty</>
+                                        ) : (
+                                            <><ShoppingBag size={16} /> Commit To Archive</>
+                                        )}
                                     </button>
-                                    <button className="w-12 h-12 border border-white/10 rounded-lg flex items-center justify-center text-white/20 hover:text-red-400 hover:bg-white/[0.02] transition-all group">
-                                        <Heart size={18} className="group-hover:fill-red-400 transition-all" />
+                                    <button
+                                        onClick={handleWishlistToggle}
+                                        className={`w-12 h-12 border rounded-lg flex items-center justify-center transition-all group ${isWishlisted ? 'border-red-500/50 bg-red-500/10 text-red-500' : 'border-white/10 text-white/20 hover:text-red-400 hover:bg-white/[0.02]'}`}
+                                    >
+                                        <Heart size={18} className={isWishlisted ? "fill-red-500" : "group-hover:fill-red-400"} />
                                     </button>
                                 </div>
 
@@ -244,18 +344,14 @@ const ProductDetails = () => {
                                         alt={`${rec.name} ${rec.color}`}
                                     />
                                     <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/90 to-transparent" />
-
-                                    {/* Floating Color Indicator */}
                                     <div
                                         className="absolute top-2 right-2 w-2 h-2 rounded-full border border-white/20 shadow-sm"
                                         style={{ backgroundColor: rec.hex }}
                                     />
-
                                     <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity">
                                         <p className="text-[11px] font-black italic text-white">₹{rec.minSalePrice}</p>
                                     </div>
                                 </div>
-
                                 <div className="text-center px-1">
                                     <h3 className="text-[9px] font-black uppercase tracking-widest text-white/40 group-hover:text-[#7a6af6] transition-colors truncate italic">
                                         {rec.name}

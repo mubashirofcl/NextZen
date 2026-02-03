@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { ShoppingBag, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { ShoppingBag, LogOut, Settings, ChevronDown, Heart } from 'lucide-react';
 import { clearUser } from '../../store/user/authSlice';
 import { userLogout } from '../../api/user/user.api';
 import { nxToast } from '../../utils/userToast';
+
+// Import hooks
+import { useCart } from '../../hooks/user/useCart';
+import { useWishlist } from '../../hooks/user/useWishlist';
 
 const Header = () => {
     const navigate = useNavigate();
@@ -15,9 +19,25 @@ const Header = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
 
+    // Dynamic Counts
+    const { cart } = useCart();
+    const { wishlist } = useWishlist();
+
+    const cartCount = cart?.items?.length || 0;
+    const wishlistCount = wishlist?.length || 0;
+
+    const handleProtectedNavigation = (path) => {
+        if (!isAuthenticated) {
+            nxToast.security(
+                "Access Restricted", 
+                "Please login to access your personal archive slots."
+            );
+        }
+        navigate(path);
+    };
+
     useEffect(() => {
         const handleScroll = () => {
-            // Trigger transition after 20px of scrolling
             setIsScrolled(window.scrollY > 20);
         };
         window.addEventListener('scroll', handleScroll);
@@ -41,8 +61,8 @@ const Header = () => {
     };
 
     return (
-        <div className="w-full fixed top-0 z-50 font-sans">
-            {/* --- BLACK MARQUEE (Hides on Scroll) --- */}
+        <div className="w-full fixed top-0 z-50 font-sans selection:bg-[#7a6af6]/30">
+            {/* --- BLACK MARQUEE --- */}
             <div className={`bg-black text-white overflow-hidden transition-all duration-500 ease-in-out ${isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'}`}>
                 <div className="py-1.5 whitespace-nowrap flex animate-marquee gap-20">
                     {[...Array(4)].map((_, i) => (
@@ -56,13 +76,12 @@ const Header = () => {
             </div>
 
             {/* --- MAIN NAVIGATION HEADER --- */}
-            <header className={`w-full transition-all duration-500 border-b border-white/10 ${
-                isScrolled 
-                ? 'bg-black/40 backdrop-blur-2xl shadow-2xl rounded-b-[1.2rem]' // SMALL RADIUS ADDED HERE
-                : 'bg-black/60 rounded-b-none'
-            }`}>
+            <header className={`w-full transition-all duration-500 border-b border-white/10 ${isScrolled
+                    ? 'bg-black/40 backdrop-blur-2xl shadow-2xl rounded-b-[1.2rem]'
+                    : 'bg-black/60 rounded-b-none'
+                }`}>
                 <div className="max-w-[1500px] mx-auto px-6 h-14 flex items-center justify-between relative">
-                    
+
                     {/* LEFT NAV */}
                     <nav className="hidden lg:flex items-center gap-8">
                         {['Shop', 'Apparel', 'Accessories'].map((name) => (
@@ -85,12 +104,35 @@ const Header = () => {
                     </div>
 
                     {/* RIGHT ACTIONS */}
-                    <div className="flex items-center gap-6">
-                        <div className="relative cursor-pointer group p-1" onClick={() => navigate('/cart')}>
-                            <ShoppingBag size={18} className="text-white group-hover:text-[#7a6af6] transition-colors" />
-                            <span className="absolute -top-1 -right-1 bg-[#7a6af6] text-white text-[7px] w-4 h-4 rounded-full flex items-center justify-center font-black">0</span>
+                    <div className="flex items-center gap-5">
+                        
+                        {/* WISHLIST BUTTON (Protected) */}
+                        <div 
+                            className="relative cursor-pointer group p-1" 
+                            onClick={() => handleProtectedNavigation('/wishlist')}
+                        >
+                            <Heart size={18} className={`transition-colors ${wishlistCount > 0 && isAuthenticated ? 'text-[#7a6af6]' : 'text-white group-hover:text-[#7a6af6]'}`} fill={wishlistCount > 0 && isAuthenticated ? "currentColor" : "none"} />
+                            {wishlistCount > 0 && isAuthenticated && (
+                                <span className="absolute -top-1 -right-1 bg-white text-black text-[7px] w-4 h-4 rounded-full flex items-center justify-center font-black">
+                                    {wishlistCount}
+                                </span>
+                            )}
                         </div>
 
+                        {/* CART BUTTON (Protected) */}
+                        <div 
+                            className="relative cursor-pointer group p-1" 
+                            onClick={() => handleProtectedNavigation('/cart')}
+                        >
+                            <ShoppingBag size={18} className="text-white group-hover:text-[#7a6af6] transition-colors" />
+                            {cartCount > 0 && isAuthenticated && (
+                                <span className="absolute -top-1 -right-1 bg-[#7a6af6] text-white text-[7px] w-4 h-4 rounded-full flex items-center justify-center font-black">
+                                    {cartCount}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* USER DROPDOWN */}
                         <div className="flex items-center justify-end">
                             {isAuthenticated ? (
                                 <div className="relative">
@@ -102,7 +144,7 @@ const Header = () => {
                                         </div>
                                         <ChevronDown size={12} className={`text-white/40 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                                     </button>
-                                    
+
                                     {isDropdownOpen && (
                                         <>
                                             <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)}></div>
@@ -127,7 +169,8 @@ const Header = () => {
                 </div>
             </header>
 
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
                 .animate-marquee { animation: marquee 25s linear infinite; display: flex; width: max-content; }
             `}} />

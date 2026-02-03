@@ -18,6 +18,9 @@ import productListRoutes from "./modules/user/productListing/product.routes.js"
 import userCategoryRoutes from "./modules/user/category/category.routes.js";
 import userBrandRoutes from "./modules/user/brand/brand.routes.js";
 
+import cartRoutes from "./modules/user/cart/cart.routes.js";
+import wishlistRoutes from "./modules/user/wishlist/wishlist.routes.js";
+
 const app = express();
 
 app.use(cors({
@@ -50,6 +53,8 @@ app.use("/api/users/addresses", addressRoutes);
 app.use("/api/products", productListRoutes);
 app.use("/api/categories", userCategoryRoutes);
 app.use("/api/brands", userBrandRoutes);
+app.use("/api/user/cart", cartRoutes);
+app.use("/api/user/wishlist", wishlistRoutes);
 
 // 3. GLOBAL ERROR HANDLER (This MUST be the last middleware)
 app.use((err, req, res, next) => {
