@@ -5,8 +5,6 @@ import { ShoppingBag, LogOut, Settings, ChevronDown, Heart } from 'lucide-react'
 import { clearUser } from '../../store/user/authSlice';
 import { userLogout } from '../../api/user/user.api';
 import { nxToast } from '../../utils/userToast';
-
-// Import hooks
 import { useCart } from '../../hooks/user/useCart';
 import { useWishlist } from '../../hooks/user/useWishlist';
 
@@ -19,7 +17,6 @@ const Header = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
 
-    // Dynamic Counts
     const { cart } = useCart();
     const { wishlist } = useWishlist();
 
@@ -29,7 +26,7 @@ const Header = () => {
     const handleProtectedNavigation = (path) => {
         if (!isAuthenticated) {
             nxToast.security(
-                "Access Restricted", 
+                "Access Restricted",
                 "Please login to access your personal archive slots."
             );
         }
@@ -62,7 +59,7 @@ const Header = () => {
 
     return (
         <div className="w-full fixed top-0 z-50 font-sans selection:bg-[#7a6af6]/30">
-            {/* --- BLACK MARQUEE --- */}
+
             <div className={`bg-black text-white overflow-hidden transition-all duration-500 ease-in-out ${isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'}`}>
                 <div className="py-1.5 whitespace-nowrap flex animate-marquee gap-20">
                     {[...Array(4)].map((_, i) => (
@@ -75,14 +72,12 @@ const Header = () => {
                 </div>
             </div>
 
-            {/* --- MAIN NAVIGATION HEADER --- */}
             <header className={`w-full transition-all duration-500 border-b border-white/10 ${isScrolled
-                    ? 'bg-black/40 backdrop-blur-2xl shadow-2xl rounded-b-[1.2rem]'
-                    : 'bg-black/60 rounded-b-none'
+                ? 'bg-black/40 backdrop-blur-2xl shadow-2xl rounded-b-[1.2rem]'
+                : 'bg-black/60 rounded-b-none'
                 }`}>
                 <div className="max-w-[1500px] mx-auto px-6 h-14 flex items-center justify-between relative">
 
-                    {/* LEFT NAV */}
                     <nav className="hidden lg:flex items-center gap-8">
                         {['Shop', 'Apparel', 'Accessories'].map((name) => (
                             <button
@@ -96,19 +91,16 @@ const Header = () => {
                         ))}
                     </nav>
 
-                    {/* LOGO */}
                     <div onClick={() => navigate('/')} className="absolute left-1/2 -translate-x-1/2 cursor-pointer group">
                         <h1 className="text-lg md:text-xl font-black tracking-tighter text-white uppercase italic group-hover:scale-105 transition-transform">
                             NEXT<span className="text-[#7a6af6]">ZEN</span>
                         </h1>
                     </div>
 
-                    {/* RIGHT ACTIONS */}
                     <div className="flex items-center gap-5">
-                        
-                        {/* WISHLIST BUTTON (Protected) */}
-                        <div 
-                            className="relative cursor-pointer group p-1" 
+
+                        <div
+                            className="relative cursor-pointer group p-1"
                             onClick={() => handleProtectedNavigation('/wishlist')}
                         >
                             <Heart size={18} className={`transition-colors ${wishlistCount > 0 && isAuthenticated ? 'text-[#7a6af6]' : 'text-white group-hover:text-[#7a6af6]'}`} fill={wishlistCount > 0 && isAuthenticated ? "currentColor" : "none"} />
@@ -119,9 +111,8 @@ const Header = () => {
                             )}
                         </div>
 
-                        {/* CART BUTTON (Protected) */}
-                        <div 
-                            className="relative cursor-pointer group p-1" 
+                        <div
+                            className="relative cursor-pointer group p-1"
                             onClick={() => handleProtectedNavigation('/cart')}
                         >
                             <ShoppingBag size={18} className="text-white group-hover:text-[#7a6af6] transition-colors" />
@@ -132,7 +123,6 @@ const Header = () => {
                             )}
                         </div>
 
-                        {/* USER DROPDOWN */}
                         <div className="flex items-center justify-end">
                             {isAuthenticated ? (
                                 <div className="relative">
@@ -151,6 +141,9 @@ const Header = () => {
                                             <div className="absolute right-0 mt-3 w-44 bg-black/95 backdrop-blur-3xl border border-white/10 rounded-xl py-2 shadow-2xl z-20 animate-in fade-in zoom-in duration-150">
                                                 <button onClick={() => navigate('/profile')} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/5 flex items-center gap-3 transition-all">
                                                     <Settings size={12} /> Profile
+                                                </button>
+                                                <button onClick={() => navigate('/profile/orders')} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/5 flex items-center gap-3 transition-all">
+                                                    <ShoppingBag size={12} /> My Orders
                                                 </button>
                                                 <button onClick={handleLogout} className="w-full px-4 py-2 text-left text-[9px] font-black uppercase tracking-widest text-red-400 hover:text-red-500 hover:bg-red-500/10 flex items-center gap-3 transition-all">
                                                     <LogOut size={12} /> Sign Out

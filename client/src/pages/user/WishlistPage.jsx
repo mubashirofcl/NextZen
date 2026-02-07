@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Trash2, ShoppingBag, Heart, ArrowRight } from "lucide-react";
 import { useWishlist } from "../../hooks/user/useWishlist";
-import { nxToast } from "../../utils/userToast"; // Ensure nxToast is imported
+import { nxToast } from "../../utils/userToast";
 import Header from "../../components/user/Header";
 import Footer from "../../components/user/Footer";
 

@@ -9,7 +9,6 @@ import Footer from '../../components/user/Footer';
 import { useProductDetails } from '../../hooks/user/useProductDetails';
 import { useRecommended } from '../../hooks/user/useRecommended';
 
-// --- NEW HOOKS ---
 import { useCart } from '../../hooks/user/useCart';
 import { useWishlist } from '../../hooks/user/useWishlist';
 import { nxToast } from '../../utils/userToast';
@@ -21,7 +20,7 @@ const ProductDetails = () => {
     const imgRef = useRef(null);
 
     const { data: product, isLoading, error } = useProductDetails(id);
-    const { addItem, updateQty: isUpdatingCart } = useCart();
+    const { addItem, cart } = useCart(); // Destructured cart to check for existing items
     const { toggle, wishlist } = useWishlist();
 
     const activeVariants = product?.variants?.filter(v => v.isDeleted === false) || [];
@@ -40,7 +39,13 @@ const ProductDetails = () => {
     const currentVariant = activeVariants[selectedVariantIdx];
     const isOutOfStock = !selectedSize || selectedSize.stock === 0;
 
-    // Check if current variant is wishlisted
+    // --- PROTOCOL: DUPLICATE CHECK ---
+    const isAlreadyInCart = cart?.items?.some(item => 
+        item.productId?._id === id && 
+        item.variantId?._id === currentVariant?._id && 
+        item.size === selectedSize?.size
+    );
+
     const isWishlisted = wishlist?.some(p =>
         p.productId?._id === id && p.variantId?._id === currentVariant?._id
     );
@@ -70,21 +75,27 @@ const ProductDetails = () => {
         setZoomPos({ x, y, show: true });
     };
 
-
-    const location = useLocation();
     const { isAuthenticated } = useSelector((state) => state.userAuth);
 
     const handleAddToCart = async () => {
         if (!isAuthenticated) {
-            nxToast.security("Can't added to Cart", "Please login to sync this item to your cart.");
+            return nxToast.security("Access Denied", "Please login to sync this item to your cart.");
         }
 
         if (!selectedSize) {
             return nxToast.security("Selection Required", "Please choose a dimension before archiving.");
         }
 
+        // --- INDUSTRIAL VALIDATION: PREVENT DUPLICATES ---
+        if (isAlreadyInCart) {
+            return nxToast.security(
+                "Already Archived", 
+                "This specific variant and size is already present in your cart manifest."
+            );
+        }
+
         if (qty > selectedSize.stock) {
-            return nxToast.security("Warehouse Limit", `We only have ${selectedSize.stock} units left in the archive.`);
+            return nxToast.security("Warehouse Limit", `Only ${selectedSize.stock} units remain in the archive.`);
         }
 
         if (qty > 5) {
@@ -101,19 +112,14 @@ const ProductDetails = () => {
 
             nxToast.success("Archive Synced", "This item has been secured in your archive.");
         } catch (err) {
-            const errMsg = err.response?.data?.message || "Communication interrupted with the archive.";
+            nxToast.security("Sync Error", err.response?.data?.message || "Communication interrupted.");
         }
     };
 
     const handleWishlistToggle = () => {
         if (!isAuthenticated) {
-            nxToast.security(
-                "Can't added to wishlist",
-                "Please login to sync this item with your wishlist."
-            );
-
+            return nxToast.security("Access Denied", "Please login to sync this item with your wishlist.");
         }
-
 
         toggle.mutate({
             productId: id,
@@ -255,29 +261,16 @@ const ProductDetails = () => {
 
                             <div className="space-y-4 pt-4">
                                 <div className="flex gap-2 h-12">
-                                    {/* --- UPDATED QUANTITY SECTION --- */}
-                                    <div className={`flex items-center bg-white/[0.03] border border-white/5 rounded-lg px-4 gap-4 ${isOutOfStock ? 'opacity-10 pointer-events-none' : ''}`}>
+                                    <div className={`flex items-center bg-white/[0.03] border border-white/5 rounded-lg px-4 gap-4 ${isOutOfStock || isAlreadyInCart ? 'opacity-10 pointer-events-none' : ''}`}>
                                         <button
                                             onClick={() => setQty(q => Math.max(1, q - 1))}
                                             className="text-white/20 hover:text-white transition-colors"
                                         >
                                             <Minus size={14} />
                                         </button>
-
                                         <span className="text-[10px] font-black w-3 text-center italic">{qty}</span>
-
                                         <button
-                                            onClick={() => setQty(q => {
-                                                if (q >= 5) {
-                                                    nxToast.security("Limit Reached", "You've reached the maximum archive limit for this item.");
-                                                    return q;
-                                                }
-                                                if (q >= selectedSize?.stock) {
-                                                    nxToast.security("Stock Alert", "No more units available in the current warehouse.");
-                                                    return q;
-                                                }
-                                                return q + 1;
-                                            })}
+                                            onClick={() => setQty(q => Math.min(selectedSize?.stock, Math.min(5, q + 1)))}
                                             className="text-white/20 hover:text-white transition-colors"
                                         >
                                             <Plus size={14} />
@@ -286,12 +279,14 @@ const ProductDetails = () => {
                                     <button
                                         onClick={handleAddToCart}
                                         disabled={isOutOfStock || addItem.isPending}
-                                        className={`flex-1 rounded-lg font-black uppercase tracking-[0.1em] text-[10px] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg ${isOutOfStock ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-[#7a6af6] text-white hover:bg-[#6858e0] shadow-[#7a6af6]/10'}`}
+                                        className={`flex-1 rounded-lg font-black uppercase tracking-[0.1em] text-[10px] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg ${isOutOfStock ? 'bg-red-500/10 text-red-500 border border-red-500/20' : isAlreadyInCart ? 'bg-zinc-800 text-white/40 border border-white/5' : 'bg-[#7a6af6] text-white hover:bg-[#6858e0] shadow-[#7a6af6]/10'}`}
                                     >
                                         {addItem.isPending ? (
                                             <Loader2 size={16} className="animate-spin" />
                                         ) : isOutOfStock ? (
                                             <><AlertCircle size={16} /> Archive Empty</>
+                                        ) : isAlreadyInCart ? (
+                                            <><ShieldCheck size={16} /> In Archive</>
                                         ) : (
                                             <><ShoppingBag size={16} /> Commit To Archive</>
                                         )}

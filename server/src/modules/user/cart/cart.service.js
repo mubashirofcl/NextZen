@@ -40,7 +40,7 @@ export const getUserCart = async (userId) => {
         .populate('items.productId')
         .populate('items.variantId');
 
-    if (!cart) return { items: [], subtotal: 0 };
+    if (!cart) return { items: [], subtotal: 0, totalMarketPrice: 0, totalDiscount: 0 };
 
     const processedItems = cart.items.map(item => {
         const product = item.productId;
@@ -55,11 +55,15 @@ export const getUserCart = async (userId) => {
 
         const readyForCheckout = isProductLive && isVariantLive && hasStock;
 
-        const itemPrice = item.currentPrice || sizeData?.salePrice || 0;
+        // Retrieve both Prices for Discount Calculation
+        const itemPrice = sizeData?.salePrice || 0;
+        // Ensure your variant schema has marketPrice/MRP
+        const marketPrice = sizeData?.marketPrice || sizeData?.salePrice || 0; 
 
         return {
             ...item.toObject(), 
             currentPrice: itemPrice,
+            marketPrice: marketPrice, // Added for Savings calculation
             currentStock: stockAvailable,
             isCheckoutReady: readyForCheckout,
             errorMessage: !isProductLive || !isVariantLive
@@ -68,38 +72,25 @@ export const getUserCart = async (userId) => {
         };
     });
 
+    // Calculate Subtotal (Actual Price)
     const subtotal = processedItems.reduce((acc, i) => {
         return i.isCheckoutReady ? acc + (i.currentPrice * i.quantity) : acc;
     }, 0);
 
-    return { items: processedItems, subtotal };
+    // Calculate Total Market Price (MRP)
+    const totalMarketPrice = processedItems.reduce((acc, i) => {
+        return i.isCheckoutReady ? acc + (i.marketPrice * i.quantity) : acc;
+    }, 0);
+
+    return { 
+        items: processedItems, 
+        subtotal, 
+        totalMarketPrice, 
+        totalDiscount: totalMarketPrice - subtotal 
+    };
 };
 
-export const updateItemQuantity = async (userId, itemId, action) => {
-    const cart = await Cart.findOne({ userId });
-    const item = cart.items.id(itemId);
 
-    const variant = await Variant.findById(item.variantId);
-    const sizeData = variant?.sizes.find(s => s.size === item.size);
-    const availableStock = sizeData?.stock || 0;
-
-    if (action === 'inc') {
-
-        if (item.quantity >= 5) {
-            throw new Error("Maximum purchase quantity is 5 units.");
-        }
-
-        if (item.quantity >= availableStock) {
-            throw new Error(`Only ${availableStock} units remaining in the archive.`);
-        }
-        item.quantity += 1;
-    } else if (action === 'dec') {
-        if (item.quantity > 1) item.quantity -= 1;
-    }
-
-    await cart.save();
-    return item;
-};
 export const removeItem = async (userId, itemId) => {
 
     const cart = await Cart.findOne({ userId });

@@ -88,7 +88,7 @@ const ResetPassword = () => {
                             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 ml-1">Confirm Password</label>
                             <div className="relative">
                                 <input
-                                    type={showConfirmPass ? "text" : "password"} // Linked to showConfirmPass
+                                    type={showConfirmPass ? "text" : "password"} 
                                     placeholder="••••••••"
                                     {...register("confirmPassword", {
                                         validate: v => v === watch('password') || "Passwords do not match"
@@ -97,7 +97,7 @@ const ResetPassword = () => {
                                 />
                                 <button
                                     type="button"
-                                    onClick={() => setShowConfirmPass(!showConfirmPass)} // Toggle button for confirm field
+                                    onClick={() => setShowConfirmPass(!showConfirmPass)} 
                                     className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#7a6af6]"
                                 >
                                     {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
