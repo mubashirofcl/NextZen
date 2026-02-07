@@ -20,6 +20,7 @@ import userBrandRoutes from "./modules/user/brand/brand.routes.js";
 
 import cartRoutes from "./modules/user/cart/cart.routes.js";
 import wishlistRoutes from "./modules/user/wishlist/wishlist.routes.js";
+import orderRoutes from "./modules/user/order/order.routes.js";
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use("/api/categories", userCategoryRoutes);
 app.use("/api/brands", userBrandRoutes);
 app.use("/api/user/cart", cartRoutes);
 app.use("/api/user/wishlist", wishlistRoutes);
+app.use("/api/users/orders", orderRoutes);
 
 // 3. GLOBAL ERROR HANDLER (This MUST be the last middleware)
 app.use((err, req, res, next) => {

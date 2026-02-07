@@ -40,6 +40,10 @@ import Shop from "./pages/user/Shop.jsx";
 import ProductDetails from "./pages/user/ProductDetails.jsx";
 import CartPage from "./pages/user/CartPage.jsx";
 import WishlistPage from "./pages/user/WishlistPage.jsx";
+import CheckoutPage from "./pages/user/CheckoutPage.jsx";
+import OrderSuccessPage from "./components/user/OrderSuccessPage.jsx";
+import OrderHistory from "./pages/user/OrderHistory.jsx";
+import OrderDetailPage from "./pages/user/OrderDetailPage.jsx";
 
 
 
@@ -149,15 +153,22 @@ export const App = () => {
             <Route path="/verify-otp" element={<OTPVerification />} />
 
             <Route element={<UserProtectedRoute />}>
-
               <Route path="/cart" element={<CartPage />} />
               <Route path="/wishlist" element={<WishlistPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/checkout/success/:orderId" element={<OrderSuccessPage />} />
+
 
               <Route path="/profile" element={<ProfileLayout />}>
                 <Route index element={<Navigate to="info" replace />} />
                 <Route path="info" element={<PersonalInfo />} />
                 <Route path="changePassword" element={<ChangePasswordModal />} />
                 <Route path="address" element={<Addresses />} />
+
+                {/* NEW: Order Management Routes */}
+                <Route path="orders" element={<OrderHistory />} />
+                <Route path="/profile/orders/:orderId" element={<OrderDetailPage />} />
+
               </Route>
             </Route>
 

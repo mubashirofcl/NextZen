@@ -121,7 +121,7 @@ const AddressModal = ({
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit(submitHandler)} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                <form onSubmit={handleSubmit(submitHandler)} className="text-black space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
 
                     {/* Full Name */}
                     <div>

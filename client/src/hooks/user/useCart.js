@@ -6,12 +6,16 @@ import { clearCartApi } from "../../api/user/cart.api";
 export const useCart = () => {
     const queryClient = useQueryClient();
 
-    const { data: cart = { items: [] }, isLoading } = useQuery({
+    const { data: cart = { items: [] }, isLoading, isFetching, refetch } = useQuery({
         queryKey: ["cart"],
         queryFn: async () => {
             const res = await userAxios.get("/user/cart");
             return res.data;
-        }
+        },
+     
+        refetchOnWindowFocus: true, 
+        staleTime: 0,             
+        refetchInterval: 30000,     
     });
 
     const addItem = useMutation({
@@ -23,9 +27,6 @@ export const useCart = () => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
             queryClient.invalidateQueries({ queryKey: ["wishlist"] });
             nxToast.success("Success", "Archive entry created.");
-        },
-        onError: (error) => {
-            const errMsg = error.response?.data?.message || "Failed to add item.";
         }
     });
 
@@ -38,7 +39,8 @@ export const useCart = () => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
         },
         onError: (error) => {
-            nxToast.security("Limit Reached", error.response?.data?.message || "Cannot update quantity.");
+            nxToast.security("Limit Reached", error.response?.data?.message || "Inventory conflict.");
+            queryClient.invalidateQueries({ queryKey: ["cart"] }); 
         }
     });
 
@@ -49,13 +51,23 @@ export const useCart = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
-
             queryClient.invalidateQueries({ queryKey: ["wishlist"] });
+            nxToast.success("Inventory Updated", "Item removed from archive.");
+        }
+    });
 
-            nxToast.success("Inventory Updated", "Item moved to your wishlist.");
+    // --- STOCK VALIDATION PROTOCOL ---
+    const validateStock = useMutation({
+        mutationFn: async () => {
+            const res = await userAxios.get("/user/cart/validate-checkout");
+            return res.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["cart"] });
         },
         onError: (error) => {
-            nxToast.security("Purge Failed", error.response?.data?.message || "Internal system error.");
+            queryClient.invalidateQueries({ queryKey: ["cart"] });
+            nxToast.security("Inventory Conflict", "One or more items are now out of stock.");
         }
     });
 
@@ -64,7 +76,10 @@ export const useCart = () => {
         addItem,
         updateQty,
         remove,
-        isLoading
+        validateStock,
+        isLoading,
+        isFetching, 
+        refetch
     };
 };
 
@@ -76,12 +91,6 @@ export const useClearCart = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
             nxToast.success("Cart Cleared", "All items removed from your cart.");
-        },
-        onError: (error) => {
-            nxToast.security(
-                "Clear Failed",
-                error.response?.data?.message || "Unable to clear cart."
-            );
         }
     });
 };

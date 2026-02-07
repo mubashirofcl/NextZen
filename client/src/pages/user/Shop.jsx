@@ -9,7 +9,6 @@ import { useUserCategories } from "../../hooks/user/useUserCategories";
 import { useUserBrands } from "../../hooks/user/useUserBrands";
 import { useUserSubCategories } from "../../hooks/user/useUserSubCategories";
 
-/* ---------------- DROPDOWN COMPONENT ---------------- */
 const FilterDropdown = ({ label, children, isOpen, onClick, variant = "default" }) => {
     return (
         <div className="relative">
@@ -35,7 +34,6 @@ const FilterDropdown = ({ label, children, isOpen, onClick, variant = "default" 
     );
 };
 
-/* ---------------- MAIN SHOP PAGE ---------------- */
 const Shop = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();

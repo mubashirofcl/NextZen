@@ -84,8 +84,14 @@ export const getProductsRepository = async (filters) => {
             categoryName: { $first: "$subCatDoc.name" },
             createdAt: { $first: "$createdAt" },
             isFeatured: { $first: "$isFeatured" },
-            minSalePrice: { $min: "$variants.sizes.salePrice" }, // Lowest sale price
-            maxOriginalPrice: { $max: "$variants.sizes.originalPrice" }, // Highest MSRP
+            minSalePrice: { $min: "$variants.sizes.salePrice" },
+            maxOriginalPrice: { $max: "$variants.sizes.originalPrice" },
+
+            // 🛡️ THE FIX: Keep the ID of the first active variant found
+            variantId: { $first: "$variants._id" },
+
+            // Optional: If you want to support color switching on Home, keep all IDs
+            allVariantIds: { $addToSet: "$variants._id" }
         },
     });
 
