@@ -1,8 +1,7 @@
-import wishlistModel from "../wishlist/wishlist.model.js"; // Note: Capital 'W' to match your image
+import wishlistModel from "../wishlist/wishlist.model.js";
 import Order from "../order/order.model.js"; 
 import * as cartRepo from "./cart.repository.js";
 
-// GET // Retrieves the complete cart manifest
 export const getCart = async (req, res) => {
     try {
         const userId = req.user?.userId;
@@ -13,7 +12,6 @@ export const getCart = async (req, res) => {
     }
 };
 
-// POST // Adds item to archive and removes from wishlist
 export const addToCart = async (req, res) => {
     try {
         const userId = req.user?.userId;
@@ -32,7 +30,6 @@ export const addToCart = async (req, res) => {
     }
 };
 
-// PATCH // Updates item quantity
 export const updateQuantity = async (req, res) => {
     try {
         const { action } = req.body;
@@ -44,7 +41,6 @@ export const updateQuantity = async (req, res) => {
     }
 };
 
-// DELETE // Removes single item
 export const removeFromCart = async (req, res) => {
     try {
         await cartRepo.removeItem(req.user.userId, req.params.itemId);
@@ -54,7 +50,6 @@ export const removeFromCart = async (req, res) => {
     }
 };
 
-// DELETE // Clears entire cart (FIXES SYNTAX ERROR)
 export const clearCart = async (req, res) => {
     try {
         await cartRepo.clearUserCart(req.user.userId);
@@ -64,16 +59,14 @@ export const clearCart = async (req, res) => {
     }
 };
 
-// GET // Gatekeeper for checkout validation
 export const validateCartForCheckout = async (req, res) => {
     try {
         const cartData = await cartRepo.getUserCart(req.user.userId);
 
-        // Find the first conflict item
         const conflict = cartData.items.find(item => !item.isCheckoutReady);
 
         if (conflict) {
-            // 🛡️ PASS-THROUGH: Send the pre-built error message
+
             return res.status(400).json({
                 success: false,
                 message: conflict.errorMessage || "Inventory conflict detected."
@@ -86,7 +79,6 @@ export const validateCartForCheckout = async (req, res) => {
     }
 };
 
-// POST // Deploys Order (FIXES 400 ERROR)
 export const placeOrder = async (req, res) => {
     try {
         const { totals, items, addressId, paymentMethod } = req.body;
@@ -108,7 +100,7 @@ export const placeOrder = async (req, res) => {
         });
 
         await newOrder.save();
-        await cartRepo.clearUserCart(req.user.userId); // Wipe archive on success
+        await cartRepo.clearUserCart(req.user.userId); 
         
         res.status(201).json({ success: true, orderId: newOrder._id });
     } catch (error) {

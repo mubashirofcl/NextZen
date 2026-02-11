@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
     ShoppingBag, Heart, ChevronRight, Minus, Plus,
     ShieldCheck, Truck, List, AlertCircle, Loader2
@@ -20,7 +20,8 @@ const ProductDetails = () => {
     const imgRef = useRef(null);
 
     const { data: product, isLoading, error } = useProductDetails(id);
-    const { addItem, cart } = useCart(); // Destructured cart to check for existing items
+    // 🟢 Using addToCart instead of addItem to match WishlistPage naming
+    const { addToCart, cart } = useCart(); 
     const { toggle, wishlist } = useWishlist();
 
     const activeVariants = product?.variants?.filter(v => v.isDeleted === false) || [];
@@ -103,11 +104,14 @@ const ProductDetails = () => {
         }
 
         try {
-            await addItem.mutateAsync({
+            // 🟢 Used addToCart.mutateAsync here
+            await addToCart.mutateAsync({
                 productId: id,
                 variantId: currentVariant._id,
                 size: selectedSize.size,
-                quantity: qty
+                quantity: qty,
+                stock: selectedSize.stock, // Pass stock for validation
+                price: selectedSize.salePrice || selectedSize.originalPrice
             });
 
             nxToast.success("Archive Synced", "This item has been secured in your archive.");
@@ -278,10 +282,10 @@ const ProductDetails = () => {
                                     </div>
                                     <button
                                         onClick={handleAddToCart}
-                                        disabled={isOutOfStock || addItem.isPending}
+                                        disabled={isOutOfStock || addToCart.isPending}
                                         className={`flex-1 rounded-lg font-black uppercase tracking-[0.1em] text-[10px] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg ${isOutOfStock ? 'bg-red-500/10 text-red-500 border border-red-500/20' : isAlreadyInCart ? 'bg-zinc-800 text-white/40 border border-white/5' : 'bg-[#7a6af6] text-white hover:bg-[#6858e0] shadow-[#7a6af6]/10'}`}
                                     >
-                                        {addItem.isPending ? (
+                                        {addToCart.isPending ? (
                                             <Loader2 size={16} className="animate-spin" />
                                         ) : isOutOfStock ? (
                                             <><AlertCircle size={16} /> Archive Empty</>

@@ -2,156 +2,209 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export const generateInvoice = (order) => {
-    const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-    });
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-    // Theme Configuration
-    const brandColor = [122, 106, 246]; // Your #7a6af6
-    const darkText = [15, 23, 42];      // Your #0F172A
-    const mutedText = [100, 116, 139];   // text-slate-500
-    const borderColor = [226, 232, 240]; // border-slate-200
+    const theme = {
+        primary: [15, 23, 42],
+        accent: [122, 106, 246],
+        slate: [51, 65, 85],
+        text: [51, 65, 85],
+        muted: [148, 163, 184],
+        border: [226, 232, 240],
+        success: [34, 197, 94],
+        light: [248, 250, 252]
+    };
 
-    // --- 1. BRANDING & HEADER ---
-    // Brand Identity (Top Left)
-    doc.setTextColor(...brandColor);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text("NEXTGEN", 20, 25);
-    doc.setTextColor(...darkText);
-    doc.text("ARCHIVE.", 62, 25);
+    const margin = 15;
+    let cursorY = 20;
 
+    // --- HEADER ---
     doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...mutedText);
-    doc.text("Official Deployment Manifest", 20, 31);
-
-    // Document Title (Top Right)
-    doc.setTextColor(...brandColor);
-    doc.setFontSize(28);
+    doc.setTextColor(...theme.accent);
     doc.setFont("helvetica", "bold");
-    doc.text("INVOICE", 190, 25, { align: "right" });
+    doc.text("DEPLOYMENT MANIFEST // INVOICE", margin, cursorY);
+    
+    cursorY += 8;
+    doc.setFontSize(26);
+    doc.setTextColor(...theme.primary);
+    doc.text("NEXTGEN", margin, cursorY);
+    doc.setTextColor(...theme.accent);
+    doc.text("ARCHIVE.", margin + 48, cursorY);
+
+    doc.setFontSize(10);
+    doc.setTextColor(...theme.muted);
+    doc.text("REFERENCE ID", 195, 20, { align: "right" });
+    
+    doc.setFontSize(12);
+    doc.setTextColor(...theme.primary);
+    const invoiceNum = order.orderNumber?.split('-')[1] || order._id.slice(-6).toUpperCase();
+    doc.text(`#${invoiceNum}`, 195, 26, { align: "right" });
     
     doc.setFontSize(9);
-    doc.setTextColor(...darkText);
-    doc.text(new Date(order.createdAt).toLocaleDateString('en-US', { 
-        month: 'long', day: 'numeric', year: 'numeric' 
-    }), 190, 31, { align: "right" });
+    doc.setTextColor(...theme.muted);
+    doc.text(`Issued: ${new Date(order.createdAt).toLocaleDateString('en-GB')}`, 195, 33, { align: "right" });
 
-    // --- 2. INFORMATION GRID (To & From) ---
-    doc.setDrawColor(...borderColor);
-    doc.line(20, 45, 190, 45); // Separator
+    const statusColor = order.status === 'delivered' ? theme.success : theme.primary;
+    doc.setFillColor(...statusColor);
+    doc.roundedRect(165, 38, 30, 7, 1, 1, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text((order.status || 'PENDING').toUpperCase(), 180, 42.5, { align: "center" });
 
-    // Business info (Left)
+    cursorY += 25;
+
+    // --- ADDRESS ---
+    doc.setDrawColor(...theme.border);
+    doc.setLineWidth(0.5);
+    doc.line(margin, cursorY, 195, cursorY);
+    cursorY += 10;
+    
+    doc.setTextColor(...theme.muted);
+    doc.setFontSize(7);
+    doc.text("BILLED TO ENTITY", margin, cursorY);
+    
+    cursorY += 5;
+    doc.setTextColor(...theme.primary);
+    doc.setFontSize(10);
+    doc.text((order.userId?.name || "Guest").toUpperCase(), margin, cursorY);
+    
+    cursorY += 5;
+    doc.setTextColor(...theme.slate);
     doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.text("STORE ORIGIN", 20, 55);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(...mutedText);
-    doc.text(["Archive HQ Terminal", "Silicon Valley, CA", "+1 234 567 890"], 20, 62);
+    doc.text(order.userId?.email || "", margin, cursorY);
 
-    // Shipping info (Right)
-    doc.setTextColor(...darkText);
+    let rightColY = cursorY - 10;
+    const rightColX = 110;
+    doc.setTextColor(...theme.muted);
+    doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
-    doc.text("SHIPPING TO:", 130, 55);
+    doc.text("DEPLOYMENT LOCATION", rightColX, rightColY);
+    
+    rightColY += 5;
+    doc.setTextColor(...theme.primary);
+    doc.setFontSize(10);
+    const addr = order.addressId || {};
+    doc.text((addr.fullName || "Customer").toUpperCase(), rightColX, rightColY);
+    
+    rightColY += 5;
+    doc.setTextColor(...theme.slate);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(...mutedText);
-    const addr = order.addressId;
-    doc.text([
-        addr.fullName.toUpperCase(),
-        addr.addressLine,
-        `${addr.city}, ${addr.state}`,
-        `PINCODE: ${addr.pincode}`
-    ], 130, 62);
+    const addressLines = [
+        addr.addressLine, 
+        `${addr.city}, ${addr.state}`, 
+        `PIN: ${addr.pincode}`, 
+        addr.mobile ? `Contact: ${addr.mobile}` : null
+    ].filter(Boolean);
+    
+    doc.text(addressLines, rightColX, rightColY);
+    cursorY = Math.max(cursorY, rightColY + (addressLines.length * 5)) + 15;
 
-    // --- 3. ITEMS TABLE ---
-    const tableColumn = ["ASSET DESCRIPTION", "UNIT PRICE", "QTY", "TOTAL"];
-    const tableRows = order.items.map(item => [
-        { content: item.productId?.name?.toUpperCase() || "ARCHIVE ASSET", styles: { fontStyle: 'bold' } },
-        `INR ${item.price.toLocaleString()}`,
-        item.quantity,
-        { content: `INR ${item.totalAmount.toLocaleString()}`, styles: { halign: 'right' } }
-    ]);
+    // --- MATH ENGINE ---
+    const finalPaid = Number(order.totalAmount || 0);
+    const discountValue = Number(order.totalDiscount || order.discountAmount || 0);
+    const calculatedMarketValue = finalPaid + discountValue;
+
+    // --- TABLE ---
+    const tableBody = order.items.map((item, index) => {
+        const soldPrice = Number(item.price);
+        const qty = Number(item.quantity || 1);
+        const productData = (typeof item.productId === 'object') ? item.productId : {};
+        
+        const possibleMarketPrices = [item.originalPrice, productData.originalPrice, productData.mrp, productData.price];
+        const highPrice = Math.max(...possibleMarketPrices.map(p => Number(p) || 0));
+        
+        const hasDiscount = highPrice > soldPrice;
+        const displayMarketPrice = hasDiscount ? highPrice : soldPrice;
+        
+        let priceDisplay = `INR ${soldPrice.toLocaleString()}`;
+        if (hasDiscount) priceDisplay += `\n(List: INR ${displayMarketPrice.toLocaleString()})`;
+
+        const productName = productData.name || "Unknown Asset";
+        const variantText = `Spec: ${item.size} ${item.color ? `| ${item.color}` : ''}`;
+
+        return [
+            index + 1,
+            { content: `${productName}\n${variantText}`, styles: { fontStyle: 'bold', textColor: theme.primary } },
+            { content: (item.status || 'Placed').toUpperCase(), styles: { fontSize: 7, textColor: theme.slate } },
+            { content: priceDisplay, styles: { fontSize: 8, textColor: hasDiscount ? theme.accent : theme.slate } },
+            qty,
+            { content: `INR ${(soldPrice * qty).toLocaleString()}`, styles: { halign: 'right', fontStyle: 'bold' } }
+        ];
+    });
 
     autoTable(doc, {
-        startY: 90,
-        head: [tableColumn],
-        body: tableRows,
-        theme: 'plain',
-        headStyles: { 
-            fillColor: brandColor, 
-            textColor: 255, 
-            fontSize: 8,
-            cellPadding: 4
-        },
-        bodyStyles: { 
-            fontSize: 9,
-            textColor: darkText,
-            cellPadding: 6
-        },
-        columnStyles: {
-            0: { cellWidth: 90 },
-            1: { halign: 'center' },
-            2: { halign: 'center' },
-            3: { halign: 'right' }
-        },
-        margin: { left: 20, right: 20 },
-        // Custom draw for horizontal lines only (matching the image)
-        didDrawCell: (data) => {
-            if (data.section === 'body') {
-                doc.setDrawColor(...borderColor);
-                doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
-            }
-        }
+        startY: cursorY,
+        head: [["#", "ASSET DETAILS", "STATUS", "VALUATION", "QTY", "TOTAL"]],
+        body: tableBody,
+        theme: 'grid',
+        headStyles: { fillColor: theme.primary, textColor: 255, fontSize: 8, fontStyle: 'bold', halign: 'left', cellPadding: 4 },
+        bodyStyles: { fontSize: 9, textColor: theme.slate, valign: 'middle', lineColor: theme.border, cellPadding: 5 },
+        columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 1: { cellWidth: 60 }, 5: { cellWidth: 35, halign: 'right' } },
+        alternateRowStyles: { fillColor: theme.light }
     });
 
-    // --- 4. FINANCIAL SUMMARY ---
-    const finalY = doc.lastAutoTable.finalY + 10;
+    // --- SUMMARY ---
+    let finalY = doc.lastAutoTable.finalY + 10;
+    const summaryLabelX = 135;
+    const summaryValueX = 195;
+
+    const addRow = (label, value, isBold = false, color = theme.slate) => {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", isBold ? "bold" : "normal");
+        doc.setTextColor(...theme.muted);
+        doc.text(label, summaryLabelX, finalY);
+        doc.setTextColor(...color);
+        doc.text(value, summaryValueX, finalY, { align: "right" });
+        finalY += 6;
+    };
+
+    addRow("Market Valuation", `INR ${calculatedMarketValue.toLocaleString()}`);
     
-    doc.setFontSize(9);
-    doc.setTextColor(...mutedText);
-    doc.text("SUBTOTAL :", 150, finalY + 5, { align: "right" });
-    doc.text("TAX VAT 0% :", 150, finalY + 12, { align: "right" });
-    doc.text("DISCOUNT :", 150, finalY + 19, { align: "right" });
+    if (discountValue > 0) {
+        addRow("Total Savings", `- INR ${discountValue.toLocaleString()}`, false, theme.success);
+    } else {
+        addRow("Discount", `INR 0.00`, false, theme.slate);
+    }
 
-    doc.setTextColor(...darkText);
-    doc.setFont("helvetica", "bold");
-    doc.text(`INR ${order.totalMarketPrice.toLocaleString()}`, 190, finalY + 5, { align: "right" });
-    doc.text("INR 0.00", 190, finalY + 12, { align: "right" });
-    doc.setTextColor(34, 197, 94); // Green for discount
-    doc.text(`- INR ${order.totalDiscount.toLocaleString()}`, 190, finalY + 19, { align: "right" });
-
-    // Total Banner (matches the blue box in your image)
-    doc.setFillColor(...brandColor);
-    doc.rect(125, finalY + 25, 65, 12, "F");
+    addRow("Delivery Protocols", order.deliveryCharge === 0 ? "Free" : `INR ${order.deliveryCharge}`);
+    
+    finalY += 2;
+    doc.setFillColor(...theme.primary);
+    doc.roundedRect(summaryLabelX - 5, finalY, 70, 12, 1, 1, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(12);
-    doc.text("TOTAL DUE :", 130, finalY + 32.5);
-    doc.text(`INR ${order.totalAmount.toLocaleString()}`, 185, finalY + 32.5, { align: "right" });
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("TOTAL DEPLOYMENT", summaryLabelX, finalY + 8);
+    doc.text(`INR ${finalPaid.toLocaleString()}`, summaryValueX, finalY + 8, { align: "right" });
 
-    // --- 5. FOOTER & TERMS ---
-    doc.setTextColor(...brandColor);
-    doc.setFontSize(12);
-    doc.text("Thank you for your Business", 20, finalY + 55);
+    if (discountValue > 0) {
+        finalY += 18;
+        doc.setTextColor(...theme.success);
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bolditalic");
+        doc.text(`You saved INR ${discountValue.toLocaleString()} on this archive.`, 195, finalY, { align: "right" });
+    }
 
-    doc.setDrawColor(...borderColor);
-    doc.line(20, finalY + 65, 190, finalY + 65);
-
-    // Bottom Details
+    // --- FOOTER ---
+    const footerY = 275;
+    doc.setDrawColor(...theme.border);
+    doc.line(margin, footerY - 5, 195, footerY - 5);
+    
     doc.setFontSize(8);
-    doc.setTextColor(...darkText);
-    doc.text("Questions?", 20, finalY + 75);
-    doc.text("Payment Info:", 80, finalY + 75);
-    doc.text("Terms & Conditions:", 135, finalY + 75);
-
-    doc.setTextColor(...mutedText);
+    doc.setTextColor(...theme.primary);
+    doc.setFont("helvetica", "bold");
+    doc.text("PAYMENT PROTOCOL", margin, footerY);
+    
     doc.setFont("helvetica", "normal");
-    doc.text(["Email: support@archive.com", "Web: nextgen-archive.com"], 20, finalY + 82);
-    doc.text([`Method: ${order.paymentMethod.toUpperCase()}`, "Status: Verified"], 80, finalY + 82);
-    doc.text("System generated manifest.\nNon-refundable after deployment.", 135, finalY + 82);
+    doc.setTextColor(...theme.slate);
+    const payMethod = (order.paymentMethod || 'COD').toUpperCase();
+    doc.text(`${payMethod} // ${(order.paymentStatus || 'Pending').toUpperCase()}`, margin, footerY + 5);
+    
+    doc.setTextColor(...theme.muted);
+    doc.text("NextGen Archive | Authorized Deployment Manifest", 195, footerY + 5, { align: "right" });
 
-    // Save
     doc.save(`INVOICE_${order.orderNumber}.pdf`);
 };

@@ -1,7 +1,7 @@
 import React from "react";
 import Header from "../../components/user/Header";
 import Footer from "../../components/user/Footer";
-import CartList from "../../components/user/CartList"; // The component we built in the previous step
+import CartList from "../../components/user/CartList"; 
 import { useCart } from "../../hooks/user/useCart";
 
 const CartPage = () => {

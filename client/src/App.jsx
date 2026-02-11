@@ -44,6 +44,9 @@ import CheckoutPage from "./pages/user/CheckoutPage.jsx";
 import OrderSuccessPage from "./components/user/OrderSuccessPage.jsx";
 import OrderHistory from "./pages/user/OrderHistory.jsx";
 import OrderDetailPage from "./pages/user/OrderDetailPage.jsx";
+import AdminOrderListing from "./pages/admin/AdminOrderListing.jsx";
+import AdminOrderDetail from "./pages/admin/AdminOrderDetail.jsx";
+import AdminReturnRequests from "./pages/admin/AdminReturnRequests.jsx";
 
 
 
@@ -129,11 +132,19 @@ export const App = () => {
               <Route path="add" element={<ProductForm />} />
               <Route path="edit/:id" element={<ProductForm />} />
             </Route>
-          </Route>
 
+            {/* --- 📦 ORDER MANAGEMENT --- */}
+            <Route path="orders">
+              <Route index element={<AdminOrderListing />} />
+              <Route path=":id" element={<AdminOrderDetail />} />
+              <Route path="returns" element={<AdminReturnRequests />} />
+            </Route>
+
+          </Route>
 
           <Route path="*" element={<Navigate to="/admin/login" replace />} />
         </Routes>
+
       ) : (
         /* ================= USER SIDE ================= */
         <MainLayout>

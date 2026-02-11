@@ -45,7 +45,8 @@ export const useProducts = ({
                 maxPrice,
                 isFeatured
             }),
-        keepPreviousData: true,
-        staleTime: 1000 * 30,
+        
+        staleTime: 0, 
+        placeholderData: (previousData) => previousData, 
     });
 };

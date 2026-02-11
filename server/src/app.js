@@ -13,6 +13,7 @@ import addressRoutes from "./modules/user/address/address.routes.js";
 import categoryRoutes from "./modules/admin/categorieManagement/category.routes.js";
 import productRoutes from "./modules/admin/productManagement/product.routes.js";
 import brandRoutes from "./modules/admin/brandManagement/brand.routes.js";
+import adminOrderRoutes from "./modules/admin/orderManagement/order.routes.js";
 
 import productListRoutes from "./modules/user/productListing/product.routes.js"
 import userCategoryRoutes from "./modules/user/category/category.routes.js";
@@ -46,6 +47,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/admin/categories", categoryRoutes);
 app.use("/api/admin", productRoutes);
 app.use("/api/admin/brands", brandRoutes);
+app.use('/api/admin/orders', adminOrderRoutes);
 
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
@@ -56,7 +58,10 @@ app.use("/api/categories", userCategoryRoutes);
 app.use("/api/brands", userBrandRoutes);
 app.use("/api/user/cart", cartRoutes);
 app.use("/api/user/wishlist", wishlistRoutes);
-app.use("/api/users/orders", orderRoutes);
+app.use("/api/users/orders", (req, res, next) => {
+    console.log("Entering Order Routes...");
+    next();
+}, orderRoutes);
 
 // 3. GLOBAL ERROR HANDLER (This MUST be the last middleware)
 app.use((err, req, res, next) => {

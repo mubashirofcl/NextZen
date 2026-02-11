@@ -3,24 +3,30 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../hooks/user/useCart';
 import { useAddress } from '../../hooks/user/useAddress';
 import { useOrder } from '../../hooks/user/useOrder';
+import { updateAddress } from '../../api/user/address.api';
 import {
     CheckCircle2, ArrowRight, Loader2, MapPin,
-    CreditCard, Plus, ShieldCheck, RefreshCw, AlertCircle, ShoppingCart
+    CreditCard, Plus, ShieldCheck, RefreshCw, AlertCircle, ShoppingCart,
+    Edit2
 } from 'lucide-react';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
 import { nxToast } from '../../utils/userToast';
 import OrderConfirmModal from '../../components/user/OrderConfirmModal';
+import AddressModal from '../../components/user/AddressModal';
 
 const CheckoutPage = () => {
     const navigate = useNavigate();
     const { cart, isLoading: isCartLoading } = useCart();
-    const { data: addressData, isLoading: isAddrLoading } = useAddress();
+    const { data: addressData, isLoading: isAddrLoading, refetch: refetchAddresses } = useAddress();
     const { placeOrder } = useOrder();
 
     const [selectedAddress, setSelectedAddress] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState('cashOnDelivery');
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+    const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+    const [addressToEdit, setAddressToEdit] = useState(null);
 
     const [frozenTotals, setFrozenTotals] = useState(null);
 
@@ -49,6 +55,7 @@ const CheckoutPage = () => {
     const finalTotal = subtotal + deliveryCharge;
     const totalDiscount = totalMRP - subtotal;
 
+    // --- HANDLERS ---
     const handleConfirmRequest = () => {
         if (hasInventoryConflict) {
             return nxToast.security("Items Unavailable", "Please remove out-of-stock items before placing your order.");
@@ -62,7 +69,7 @@ const CheckoutPage = () => {
             totalAmount: finalTotal
         });
 
-        setIsModalOpen(true);
+        setIsConfirmModalOpen(true);
     };
 
     const handleFinalOrderPlacement = () => {
@@ -72,7 +79,7 @@ const CheckoutPage = () => {
             return;
         }
 
-        setIsModalOpen(false);
+        setIsConfirmModalOpen(false);
         placeOrder.mutate({
             addressId: selectedAddress._id,
             items: liveActiveItems.map(item => ({
@@ -91,6 +98,22 @@ const CheckoutPage = () => {
                 totalAmount: finalTotal
             }
         });
+    };
+
+    const handleEditAddress = (e, addr) => {
+        e.stopPropagation();
+        setAddressToEdit(addr);
+        setIsAddressModalOpen(true);
+    };
+
+    const handleAddressUpdateSuccess = async (updatedData) => {
+        await refetchAddresses();
+
+        if (selectedAddress?._id === addressToEdit?._id) {
+            setSelectedAddress(prev => ({ ...prev, ...updatedData }));
+        }
+        setIsAddressModalOpen(false);
+        setAddressToEdit(null);
     };
 
     const glassStyle = "bg-gradient-to-br from-white/[0.10] to-transparent backdrop-blur-xl border border-white/10 shadow-xl rounded-3xl";
@@ -122,7 +145,6 @@ const CheckoutPage = () => {
 
                     <div className="w-full lg:flex-1 space-y-8">
 
-                        {/* --- STOCK ERROR ALERT --- */}
                         {hasInventoryConflict && (
                             <section className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl flex items-center justify-between">
                                 <div className="flex items-center gap-4">
@@ -141,13 +163,16 @@ const CheckoutPage = () => {
                             </section>
                         )}
 
-                        {/* 01. DELIVERY ADDRESS */}
                         <section className={`${glassStyle} p-10 ${hasInventoryConflict ? 'opacity-50 pointer-events-none' : ''}`}>
+
                             <div className="flex justify-between items-center mb-8">
                                 <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.3em] flex items-center gap-2">
                                     <MapPin size={12} /> 01 // Delivery Address
                                 </h2>
-                                <button onClick={() => navigate('/profile/address')} className="text-[8px] font-black uppercase px-5 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-[#7a6af6] transition-all">
+                                <button
+                                    onClick={() => navigate('/profile/address')}
+                                    className="text-[8px] font-black uppercase px-5 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-[#7a6af6] transition-all"
+                                >
                                     <Plus size={10} className="inline mr-1" /> Add New Address
                                 </button>
                             </div>
@@ -157,19 +182,34 @@ const CheckoutPage = () => {
                                     <div
                                         key={addr._id}
                                         onClick={() => setSelectedAddress(addr)}
-                                        className={`p-6 rounded-2xl border transition-all cursor-pointer ${selectedAddress?._id === addr._id
+                                        className={`group relative p-6 rounded-2xl border transition-all cursor-pointer ${selectedAddress?._id === addr._id
                                             ? 'bg-white/[0.08] border-[#7a6af6]'
                                             : 'bg-white/[0.02] border-white/5 hover:border-white/20'
                                             }`}
                                     >
-                                        <div className="flex justify-between mb-4">
-                                            <span className={`px-2.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest ${selectedAddress?._id === addr._id ? 'bg-[#7a6af6] text-white' : 'bg-white/5 text-white/30'}`}>
+                                        <div className="flex justify-between items-start mb-4">
+                                            <span className={`px-2.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest ${selectedAddress?._id === addr._id ? 'bg-[#7a6af6] text-white' : 'bg-white/5 text-white/30'
+                                                }`}>
                                                 {addr.addressType}
                                             </span>
-                                            {selectedAddress?._id === addr._id && <CheckCircle2 size={16} className="text-[#7a6af6]" />}
+
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={(e) => handleEditAddress(e, addr)}
+                                                    className="p-1.5 text-white/20 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                                                    title="Edit Address"
+                                                >
+                                                    <Edit2 size={14} />
+                                                </button>
+
+                                                {selectedAddress?._id === addr._id && (
+                                                    <CheckCircle2 size={16} className="text-[#7a6af6]" />
+                                                )}
+                                            </div>
                                         </div>
+
                                         <h3 className="text-sm font-black uppercase italic text-white mb-2">{addr.fullName}</h3>
-                                        <p className="text-[10px] text-white/40 uppercase font-medium tracking-wider leading-relaxed">
+                                        <p className="text-[10px] text-white/40 uppercase font-medium tracking-wider leading-relaxed pr-8">
                                             {addr.addressLine}, {addr.city}<br />{addr.state} - {addr.pincode}
                                         </p>
                                     </div>
@@ -177,7 +217,7 @@ const CheckoutPage = () => {
                             </div>
                         </section>
 
-                        {/* 02. ITEM PREVIEW */}
+
                         <section className="space-y-4">
                             <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.3em] px-2">
                                 02 // Review Items
@@ -193,7 +233,7 @@ const CheckoutPage = () => {
                                         )}
 
                                         <div className="w-16 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-black">
-                                            <img src={item.variantId?.images?.[0]} className={`w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500 ${item.isCheckoutReady === false ? 'opacity-20' : ''}`} alt="" />
+                                            <img src={item.variantId?.images?.[0]} className={`w-full h-full object-cover ${item.isCheckoutReady === false ? 'opacity-20' : ''}`} alt="" />
                                         </div>
                                         <div className="flex-1">
                                             <h3 className={`text-xs font-black italic uppercase tracking-tight ${item.isCheckoutReady === false ? 'text-white/20' : 'text-white'}`}>{item.productId?.name}</h3>
@@ -207,7 +247,6 @@ const CheckoutPage = () => {
                             </div>
                         </section>
 
-                        {/* 03. PAYMENT SELECTION */}
                         <section className={`${glassStyle} p-10 relative overflow-hidden ${hasInventoryConflict ? 'opacity-50 pointer-events-none' : ''}`}>
                             <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.3em] mb-8 flex items-center gap-2">
                                 <CreditCard size={12} /> 03 // Payment Method
@@ -226,7 +265,6 @@ const CheckoutPage = () => {
                         </section>
                     </div>
 
-                    {/* RIGHT SIDE: PRICE SUMMARY */}
                     <aside className="w-full lg:w-[320px] lg:sticky lg:top-32">
                         <div className="bg-white text-[#0F172A] p-7 rounded-[2rem] shadow-2xl border border-slate-100">
                             <h3 className="text-sm font-black uppercase tracking-wider text-slate-400 mb-6 border-b border-slate-50 pb-4 italic text-center">
@@ -262,7 +300,7 @@ const CheckoutPage = () => {
                                     onClick={() => navigate('/cart')}
                                     className="w-full py-5 bg-red-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] flex items-center justify-center gap-3 hover:bg-red-600 transition-all duration-300 shadow-xl"
                                 >
-                                    Remove Unavailable Items <ArrowRight size={16} />
+                                    Remove Items <ArrowRight size={16} />
                                 </button>
                             ) : (
                                 <button
@@ -294,8 +332,8 @@ const CheckoutPage = () => {
             </main>
 
             <OrderConfirmModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                isOpen={isConfirmModalOpen}
+                onClose={() => setIsConfirmModalOpen(false)}
                 onConfirm={handleFinalOrderPlacement}
                 isPending={placeOrder.isPending}
                 totals={frozenTotals || {
@@ -304,9 +342,21 @@ const CheckoutPage = () => {
                     deliveryCharge,
                     totalAmount: finalTotal
                 }}
-
                 inventoryConflict={hasInventoryConflict}
             />
+
+            {isAddressModalOpen && (
+                <AddressModal
+                    isOpen={isAddressModalOpen}
+                    onClose={() => setIsAddressModalOpen(false)}
+                    mode="edit"
+                    initialData={addressToEdit}
+                    onSubmit={async (data) => {
+                        const res = await updateAddress(addressToEdit._id, data);
+                        handleAddressUpdateSuccess(data);
+                    }}
+                />
+            )}
 
             <Footer />
         </div>

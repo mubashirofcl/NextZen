@@ -55,15 +55,13 @@ export const getUserCart = async (userId) => {
 
         const readyForCheckout = isProductLive && isVariantLive && hasStock;
 
-        // Retrieve both Prices for Discount Calculation
         const itemPrice = sizeData?.salePrice || 0;
-        // Ensure your variant schema has marketPrice/MRP
         const marketPrice = sizeData?.marketPrice || sizeData?.salePrice || 0; 
 
         return {
             ...item.toObject(), 
             currentPrice: itemPrice,
-            marketPrice: marketPrice, // Added for Savings calculation
+            marketPrice: marketPrice,
             currentStock: stockAvailable,
             isCheckoutReady: readyForCheckout,
             errorMessage: !isProductLive || !isVariantLive
@@ -72,12 +70,10 @@ export const getUserCart = async (userId) => {
         };
     });
 
-    // Calculate Subtotal (Actual Price)
     const subtotal = processedItems.reduce((acc, i) => {
         return i.isCheckoutReady ? acc + (i.currentPrice * i.quantity) : acc;
     }, 0);
 
-    // Calculate Total Market Price (MRP)
     const totalMarketPrice = processedItems.reduce((acc, i) => {
         return i.isCheckoutReady ? acc + (i.marketPrice * i.quantity) : acc;
     }, 0);

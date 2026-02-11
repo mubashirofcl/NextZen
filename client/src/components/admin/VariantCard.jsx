@@ -30,10 +30,13 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
         e.target.value = "";
     };
 
+    // Helper to check if a value exists (0 is a value, "" or null is not)
+    const hasValue = (v) => v !== "" && v !== null && v !== undefined;
+
     return (
         <div className={`bg-white rounded-[24px] p-6 shadow-xl border relative mt-3 animate-in zoom-in-95 ${imageError ? 'border-red-200 ring-4 ring-red-50' : 'border-slate-100'}`}>
 
-            {/* REGISTER HIDDEN IMAGE ARRAY FOR VALIDATION */}
+            {/* IMAGES VALIDATION */}
             <input
                 type="hidden"
                 {...register(`variants.${index}.images`, {
@@ -42,6 +45,7 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
             />
             <input type="hidden" {...register(`variants.${index}._id`)} />
 
+            {/* CROP MODAL */}
             {cropSrc && (
                 <CropModal
                     src={cropSrc}
@@ -88,8 +92,15 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
                     <tbody className="divide-y divide-slate-50">
                         {sizes.map((s, sIdx) => {
                             const path = `variants.${index}.sizes.${sIdx}`;
-                            const stockVal = watch(`${path}.stock`);
-                            const isDirty = stockVal !== "" && stockVal != null;
+                            
+                            // 🔍 Watch current row values for Conditional Validation
+                            const wStock = watch(`${path}.stock`);
+                            const wMarket = watch(`${path}.originalPrice`);
+                            const wRetail = watch(`${path}.salePrice`);
+
+                            // 🚨 Logic: Row is "Active" if ANY field has data.
+                            const isRowActive = hasValue(wStock) || hasValue(wMarket) || hasValue(wRetail);
+
                             const sizeError = errors?.variants?.[index]?.sizes?.[sIdx];
 
                             return (
@@ -97,15 +108,61 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
                                     <td className="px-4 py-3 text-center bg-slate-50/50 border-r border-slate-100">
                                         <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-[10px] font-black text-[#0F172A] mx-auto shadow-sm">{s.size}</div>
                                     </td>
+                                    
+                                    {/* 🟢 STOCK */}
                                     <td className="px-4 py-3 text-center border-r border-slate-100">
-                                        <input type="number" {...register(`${path}.stock`)} className={`w-20 bg-white border-2 rounded-lg px-2 py-1.5 text-center text-xs font-bold outline-none ${sizeError?.stock ? 'border-red-500 bg-red-50' : 'border-slate-100 focus:border-[#7a6af6]'}`} />
+                                        <input 
+                                            type="number" 
+                                            title={sizeError?.stock?.message}
+                                            {...register(`${path}.stock`, {
+                                                validate: (val) => {
+                                                    if (!isRowActive) return true; // Ignore if empty
+                                                    if (!hasValue(val)) return "Required"; // Required if other fields filled
+                                                    if (Number(val) < 0) return "No Negative";
+                                                    return true;
+                                                }
+                                            })} 
+                                            className={`w-20 bg-white border-2 rounded-lg px-2 py-1.5 text-center text-xs font-bold outline-none transition-colors ${sizeError?.stock ? 'border-red-500 bg-red-50 text-red-600' : 'border-slate-100 focus:border-[#7a6af6]'}`} 
+                                        />
                                     </td>
+
+                                    {/* 🟢 MARKET PRICE (MRP) */}
                                     <td className="px-4 py-3 text-center border-r border-slate-100">
-                                        <input type="number" step="0.01" {...register(`${path}.originalPrice`)} className={`w-24 bg-white border-2 rounded-lg px-2 py-1.5 text-center text-xs font-bold outline-none ${sizeError?.originalPrice ? 'border-red-500 bg-red-50' : 'border-slate-100 focus:border-[#7a6af6]'}`} />
+                                        <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            title={sizeError?.originalPrice?.message}
+                                            {...register(`${path}.originalPrice`, {
+                                                validate: (val) => {
+                                                    if (!isRowActive) return true;
+                                                    if (!hasValue(val)) return "Required";
+                                                    if (Number(val) <= 0) return "Price > 0";
+                                                    return true;
+                                                }
+                                            })} 
+                                            className={`w-24 bg-white border-2 rounded-lg px-2 py-1.5 text-center text-xs font-bold outline-none transition-colors ${sizeError?.originalPrice ? 'border-red-500 bg-red-50 text-red-600' : 'border-slate-100 focus:border-[#7a6af6]'}`} 
+                                        />
                                     </td>
+
+                                    {/* 🟢 RETAIL PRICE (Selling) */}
                                     <td className="px-4 py-3 text-center">
-                                        <input type="number" step="0.01" {...register(`${path}.salePrice`)} className={`w-24 bg-white border-2 rounded-lg px-2 py-1.5 text-center text-xs font-bold text-[#7a6af6] outline-none ${sizeError?.salePrice ? 'border-red-500' : 'border-slate-100 focus:border-[#7a6af6]'}`} />
+                                        <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            title={sizeError?.salePrice?.message}
+                                            {...register(`${path}.salePrice`, {
+                                                validate: (val) => {
+                                                    if (!isRowActive) return true;
+                                                    if (!hasValue(val)) return "Required";
+                                                    if (Number(val) < 0) return "No Negative";
+                                                    if (wMarket && Number(val) > Number(wMarket)) return "Cannot > Market";
+                                                    return true;
+                                                }
+                                            })} 
+                                            className={`w-24 bg-white border-2 rounded-lg px-2 py-1.5 text-center text-xs font-bold outline-none transition-colors ${sizeError?.salePrice ? 'border-red-500 bg-red-50 text-red-600' : 'border-slate-100 text-[#7a6af6] focus:border-[#7a6af6]'}`} 
+                                        />
                                     </td>
+                                    
                                     <input type="hidden" {...register(`${path}.size`)} value={s.size} />
                                 </tr>
                             );
@@ -114,7 +171,7 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
                 </table>
             </div>
 
-            {/* ASSET UPLOAD */}
+            {/* ASSET UPLOAD SECTION */}
             <div className="mt-6 pt-6 border-t border-slate-50">
                 <div className="flex justify-between items-center mb-3 px-1">
                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Variant Gallery (Min 3)</label>

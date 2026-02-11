@@ -1,21 +1,63 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Trash2, ShoppingBag, Heart, ArrowRight } from "lucide-react";
+import { Trash2, ShoppingBag, Heart, ArrowRight, AlertCircle } from "lucide-react";
 import { useWishlist } from "../../hooks/user/useWishlist";
+import { useCart } from "../../hooks/user/useCart";
 import { nxToast } from "../../utils/userToast";
 import Header from "../../components/user/Header";
 import Footer from "../../components/user/Footer";
 
 const WishlistPage = () => {
     const navigate = useNavigate();
-    const { wishlist, toggle, clearWishlist, isLoading } = useWishlist();
+
+    // 🟢 Hooks: Ensure 'removeItem' is destructured from useWishlist
+    const { wishlist, toggle, removeItem, clearWishlist, isLoading } = useWishlist();
+    const { addToCart } = useCart();
 
     const archiveItems = Array.isArray(wishlist) ? wishlist : [];
 
+    const handleMoveToCart = (item) => {
+        const product = item.productId;
+        const variant = item.variantId;
+
+        // 1. Auto-select first available size
+        const targetSize = variant.sizes?.find(s => s.stock > 0);
+
+        if (!targetSize) {
+            return nxToast.error("Out of Stock", "No sizes available for this item.");
+        }
+
+        // 2. Add to Cart
+        addToCart.mutate({
+            productId: product._id,
+            variantId: variant._id,
+            size: targetSize.size,
+            quantity: 1,
+            price: targetSize.salePrice || targetSize.originalPrice,
+            stock: targetSize.stock
+        }, {
+            onSuccess: () => {
+                // 🟢 3. STRICT REMOVE: Use removeItem instead of toggle
+                // This guarantees the item is removed and never re-added
+                removeItem.mutate({ 
+                    productId: product._id, 
+                    variantId: variant._id 
+                });
+
+                nxToast.success("Moved to Bag", "Item moved from wishlist to cart.");
+            },
+            onError: (err) => {
+                nxToast.error("Action Failed", err.response?.data?.message || "Could not move item.");
+            }
+        });
+    };
+
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen text-white">
             <Header />
             <main className="max-w-[1440px] mx-auto px-6 md:px-10 pt-32 pb-32">
+
+                {/* HEADER SECTION */}
                 <div className="flex justify-between items-end mb-12 border-b border-white/5 pb-8">
                     <div className="space-y-2">
                         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#7a6af6]">Archive // Saved</p>
@@ -41,9 +83,9 @@ const WishlistPage = () => {
                             Segment Count: {archiveItems.length}
                         </span>
                     </div>
-                    
                 </div>
 
+                {/* CONTENT SECTION */}
                 {isLoading ? (
                     <div className="py-20 text-center">
                         <span className="font-black uppercase text-[10px] animate-pulse tracking-[0.5em] text-slate-400">Syncing Archive...</span>
@@ -72,22 +114,39 @@ const WishlistPage = () => {
                                 ? Math.min(...variant.sizes.map(s => s.salePrice || s.originalPrice))
                                 : 0;
 
+                            // Check stock for "Sold Out" badge
+                            const isOutOfStock = !variant.sizes?.some(s => s.stock > 0);
+
                             return (
-                                <div key={item._id} className="relative group bg-[#0f172a68] border border-white/5 p-4 rounded-[2rem] transition-all hover:border-[#7a6af6]/50">
+                                <div key={item._id} className="relative group bg-[#0f172a68] border border-white/5 p-4 rounded-[2rem] transition-all hover:border-[#7a6af6]/50 hover:bg-[#7a6af6]/5">
+
+                                    {/* IMAGE AREA */}
                                     <div className="aspect-[3/4] rounded-[1.5rem] overflow-hidden bg-black mb-4 relative">
                                         <img
                                             src={imageUrl}
-                                            className="w-full h-full object-cover"
+                                            className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${isOutOfStock ? 'opacity-40 grayscale' : ''}`}
                                             alt={product.name}
                                         />
+
+                                        {/* Remove Button (Top Right) */}
                                         <button
                                             onClick={() => toggle.mutate({ productId: product._id, variantId: variant._id })}
-                                            className="absolute top-4 right-4 p-2.5 bg-black/60 backdrop-blur-md rounded-full text-white/40 hover:text-red-500 transition-all"
+                                            className="absolute top-4 right-4 p-2.5 bg-black/60 backdrop-blur-md rounded-full text-white/40 hover:text-red-500 transition-all z-10"
+                                            title="Remove from Wishlist"
                                         >
                                             <Trash2 size={16} />
                                         </button>
+
+                                        {isOutOfStock && (
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <span className="bg-black/80 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border border-white/10">
+                                                    Sold Out
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
 
+                                    {/* INFO AREA */}
                                     <div className="space-y-1 px-1">
                                         <h3 className="text-[11px] font-black uppercase tracking-tight text-white italic truncate">
                                             {product.name}
@@ -95,16 +154,33 @@ const WishlistPage = () => {
                                         <p className="text-[10px] font-medium text-white/40 uppercase tracking-wide">
                                             Color: <span className="text-white">{variant.color}</span>
                                         </p>
-                                        <div className="flex justify-between items-center pt-2">
-                                            <p className="text-sm font-black italic text-[#7a6af6]">
+
+                                        <div className="flex justify-between items-end pt-4">
+                                            <p className="text-sm font-black italic text-[#7a6af6] mb-1">
                                                 ₹{displayPrice.toLocaleString()}
                                             </p>
-                                            <button
-                                                onClick={() => navigate(`/product/${product._id}`)}
-                                                className="p-2 bg-white/5 rounded-lg hover:bg-white hover:text-black transition-all"
-                                            >
-                                                <ArrowRight size={14} />
-                                            </button>
+
+                                            {/* 🟢 ACTION BUTTONS */}
+                                            <div className="flex gap-2">
+                                                {/* View Details */}
+                                                <button
+                                                    onClick={() => navigate(`/product/${product._id}`)}
+                                                    className="p-2.5 border border-white/10 rounded-xl text-white/40 hover:bg-white hover:text-black hover:border-white transition-all"
+                                                    title="View Details"
+                                                >
+                                                    <ArrowRight size={16} />
+                                                </button>
+
+                                                {/* Move to Cart */}
+                                                <button
+                                                    disabled={isOutOfStock}
+                                                    onClick={() => handleMoveToCart(item)}
+                                                    className="p-2.5 bg-[#7a6af6] rounded-xl text-white hover:bg-white hover:text-[#7a6af6] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#7a6af6]/20"
+                                                    title="Move to Bag"
+                                                >
+                                                    <ShoppingBag size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

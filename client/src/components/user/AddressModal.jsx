@@ -88,16 +88,16 @@ const AddressModal = ({
     const errorText = "text-[9px] text-red-500 font-bold mt-1 uppercase ml-1 tracking-tighter";
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm transition-all">
-            <div className="bg-white w-full max-w-[420px] rounded-2xl shadow-2xl p-8 relative animate-in zoom-in duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-[#0F172A]/60 backdrop-blur-sm transition-all">
+            <div className="bg-white w-[95%] sm:w-full max-w-[420px] rounded-2xl shadow-2xl p-5 md:p-8 relative animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
 
                 {/* Close Button */}
-                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-black transition-colors">
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-black transition-colors z-10">
                     <X size={20} />
                 </button>
 
                 {/* Header Section */}
-                <div className="mb-6">
+                <div className="mb-4 md:mb-6 text-center md:text-left shrink-0">
                     <h3 className="text-xl font-black text-[#0F172A] uppercase tracking-tight">
                         {mode === "add" ? "Deployment Point" : "Refine Point"}
                     </h3>
@@ -106,22 +106,23 @@ const AddressModal = ({
                     </p>
                 </div>
 
-                {/* Icon Badge */}
-                <div className="flex justify-center mb-8">
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl text-white ${mode === 'add' ? 'bg-[#0F172A] shadow-[#0F172A]/10' : 'bg-[#7a6af6] shadow-[#7a6af6]/20'}`}>
-                        {mode === "add" ? <MapPin size={28} strokeWidth={2.5} /> : <Edit3 size={28} strokeWidth={2.5} />}
+                {/* Icon Badge - Hidden on very small screens to save space if needed, or kept compact */}
+                <div className="flex justify-center mb-6 shrink-0">
+                    <div className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-xl text-white ${mode === 'add' ? 'bg-[#0F172A] shadow-[#0F172A]/10' : 'bg-[#7a6af6] shadow-[#7a6af6]/20'}`}>
+                        {mode === "add" ? <MapPin size={24} md:size={28} strokeWidth={2.5} /> : <Edit3 size={24} md:size={28} strokeWidth={2.5} />}
                     </div>
                 </div>
 
                 {/* Backend Error Alert */}
                 {backendError && (
-                    <div className="mb-6 p-3 bg-red-50 border-l-4 border-red-500 flex items-center gap-3">
+                    <div className="mb-6 p-3 bg-red-50 border-l-4 border-red-500 flex items-center gap-3 shrink-0">
                         <ShieldAlert size={16} className="text-red-500 shrink-0" />
                         <p className="text-[9px] font-black text-red-700 uppercase leading-tight">{backendError}</p>
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit(submitHandler)} className="text-black space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                {/* Scrollable Form Area */}
+                <form onSubmit={handleSubmit(submitHandler)} className="text-black space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1 pb-2">
 
                     {/* Full Name */}
                     <div>
@@ -148,12 +149,13 @@ const AddressModal = ({
                             })}
                             className={inputStyle(errors.phone)}
                             placeholder="91XXXXXXXX"
+                            type="tel"
                         />
                         {errors.phone && <p className={errorText}>{errors.phone.message}</p>}
                     </div>
 
-                    {/* City & State Grid */}
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* City & State Grid - Stacks on extra small screens */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className={labelStyle}>City</label>
                             <input
@@ -175,7 +177,7 @@ const AddressModal = ({
                     </div>
 
                     {/* Pincode & Landmark Grid */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className={labelStyle}>Pincode</label>
                             <input
@@ -185,6 +187,7 @@ const AddressModal = ({
                                 })}
                                 className={inputStyle(errors.pincode)}
                                 placeholder="000000"
+                                type="tel" // Opens numeric keypad on mobile
                             />
                             {errors.pincode && <p className={errorText}>{errors.pincode.message}</p>}
                         </div>
@@ -220,9 +223,9 @@ const AddressModal = ({
                                 type="button"
                                 onClick={() => setAddressType(type)}
                                 className={`h-12 rounded-xl flex items-center justify-center gap-2 font-black text-[9px] uppercase tracking-widest transition-all border-2 ${addressType === type
-                                        ? "bg-[#7a6af6]/5 border-[#7a6af6] text-[#7a6af6]"
-                                        : "bg-white border-slate-100 text-slate-400"
-                                    }`}
+                                    ? "bg-[#7a6af6]/5 border-[#7a6af6] text-[#7a6af6]"
+                                    : "bg-white border-slate-100 text-slate-400"
+                                }`}
                             >
                                 {type === "Home" ? <Home size={14} /> : <Briefcase size={14} />}
                                 {type}
@@ -234,7 +237,7 @@ const AddressModal = ({
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full py-4 bg-[#0F172A] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all active:scale-95 disabled:bg-slate-200 mt-4"
+                        className="w-full py-4 bg-[#0F172A] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all active:scale-95 disabled:bg-slate-200 mt-4 shrink-0"
                     >
                         {isSubmitting ? (
                             <Loader2 className="animate-spin mx-auto" size={16} />

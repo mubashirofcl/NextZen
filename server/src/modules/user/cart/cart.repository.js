@@ -1,5 +1,5 @@
 import Cart from "./cart.model.js";
-import Variant from "../../admin/productManagement/variant.model.js"; 
+import Variant from "../../admin/productManagement/variant.model.js";
 
 export const addItemToCart = async (userId, { productId, variantId, size, quantity = 1 }) => {
     let cart = await Cart.findOne({ userId });
@@ -34,36 +34,30 @@ export const getUserCart = async (userId) => {
     if (!cart) return { items: [], subtotal: 0, totalMarketPrice: 0, totalDiscount: 0 };
 
     const processedItems = cart.items.map(item => {
-        // 1. ISOLATE THE OBJECTS
         const product = item.productId;
         const variant = item.variantId;
-        
-        // 2. SNAPSHOT THE NAME (The Critical Fix)
+
         // If product is null, 'product?.name' is undefined, so it falls back to the string.
         const safeName = product?.name || "Archive Item";
 
-        // 3. RESOLVE STOCK & SIZE DATA
         const sizeData = variant?.sizes?.find(s => s.size === item.size);
         const stockAvailable = sizeData?.stock || 0;
 
-        // 4. DEFENSIVE STATUS CHECKS
         const exists = !!(product && variant && sizeData);
         const isLive = !!(exists && product.isActive && !product.isDeleted && !variant.isDeleted);
         const hasStock = stockAvailable >= item.quantity;
-        
-        // Final Gatekeeper
+
         const isReady = isLive && hasStock;
 
-        // 5. PRE-BUILD THE ERROR MESSAGE
         let conflictMsg = null;
         if (!exists) {
             conflictMsg = "Item no longer exists in our collection.";
         } else if (!isLive) {
             conflictMsg = `${safeName} has been decommissioned.`;
         } else if (!hasStock) {
-            // Using 'safeName' here prevents the 'undefined' error
-            conflictMsg = stockAvailable > 0 
-                ? `Only ${stockAvailable} left for ${safeName}.` 
+
+            conflictMsg = stockAvailable > 0
+                ? `Only ${stockAvailable} left for ${safeName}.`
                 : `${safeName} is out of stock.`;
         }
 
@@ -72,11 +66,10 @@ export const getUserCart = async (userId) => {
             currentPrice: sizeData?.salePrice || 0,
             marketPrice: sizeData?.originalPrice || sizeData?.salePrice || 0,
             isCheckoutReady: isReady,
-            errorMessage: conflictMsg // Controller will use this string directly
+            errorMessage: conflictMsg
         };
     });
 
-    // Calculations based only on ready items
     const subtotal = processedItems.reduce((acc, i) => i.isCheckoutReady ? acc + (i.currentPrice * i.quantity) : acc, 0);
     const totalMarketPrice = processedItems.reduce((acc, i) => i.isCheckoutReady ? acc + (i.marketPrice * i.quantity) : acc, 0);
 

@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { placeCodOrderApi } from "../../api/user/order.api";
 import { nxToast } from "../../utils/userToast";
-import userAxios from "../../api/user/userAxios";
+import userAxios from "../../api/baseAxios"; 
+
 
 export const useOrder = () => {
     const navigate = useNavigate();
@@ -11,12 +12,12 @@ export const useOrder = () => {
     const placeOrder = useMutation({
         mutationFn: placeCodOrderApi,
         onSuccess: (data) => {
-            queryClient.invalidateQueries(["cart"]);
-            nxToast.success("Success", "Order placed successfully.");
+            queryClient.invalidateQueries({ queryKey: ["cart"] });
+            nxToast.success("Success", "Manifest deployed successfully.");
             navigate(`/checkout/success/${data.orderId}`);
         },
         onError: (error) => {
-            nxToast.security("Deployment Failed", error.response?.data?.message || "Internal Error");
+            nxToast.security("Deployment Failed", error.response?.data?.message || "Internal Protocol Error");
         }
     });
 
@@ -28,9 +29,11 @@ export const useOrders = () => {
         queryKey: ["orders"],
         queryFn: async () => {
             const { data } = await userAxios.get("/users/orders");
-            return data.orders;
+            return data.orders || []; 
         },
-        staleTime: 5000,
+        staleTime: 5000, 
+        refetchInterval: 10000, 
+        refetchOnWindowFocus: true,
     });
 };
 
@@ -42,30 +45,29 @@ export const useOrderDetail = (orderId) => {
             return data.order;
         },
         enabled: !!orderId,
+        refetchInterval: 4000,
+        refetchIntervalInBackground: true,
     });
 };
-
-// --- INDIVIDUAL ITEM ACTIONS ---
 
 export const useCancelItem = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ orderId, itemId, reason }) => {
-            // Matches backend: router.patch('/:orderId/items/:itemId/cancel')
             const { data } = await userAxios.patch(`/users/orders/${orderId}/items/${itemId}/cancel`, { reason });
             return data;
         },
         onSuccess: (_, variables) => {
-            // Re-sync specific order and history list
-            queryClient.invalidateQueries(["order", variables.orderId]);
-            queryClient.invalidateQueries(["orders"]);
-            nxToast.success("Order Updated", "Item cancelled and stock restored.");
+            queryClient.invalidateQueries({ queryKey: ["order", variables.orderId] });
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+            nxToast.success("Asset Voided", "Item cancelled and stock restored to warehouse.");
         },
         onError: (err) => {
-            nxToast.security("Cancel Failed", err.response?.data?.message || "Protocol error.");
+            nxToast.security("Cancel Failed", err.response?.data?.message || "Logistics state blocks cancellation.");
         }
     });
 };
+
 
 export const useCancelFullOrder = () => {
     const queryClient = useQueryClient();
@@ -75,11 +77,11 @@ export const useCancelFullOrder = () => {
             return data;
         },
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries(["order", variables.orderId]);
-            queryClient.invalidateQueries(["orders"]);
-            nxToast.success("Manifest Voided", "The entire order has been cancelled.");
+            queryClient.invalidateQueries({ queryKey: ["order", variables.orderId] });
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+            nxToast.success("Manifest Terminated", "All items voided successfully.");
         },
-        onError: (err) => nxToast.error("Protocol Error", err.response?.data?.message || "Failed to cancel order.")
+        onError: (err) => nxToast.error("Protocol Error", err.response?.data?.message || "Failed to terminate manifest.")
     });
 };
 
@@ -87,18 +89,16 @@ export const useReturnItem = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ orderId, itemId, reason }) => {
-   
             const { data } = await userAxios.patch(`/users/orders/${orderId}/items/${itemId}/return`, { reason });
             return data;
         },
         onSuccess: (_, variables) => {
-            queryClient.invalidateQueries(["order", variables.orderId]);
-            queryClient.invalidateQueries(["orders"]);
-            nxToast.success("Return Requested", "Manifest update pending verification.");
+            queryClient.invalidateQueries({ queryKey: ["order", variables.orderId] });
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+            nxToast.success("Return Requested", "Verification protocol initiated.");
         },
         onError: (err) => {
-            nxToast.security("Request Failed", err.response?.data?.message || "Mandatory reason missing.");
+            nxToast.security("Request Failed", err.response?.data?.message || "Reason is mandatory for return.");
         }
     });
 };
-

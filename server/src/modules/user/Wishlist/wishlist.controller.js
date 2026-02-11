@@ -64,3 +64,16 @@ export const clearWishlist = async (req, res) => {
     await wishlistModel.findOneAndUpdate({ userId }, { $set: { products: [] } });
     res.status(200).json({ success: true, message: "Archive Purged" });
 };
+
+export const removeFromWishlist = async (req, res) => {
+    try {
+        const { productId, variantId } = req.body;
+        const userId = req.user?.userId;
+
+        await wishlistService.removeFromWishlist(userId, productId, variantId);
+
+        res.status(200).json({ success: true, message: "Removed" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

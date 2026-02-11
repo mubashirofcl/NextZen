@@ -87,7 +87,7 @@ export const getAllCategoriesForSelectionService = async ({ level, parentId, adm
     const filter = { isDeleted: false };
 
     if (!adminMode) {
-        filter.isActive = true; 
+        filter.isActive = true;
     }
 
     if (level !== undefined) filter.level = Number(level);
@@ -98,9 +98,45 @@ export const getAllCategoriesForSelectionService = async ({ level, parentId, adm
 
 export const updateCategoryService = async (id, payload) => {
     if (!id) throw new Error("Category ID missing");
+
     const category = await findById(id);
     if (!category) throw new Error("Category not found");
-    if ("level" in payload || "parentId" in payload) throw new Error("Hierarchy cannot be modified");
+
+    if ("level" in payload || "parentId" in payload) {
+        throw new Error("Hierarchy (level or parent) cannot be modified");
+    }
+
+    if (payload.name) {
+        const newName = payload.name.trim();
+
+        if (newName.toLowerCase() !== category.name.toLowerCase()) {
+
+            if (category.level === 1) {
+
+                const existing = await findCategoryByName({
+                    name: newName,
+                    level: 1
+                });
+
+                if (existing && existing._id.toString() !== id) {
+                    throw new Error("Category name already exists!");
+                }
+            }
+            else if (category.level === 2) {
+
+                const existing = await findSubCategoryByNameAndParent({
+                    name: newName,
+                    parentId: category.parentId
+                });
+
+                if (existing && existing._id.toString() !== id) {
+                    throw new Error("Sub-category name already exists under this parent!");
+                }
+            }
+        }
+
+        payload.name = newName;
+    }
 
     return updateCategoryById(id, payload);
 };

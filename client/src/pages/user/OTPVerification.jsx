@@ -140,7 +140,7 @@ const OTPVerification = () => {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-black/20 font-sans selection:bg-[#7a6af6]/20">
+        <div className="flex flex-col min-h-screen bg-black/20 font-sans selection:bg-[#7a6af6]/20 mt-20">
             <Header />
             <main className="flex-grow flex items-center justify-center py-12 px-4 ">
                 <div className="max-w-[400px] w-full bg-white border border-gray-100 shadow-[0_15px_40px_rgba(0,0,0,0.04)] rounded-[2.5rem] p-8 md:p-10 text-center">

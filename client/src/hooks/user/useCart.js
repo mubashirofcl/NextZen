@@ -12,21 +12,19 @@ export const useCart = () => {
             const res = await userAxios.get("/user/cart");
             return res.data;
         },
-     
         refetchOnWindowFocus: true, 
         staleTime: 0,             
         refetchInterval: 30000,     
     });
 
-    const addItem = useMutation({
+    const addToCart = useMutation({
         mutationFn: async (payload) => {
             const res = await userAxios.post("/user/cart/add", payload);
             return res.data;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
-            queryClient.invalidateQueries({ queryKey: ["wishlist"] });
-            nxToast.success("Success", "Archive entry created.");
+            nxToast.success("Success", "Added to bag.");
         }
     });
 
@@ -51,12 +49,10 @@ export const useCart = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
-            queryClient.invalidateQueries({ queryKey: ["wishlist"] });
-            nxToast.success("Inventory Updated", "Item removed from archive.");
+            nxToast.success("Inventory Updated", "Item removed.");
         }
     });
 
-    // --- STOCK VALIDATION PROTOCOL ---
     const validateStock = useMutation({
         mutationFn: async () => {
             const res = await userAxios.get("/user/cart/validate-checkout");
@@ -73,7 +69,7 @@ export const useCart = () => {
 
     return {
         cart,
-        addItem,
+        addToCart, 
         updateQty,
         remove,
         validateStock,

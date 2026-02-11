@@ -17,12 +17,9 @@ const CartList = () => {
 
     const items = cart?.items || [];
 
-    // --- STOCK LOGIC ---
-    // An item is "Active" only if it exists and has stock >= quantity
     const activeItems = items.filter(i => i.variantId && i.isCheckoutReady !== false);
     const brokenItems = items.filter(i => !i.variantId || i.isCheckoutReady === false);
 
-    // --- CALCULATIONS (Only on Active Items) ---
     const totalMarketPrice = activeItems.reduce((acc, item) => {
         const mrp = Number(item.marketPrice) || Number(item.currentPrice) || 0;
         return acc + (mrp * item.quantity);
@@ -80,7 +77,7 @@ const CartList = () => {
             <div className="w-full lg:flex-1 space-y-4">
                 <div className="flex justify-between items-center px-2 pb-2 border-b border-white/5">
                     <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.3em]">01 // Assets ({items.length})</h2>
-                    <button onClick={() => nxToast.confirm("Purge All?", "Clear archive?", () => clearCart())} className="text-[8px] font-black uppercase text-red-500/40 hover:text-red-500 transition-colors">Clear Cart</button>
+                    <button onClick={() => nxToast.confirm("Clear All?", "Clear All Items?", () => clearCart())} className="text-[8px] font-black uppercase text-red-500/40 hover:text-red-500 transition-colors">Clear Cart</button>
                 </div>
 
                 {items.map((item) => {

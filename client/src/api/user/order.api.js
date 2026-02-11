@@ -5,22 +5,27 @@ export const placeCodOrderApi = async (orderPayload) => {
     return data;
 };
 
-export const getCheckoutManifestApi = async () => {
-    const { data } = await userAxios.get("/users/cart/validate-checkout");
+export const fetchUserOrdersApi = async () => {
+    const { data } = await userAxios.get("/users/orders");
     return data;
 };
 
-export const cancelOrderItemApi = async (orderId, itemId, reason) => {
+export const fetchOrderDetailApi = async (orderId) => {
+    const { data } = await userAxios.get(`/users/orders/${orderId}`);
+    return data;
+};
+
+export const cancelOrderItemApi = async ({ orderId, itemId, reason }) => {
     const { data } = await userAxios.patch(`/users/orders/${orderId}/items/${itemId}/cancel`, { reason });
     return data;
 };
 
-export const cancelFullOrderApi = async (orderId, reason) => {
+export const cancelFullOrderApi = async ({ orderId, reason }) => {
     const { data } = await userAxios.patch(`/users/orders/${orderId}/cancel-all`, { reason });
     return data;
 };
 
-export const returnOrderItemApi = async (orderId, itemId, reason) => {
+export const returnOrderItemApi = async ({ orderId, itemId, reason }) => {
     const { data } = await userAxios.patch(`/users/orders/${orderId}/items/${itemId}/return`, { reason });
     return data;
 };

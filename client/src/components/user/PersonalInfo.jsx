@@ -60,7 +60,7 @@ const PersonalInfo = () => {
                                 onClick={openChangePassword}
                                 className="flex items-center gap-2 bg-white text-black hover:bg-[#7a6af6] hover:text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg"
                             >
-                                <Lock size={12} /> Access Keys
+                                <Lock size={12} /> Change Password
                             </button>
                         )}
 
@@ -68,7 +68,7 @@ const PersonalInfo = () => {
                             onClick={() => setIsEditModalOpen(true)}
                             className="flex items-center gap-2 border border-white/20 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
                         >
-                            <Edit2 size={12} /> Edit Identity
+                            <Edit2 size={12} /> Edit Profile
                         </button>
                     </div>
                 </div>

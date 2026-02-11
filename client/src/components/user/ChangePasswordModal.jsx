@@ -55,7 +55,7 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
     const errorClasses = "text-[9px] text-red-500 font-bold mt-1 uppercase ml-1 tracking-tighter";
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm transition-all">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm transition-all text-black">
             <div className="bg-white w-full max-w-[400px] rounded-2xl shadow-2xl p-8 relative animate-in zoom-in duration-300">
 
                 <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-black transition-colors">
