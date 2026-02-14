@@ -6,9 +6,10 @@ export const useProductDetails = (id) => {
         queryKey: ["product", id],
         queryFn: async () => {
             const { data } = await userAxios.get(`/products/${id}`);
-            return data.product; 
+            return data.product;
         },
         enabled: !!id,
-        staleTime: 1000 * 60 * 5, 
+        staleTime: 0,
+        refetchOnWindowFocus: true,
     });
 };

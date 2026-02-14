@@ -27,7 +27,9 @@ const Addresses = () => {
     const [addresses, setAddresses] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    // ==================== LOAD ADDRESSES ====================
+    // Common Glass Style for internal sections
+    const glassStyle = "bg-gradient-to-br from-white/[0.08] to-transparent backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl";
+
     useEffect(() => {
         const loadAddresses = async () => {
             try {
@@ -40,68 +42,65 @@ const Addresses = () => {
                 setIsLoading(false);
             }
         };
-
         loadAddresses();
     }, []);
 
-    // ==================== DELETE ====================
     const handleDelete = (id) => {
         nxToast.confirm(
             "Delete Address?",
-            "This address will be permanently removed.",
+            "This protocol will remove the shipping coordinates permanently.",
             async () => {
                 try {
                     await deleteAddress(id);
                     setAddresses((prev) => prev.filter((addr) => addr._id !== id));
-                    nxToast.success("Address removed", "The address was deleted successfully.");
+                    nxToast.success("Terminal Removed");
                 } catch {
-                    nxToast.security("Delete Failed", "Unable to remove the address.");
+                    nxToast.security("Action Failed");
                 }
             }
         );
     };
 
-    // ==================== SET DEFAULT ====================
     const handleSetDefault = async (id) => {
         try {
             const { data } = await setDefaultAddress(id);
-
             setAddresses((prev) =>
                 prev.map((addr) => ({
                     ...addr,
                     isDefault: addr._id === data._id,
                 }))
             );
-
-            nxToast.success("Primary address updated");
+            nxToast.success("Primary terminal updated");
         } catch {
-            nxToast.error("Failed to set default address");
+            nxToast.error("Protocol error");
         }
     };
 
     return (
-        <div className="max-w-[800px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between mb-10 pb-6 border-b border-slate-100">
-                <div>
-                    <h2 className="text-2xl font-black text-[#ffffff] uppercase tracking-tighter">
-                        Addresses
+        <div className="max-w-full lg:max-w-[900px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+            
+            {/* HEADER GLASS PLATE */}
+            <div className={`${glassStyle} p-8 mb-8 flex items-center justify-between`}>
+                <div className="space-y-1">
+                    <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">
+                        Terminals
                     </h2>
-                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em] mt-1">
-                        Shipping coordinates
+                    <p className="text-[9px] text-[#7a6af6] font-black uppercase tracking-[0.4em]">
+                        Shipping Coordinates // Archive
                     </p>
                 </div>
 
                 <button
                     onClick={() => setIsAddModalOpen(true)}
-                    className="flex items-center justify-center gap-2 px-6 py-3 bg-[#ffffff] text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#cbcbcb] transition-all active:scale-95"
+                    className="flex items-center gap-3 px-6 py-3 bg-white text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#7a6af6] hover:text-white transition-all active:scale-95"
                 >
-                    <Plus size={14} /> Add New
+                    <Plus size={14} /> Add Terminal
                 </button>
             </div>
 
             {isLoading && (
                 <div className="py-20 text-center">
-                    <Loader2 className="animate-spin mx-auto text-slate-400" />
+                    <Loader2 className="animate-spin mx-auto text-[#7a6af6]" size={32} />
                 </div>
             )}
 
@@ -111,60 +110,50 @@ const Addresses = () => {
                     {addresses.map((addr) => (
                         <div
                             key={addr._id}
-                            className={`group bg-white border-2 rounded-2xl p-6 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-6 ${addr.isDefault
-                                ? "border-[#7a6af6]/20 bg-[#7a6af6]/[0.02]"
-                                : "border-slate-50 hover:border-slate-200"
-                                }`}
+                            className={`group p-6 transition-all duration-500 flex flex-col md:flex-row md:items-center justify-between gap-6 ${glassStyle} ${
+                                addr.isDefault 
+                                ? "border-[#7a6af6]/40 shadow-[#7a6af6]/5 bg-white/[0.12]" 
+                                : "hover:border-white/20"
+                            }`}
                         >
-
-                            <div className="flex items-start gap-4 flex-1">
-                                <div
-                                    className={`p-3 rounded-xl shrink-0 ${addr.isDefault
-                                        ? "bg-[#7a6af6] text-white"
-                                        : "bg-slate-50 text-slate-400"
-                                        }`}
-                                >
-                                    {addr.addressType === "Home" ? (
-                                        <Home size={18} />
-                                    ) : (
-                                        <Briefcase size={18} />
-                                    )}
+                            <div className="flex items-start gap-5 flex-1">
+                                <div className={`p-4 rounded-2xl shrink-0 transition-colors ${
+                                    addr.isDefault ? "bg-[#7a6af6] text-white shadow-lg shadow-[#7a6af6]/30" : "bg-white/5 text-white/20"
+                                }`}>
+                                    {addr.addressType === "Home" ? <Home size={20} /> : <Briefcase size={20} />}
                                 </div>
 
                                 <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="text-sm font-black text-[#0F172A] uppercase tracking-tight">
+                                    <div className="flex items-center gap-3">
+                                        <h4 className="text-sm font-black text-white uppercase italic tracking-tight">
                                             {addr.fullName}
                                         </h4>
                                         {addr.isDefault && (
-                                            <span className="text-[8px] font-black bg-[#7a6af6] text-white px-2 py-0.5 rounded-full uppercase tracking-widest">
-                                                Default
+                                            <span className="text-[8px] font-black bg-[#7a6af6] text-white px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
+                                                Primary
                                             </span>
                                         )}
                                     </div>
 
-                                    <p className="text-xs font-bold text-slate-500 leading-relaxed">
-                                        {addr.addressLine}, {addr.city}, {addr.state} -{" "}
-                                        {addr.pincode}
+                                    <p className="text-xs font-bold text-white/50 leading-relaxed max-w-md">
+                                        {addr.addressLine}, {addr.city}, {addr.state} - {addr.pincode}
                                     </p>
 
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Contact:{" "}
-                                        <span className="text-[#0F172A]">
-                                            +91 {addr.phone}
-                                        </span>
-                                    </p>
+                                    <div className="flex items-center gap-4 mt-2">
+                                        <p className="text-[9px] font-black text-[#7a6af6] uppercase tracking-widest">
+                                            Contact: <span className="text-white">+91 {addr.phone}</span>
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
-
-                            <div className="flex items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0 border-slate-100">
+                            <div className="flex items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0 border-white/5">
                                 {!addr.isDefault && (
                                     <button
                                         onClick={() => handleSetDefault(addr._id)}
-                                        className="px-4 py-2 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-[#7a6af6] transition-all"
+                                        className="px-4 py-2 text-[9px] font-black uppercase tracking-widest text-white/30 hover:text-[#7a6af6] transition-all"
                                     >
-                                        Set Default
+                                        Set Primary
                                     </button>
                                 )}
 
@@ -173,16 +162,16 @@ const Addresses = () => {
                                         setSelectedAddress(addr);
                                         setIsEditModalOpen(true);
                                     }}
-                                    className="p-2.5 text-slate-400 hover:text-[#0F172A] hover:bg-slate-50 rounded-lg transition-all"
+                                    className="p-3 text-white/20 hover:text-white hover:bg-white/5 rounded-xl transition-all"
                                 >
-                                    <Edit2 size={15} />
+                                    <Edit2 size={14} />
                                 </button>
 
                                 <button
                                     onClick={() => handleDelete(addr._id)}
-                                    className="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                    className="p-3 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                                 >
-                                    <Trash2 size={15} />
+                                    <Trash2 size={14} />
                                 </button>
                             </div>
                         </div>
@@ -192,15 +181,15 @@ const Addresses = () => {
 
             {/* ==================== EMPTY STATE ==================== */}
             {!isLoading && addresses.length === 0 && (
-                <div className="py-20 text-center bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-100">
-                    <MapPin size={32} className="mx-auto text-slate-200 mb-3" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        No deployment points detected
+                <div className="py-32 text-center bg-white/[0.02] backdrop-blur-md rounded-[2.5rem] border border-white/5 border-dashed">
+                    <MapPin size={40} className="mx-auto text-white/5 mb-4" />
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20 italic">
+                        No deployment terminals found
                     </p>
                 </div>
             )}
 
-            {/* ==================== MODALS ==================== */}
+            {/* MODALS */}
             <AddressModal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}

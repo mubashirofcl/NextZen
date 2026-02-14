@@ -18,17 +18,25 @@ userAxios.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // ================= BLOCKED USER =================
     if (status === 403 && data?.blocked) {
+      
+      localStorage.removeItem("user"); 
+      localStorage.removeItem("cart"); // Optional: clear sensitive data
+      
+      // 2. Store message for the Login page to display
       sessionStorage.setItem(
         "BLOCKED_MESSAGE",
-        data.reason || "Your account has been blocked"
+        data.reason || "Your access has been revoked."
       );
-      window.location.replace("/login");
+
+      // 3. Force hard redirect to Login
+      // Using window.location ensures a full state reset
+      window.location.href = "/login";
+      
       return Promise.reject(error);
     }
 
-    // ================= TOKEN REFRESH =================
+    // ================= 🔄 TOKEN REFRESH LOGIC =================
     if (status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
@@ -39,7 +47,7 @@ userAxios.interceptors.response.use(
         );
         return userAxios(originalRequest);
       } catch {
-        window.dispatchEvent(new Event("USER_LOGOUT"));
+        window.dispatchEvent(new Event("USER_LOGOUT")); // Custom event listener for logout
         return Promise.reject(error);
       }
     }

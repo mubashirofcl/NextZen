@@ -33,7 +33,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
 
     if (!user || !user.email) {
         return (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0F172A]/60 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0F172A]/60 backdrop-blur-sm ">
                 <Loader2 className="animate-spin text-white" size={32} />
             </div>
         );
@@ -83,7 +83,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm text-black">
             <div className="bg-white w-full max-w-[400px] rounded-2xl shadow-2xl p-8 relative">
 
                 <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-black">
@@ -106,7 +106,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                     {/* Avatar */}
-                    <div className="flex justify-center">
+                    <div className="flex justify-center text-black">
                         <div
                             className="relative cursor-pointer group"
                             onClick={() => fileInputRef.current.click()}
@@ -137,7 +137,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
                                 required: "Name is required",
                                 minLength: { value: 2, message: "Too short" }
                             })}
-                            className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold"
+                            className="w-full px-4 py-3 text-black bg-slate-50 rounded-xl font-bold"
                         />
                         {errors.name && <p className="text-[9px] text-red-500">{errors.name.message}</p>}
                     </div>
@@ -146,7 +146,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
                     {isGoogleAccount ? (
                         <div>
                             <label className="text-[10px] font-bold uppercase text-slate-400">Email</label>
-                            <div className="px-4 py-3 bg-slate-100 rounded-xl font-bold text-slate-400 italic">
+                            <div className="px-4 py-3 bg-slate-100 rounded-xl text-slate-400 font-bold italic">
                                 {user.email}
                             </div>
                         </div>
@@ -169,7 +169,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
                                 required: "Phone required",
                                 pattern: { value: /^[6-9]\d{9}$/, message: "Invalid phone" }
                             })}
-                            className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold"
+                            className="w-full px-4 py-3 text-black bg-slate-50 rounded-xl font-bold"
                         />
                         {errors.phone && <p className="text-[9px] text-red-500">{errors.phone.message}</p>}
                     </div>

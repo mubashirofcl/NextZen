@@ -50,7 +50,7 @@ const ResetPassword = () => {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-black/20 font-sans selection:bg-[#7a6af6]/20">
+        <div className="flex flex-col min-h-screen bg-black/20 font-sans selection:bg-[#7a6af6]/20 mt-20">
             <Header />
             <main className="flex-grow flex items-center justify-center py-12 px-4">
                 <div className="max-w-[380px] w-full bg-white border border-gray-100 shadow-[0_15px_40px_rgba(0,0,0,0.04)] rounded-[2rem] p-8 md:p-10 text-center transition-all">
@@ -88,7 +88,7 @@ const ResetPassword = () => {
                             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 ml-1">Confirm Password</label>
                             <div className="relative">
                                 <input
-                                    type={showConfirmPass ? "text" : "password"} // Linked to showConfirmPass
+                                    type={showConfirmPass ? "text" : "password"} 
                                     placeholder="••••••••"
                                     {...register("confirmPassword", {
                                         validate: v => v === watch('password') || "Passwords do not match"
@@ -97,7 +97,7 @@ const ResetPassword = () => {
                                 />
                                 <button
                                     type="button"
-                                    onClick={() => setShowConfirmPass(!showConfirmPass)} // Toggle button for confirm field
+                                    onClick={() => setShowConfirmPass(!showConfirmPass)} 
                                     className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#7a6af6]"
                                 >
                                     {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}

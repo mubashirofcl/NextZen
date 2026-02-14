@@ -74,7 +74,6 @@ export const adminToast = {
         ));
     },
 
-    // Warning/Alert: Slate/Orange
     warn(title = "Attention Required", message = "") {
         baseAdminToast((id) => (
             <div className="bg-[#0F172A] border border-white/10 p-4 mb-4 rounded-[20px] shadow-2xl flex items-center gap-4 pointer-events-auto min-w-[320px]">

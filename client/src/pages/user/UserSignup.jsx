@@ -50,7 +50,7 @@ const UserSignup = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-black/20 font-sans">
-            <main className="flex-grow flex items-center justify-center py-8 px-4 ">
+            <main className="flex-grow flex items-center justify-center py-8 px-4 text-black">
                 <div className="max-w-[900px] w-full flex bg-white/60 shadow-2xl rounded-2xl overflow-hidden min-h-[580px]">
 
                     <div className="hidden lg:block lg:w-[42%] relative">

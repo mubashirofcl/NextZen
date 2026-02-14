@@ -5,7 +5,7 @@ const GlobalLoader = ({ message = "Synchronizing with Cloud Systems..." }) => {
     return (
         <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-md">
             {/* Main Container */}
-            <div className="bg-white p-10 rounded-[40px] shadow-2xl flex flex-col items-center border border-white/20 animate-in fade-in zoom-in duration-300">
+            <div className=" p-10 rounded-[40px] shadow-2xl flex flex-col items-center border border-white/20 animate-in fade-in zoom-in duration-300">
                 
                 {/* Animated Spinner Core */}
                 <div className="relative flex items-center justify-center mb-8">

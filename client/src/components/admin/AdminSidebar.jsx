@@ -2,15 +2,29 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logoutAdmin } from "../../store/admin/authSlice";
-import { LayoutDashboard, ShoppingBag, Users, Wallet, Tag, Settings, BarChart3, Package, ChevronDown, LogOut, TicketPercent, MessageSquare, FileText } from "lucide-react";
+import { 
+    LayoutDashboard, 
+    Users, 
+    Wallet, 
+    Settings, 
+    BarChart3, 
+    Package, 
+    ChevronDown, 
+    LogOut, 
+    TicketPercent, 
+    MessageSquare, 
+    FileText, 
+    ShoppingBag // Added for Orders
+} from "lucide-react";
 
 const AdminSidebar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const dispatch = useDispatch();
 
+    // 1. Updated state to handle the Order menu toggle
     const [openMenus, setOpenMenus] = useState({
-        products: location.pathname.includes("/admin/products") || location.pathname.includes("/admin/category"),
+        products: location.pathname.includes("/admin/products") || location.pathname.includes("/admin/category") || location.pathname.includes("/admin/brand"),
         orders: location.pathname.includes("/admin/orders"),
     });
 
@@ -31,8 +45,14 @@ const AdminSidebar = () => {
             </div>
 
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-                <NavItem icon={<LayoutDashboard size={16} />} label="Dashboard" active={isActive("/admin/dashboard")} onClick={() => navigate("/admin/dashboard")} />
+                <NavItem 
+                    icon={<LayoutDashboard size={16} />} 
+                    label="Dashboard" 
+                    active={isActive("/admin/dashboard")} 
+                    onClick={() => navigate("/admin/dashboard")} 
+                />
 
+                {/* --- PRODUCTS SECTION --- */}
                 <DropdownItem
                     icon={<Package size={16} />}
                     label="Products"
@@ -43,6 +63,20 @@ const AdminSidebar = () => {
                         { label: "Add Product", path: "/admin/products/add" },
                         { label: "Categories", path: "/admin/category" },
                         { label: "Brand", path: "/admin/brand" }
+                    ]}
+                    navigate={navigate}
+                    currentPath={location.pathname}
+                />
+
+                {/* --- 2. NEW ORDERS SECTION --- */}
+                <DropdownItem
+                    icon={<ShoppingBag size={16} />}
+                    label="Orders"
+                    isOpen={openMenus.orders}
+                    onClick={() => toggleMenu("orders")}
+                    subItems={[
+                        { label: "Order List", path: "/admin/orders" },
+                        { label: "Returns", path: "/admin/orders/returns" }
                     ]}
                     navigate={navigate}
                     currentPath={location.pathname}

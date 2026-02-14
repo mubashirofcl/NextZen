@@ -38,6 +38,15 @@ import ProductForm from "./pages/admin/ProductForm.jsx";
 import BrandManagement from "./pages/admin/BrandManagement.jsx";
 import Shop from "./pages/user/Shop.jsx";
 import ProductDetails from "./pages/user/ProductDetails.jsx";
+import CartPage from "./pages/user/CartPage.jsx";
+import WishlistPage from "./pages/user/WishlistPage.jsx";
+import CheckoutPage from "./pages/user/CheckoutPage.jsx";
+import OrderSuccessPage from "./components/user/OrderSuccessPage.jsx";
+import OrderHistory from "./pages/user/OrderHistory.jsx";
+import OrderDetailPage from "./pages/user/OrderDetailPage.jsx";
+import AdminOrderListing from "./pages/admin/AdminOrderListing.jsx";
+import AdminOrderDetail from "./pages/admin/AdminOrderDetail.jsx";
+import AdminReturnRequests from "./pages/admin/AdminReturnRequests.jsx";
 
 
 
@@ -97,7 +106,7 @@ export const App = () => {
           style: {
             borderRadius: '1rem',
             border: '1px solid #f1f5f9',
-            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)',
+            boxShadow: '0 10px 1px -3px rgba(0,0,0,0.05)',
           },
         }}
       />
@@ -123,11 +132,19 @@ export const App = () => {
               <Route path="add" element={<ProductForm />} />
               <Route path="edit/:id" element={<ProductForm />} />
             </Route>
-          </Route>
 
+            {/* --- 📦 ORDER MANAGEMENT --- */}
+            <Route path="orders">
+              <Route index element={<AdminOrderListing />} />
+              <Route path=":id" element={<AdminOrderDetail />} />
+              <Route path="returns" element={<AdminReturnRequests />} />
+            </Route>
+
+          </Route>
 
           <Route path="*" element={<Navigate to="/admin/login" replace />} />
         </Routes>
+
       ) : (
         /* ================= USER SIDE ================= */
         <MainLayout>
@@ -147,11 +164,22 @@ export const App = () => {
             <Route path="/verify-otp" element={<OTPVerification />} />
 
             <Route element={<UserProtectedRoute />}>
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/wishlist" element={<WishlistPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/checkout/success/:orderId" element={<OrderSuccessPage />} />
+
+
               <Route path="/profile" element={<ProfileLayout />}>
                 <Route index element={<Navigate to="info" replace />} />
                 <Route path="info" element={<PersonalInfo />} />
                 <Route path="changePassword" element={<ChangePasswordModal />} />
                 <Route path="address" element={<Addresses />} />
+
+                {/* NEW: Order Management Routes */}
+                <Route path="orders" element={<OrderHistory />} />
+                <Route path="/profile/orders/:orderId" element={<OrderDetailPage />} />
+
               </Route>
             </Route>
 

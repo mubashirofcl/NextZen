@@ -1,10 +1,14 @@
 import React from 'react';
-import { Star, ArrowUpRight, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Star, ArrowUpRight, ShoppingBag, ArrowRight, Loader2, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
 import { useProducts } from "../../hooks/user/useProducts";
 import { useUserCategories } from '../../hooks/user/useUserCategories';
+import { useCart } from '../../hooks/user/useCart';
+import { useSelector } from 'react-redux';
+import { nxToast } from '../../utils/userToast';
+import { useWishlist } from '../../hooks/user/useWishlist';
 
 /* ---------------- INDUSTRIAL RIB COMPONENT ---------------- */
 const NewCollectionRib = ({ rotation, top, text = "NEW COLLECTION" }) => (
@@ -47,10 +51,8 @@ const Home = () => {
     };
 
     return (
-        <div className="relative min-h-screen font-sans text-white selection:bg-[#7a6af6]/20 overflow-x-hidden pt-20 mt-15">
+        <div className="relative min-h-screen font-sans text-white selection:bg-[#7a6af6]/20 overflow-x-hidden pt-20">
             <Header />
-
-
 
             <section className="relative h-[65vh] md:h-[85vh] flex items-center justify-center mb-28 mt-4 overflow-hidden">
                 <div className="absolute inset-0 pointer-events-none z-20">
@@ -64,10 +66,8 @@ const Home = () => {
                         alt="Background"
                         className="w-full h-full object-cover"
                     />
-
                     <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-[#050505]/40" />
                 </div>
-
 
                 <div className="relative z-30 text-center select-none px-4">
                     <h1 className="text-[clamp(3.5rem,14vw,10rem)] font-black uppercase italic leading-[0.82] tracking-tighter text-white drop-shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
@@ -78,8 +78,6 @@ const Home = () => {
             </section>
 
             <main className="max-w-[1600px] mx-auto px-6 md:px-12 relative z-10">
-                
-                {/* --- CATEGORY GRID --- */}
                 <section className="w-full mb-32">
                     <div className="flex flex-wrap lg:flex-nowrap gap-6">
                         {!catLoading && categories.slice(0, 4).map((cat, index) => (
@@ -93,7 +91,6 @@ const Home = () => {
                     </div>
                 </section>
 
-                {/* --- FEATURED ARCHIVE --- */}
                 <section className="mb-32">
                     <div className="flex justify-between items-end mb-12 border-b border-white/10 pb-8">
                         <div className="space-y-2">
@@ -114,7 +111,6 @@ const Home = () => {
                     </div>
                 </section>
 
-                {/* --- MARQUEE --- */}
                 <div className="w-[150vw] -ml-[25vw] border-y border-white/5 bg-white/[0.01] py-6 overflow-hidden flex font-black text-[12px] tracking-[0.6em] uppercase mb-32 italic">
                     <div className="flex items-center gap-16 animate-marquee shrink-0">
                         {[...Array(10)].map((_, i) => (
@@ -126,7 +122,6 @@ const Home = () => {
                     </div>
                 </div>
 
-                {/* --- LATEST SEGMENTS --- */}
                 <section className="p-12 md:p-20 backdrop-blur-3xl bg-white/[0.01] border border-white/5 rounded-[4rem] mb-32 shadow-[0_40px_100px_rgba(0,0,0,0.5)] relative overflow-hidden">
                     <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#7a6af6]/5 blur-[120px] rounded-full" />
                     <div className="flex justify-between items-center mb-16 relative z-10">
@@ -163,7 +158,7 @@ const CategoryTile = ({ title, img, onClick }) => (
         <img
             src={img}
             alt={title}
-            className="w-full h-full object-cover transition-all duration-1000 scale-105 group-hover:scale-110  group-hover:grayscale-0 opacity-40 group-hover:opacity-100"
+            className="w-full h-full object-cover transition-all duration-1000 scale-105 group-hover:scale-110 opacity-40 group-hover:opacity-100"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col justify-end p-10">
             <div className="mb-6">
@@ -178,24 +173,92 @@ const CategoryTile = ({ title, img, onClick }) => (
         </div>
     </div>
 );
-
 const StandardProductCard = ({ prod, tag }) => {
     const navigate = useNavigate();
+    const { toggle, wishlist } = useWishlist();
+    const { isAuthenticated } = useSelector((state) => state.userAuth);
+
+    // 1. Unified ID Detection
+    const pId = prod._id?.toString();
+    const vId = (prod.variantId?._id || prod.variantId || prod.variants?.[0]?._id)?.toString();
+
+    // 2. Normalized Wishlist Check
+    // We convert everything to strings to ensure the comparison is 100% accurate
+    const isWishlisted = wishlist?.some(p => {
+        const wishProductId = (p.productId?._id || p.productId)?.toString();
+        const wishVariantId = (p.variantId?._id || p.variantId)?.toString();
+        return wishProductId === pId && wishVariantId === vId;
+    });
+
+    const handleWishlistToggle = (e) => {
+        e.stopPropagation();
+
+        if (!isAuthenticated) {
+            return nxToast.security("Access Denied", "Please login to archive items.");
+        }
+
+        if (!pId || !vId) {
+            return nxToast.security("Protocol Error", "Asset data missing.");
+        }
+
+        toggle.mutate({
+            productId: pId,
+            variantId: vId
+        }, {
+            // Note: Use destructuring { data } to get the backend response directly
+            onSuccess: ({ data }) => {
+                // Now data refers to { success: true, action: 'added' }
+                if (data.action === 'added') {
+                    nxToast.success("Secured in Wishlist", "Item added to your archive manifest.");
+                } else {
+                    nxToast.success("Removed from Wishlist", "Item removed from your archive.");
+                }
+            },
+            onError: (err) => {
+                nxToast.security("Sync Error", err.response?.data?.message || "Communication failed.");
+            }
+        });
+    };
+
     return (
         <div className="group cursor-pointer" onClick={() => navigate(`/product/${prod._id}`)}>
             <div className="relative aspect-[3/4] mb-6 overflow-hidden rounded-[2rem] bg-white/[0.02] border border-white/5 transition-all duration-500 hover:border-[#7a6af6]/40">
-                <img src={prod.thumbnail} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90 group-hover:opacity-100" />
-                <div className="absolute top-6 right-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
-                    <div className="bg-white p-4 rounded-2xl shadow-2xl hover:bg-[#7a6af6] hover:text-white transition-colors">
-                        <ShoppingBag size={18} className="text-black group-hover:text-white" />
-                    </div>
+                <img
+                    src={prod.thumbnail}
+                    alt={prod.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90 group-hover:opacity-100"
+                />
+
+                <div className="absolute top-6 right-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 z-30">
+                    <button
+                        onClick={handleWishlistToggle}
+                        disabled={toggle.isPending}
+                        className={`p-4 rounded-2xl shadow-2xl transition-all active:scale-90 border backdrop-blur-md ${isWishlisted
+                                ? 'bg-red-500 border-red-500 text-white'
+                                : 'bg-white border-white text-black hover:bg-[#7a6af6] hover:border-[#7a6af6] hover:text-white'
+                            }`}
+                    >
+                        {toggle.isPending ? (
+                            <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                            <Heart size={18} className={isWishlisted ? "fill-white" : ""} />
+                        )}
+                    </button>
                 </div>
+
                 <div className="absolute bottom-6 left-6 bg-black/60 backdrop-blur-md text-[#7a6af6] text-[8px] font-black px-5 py-2 rounded-full uppercase tracking-[0.2em] border border-white/10 shadow-2xl">
                     {tag}
                 </div>
             </div>
+
             <div className="space-y-2 px-3">
-                <h4 className="text-[13px] font-black text-white/60 uppercase tracking-tighter truncate italic group-hover:text-white transition-colors">{prod.name}</h4>
+                <div className="flex justify-between items-start">
+                    <h4 className="text-[13px] font-black text-white/60 uppercase tracking-tighter truncate italic group-hover:text-white transition-colors">
+                        {prod.name}
+                    </h4>
+                    <ArrowUpRight size={14} className="text-white/10 group-hover:text-[#7a6af6] transition-colors" />
+                </div>
+
                 <div className="flex items-center gap-4">
                     <p className="text-[18px] font-black text-[#7a6af6] italic">₹{prod.minSalePrice || prod.minPrice}</p>
                     {prod.minPrice > prod.minSalePrice && (
