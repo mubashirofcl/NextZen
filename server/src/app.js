@@ -22,6 +22,7 @@ import userBrandRoutes from "./modules/user/brand/brand.routes.js";
 import cartRoutes from "./modules/user/cart/cart.routes.js";
 import wishlistRoutes from "./modules/user/wishlist/wishlist.routes.js";
 import orderRoutes from "./modules/user/order/order.routes.js";
+import paymentRoutes from "./modules/user/payment/payment.routes.js";
 
 const app = express();
 
@@ -59,17 +60,17 @@ app.use("/api/brands", userBrandRoutes);
 app.use("/api/user/cart", cartRoutes);
 app.use("/api/user/wishlist", wishlistRoutes);
 app.use("/api/users/orders", (req, res, next) => {
-    console.log("Entering Order Routes...");
-    next();
+  next();
 }, orderRoutes);
+app.use("/api/user/payment", paymentRoutes);
 
-// 3. GLOBAL ERROR HANDLER (This MUST be the last middleware)
+
+
 app.use((err, req, res, next) => {
   console.error("🔥 Server Error:", err.message);
 
   const statusCode = err.statusCode || 500;
 
-  // This ensures the response is ALWAYS JSON
   res.status(statusCode).json({
     success: false,
     message: err.message || "Internal Server Error",

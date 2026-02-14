@@ -30,10 +30,11 @@ export const getOrderDetail = async (req, res) => {
     }
 };
 
+// 🟢 FIX 1: Update Manifest (General Status Updates)
 export const updateAdminManifest = async (req, res, next) => {
     try {
         const orderId = req.params.orderId || req.params.id;
-        const { globalStatus, itemId, itemStatus } = req.body;
+        const { globalStatus, itemId, itemStatus, paymentStatus } = req.body; // Added paymentStatus support
 
         if (!orderId) {
             return res.status(400).json({ success: false, message: "Server Error: Order ID missing." });
@@ -42,13 +43,24 @@ export const updateAdminManifest = async (req, res, next) => {
         const order = await Order.findById(orderId);
         if (!order) return res.status(404).json({ success: false, message: "Order not found." });
 
+        // 1. Manual Payment Status Update (Optional Override)
+        if (paymentStatus) {
+            order.paymentStatus = paymentStatus;
+        }
+
+        // 2. Global Status Update
         if (globalStatus) {
             const normalizedGlobal = globalStatus.toLowerCase();
             order.status = normalizedGlobal;
 
+            // Auto-update Payment for COD Delivery
+            if (normalizedGlobal === 'delivered' && order.paymentMethod === 'cashOnDelivery') {
+                order.paymentStatus = 'Paid';
+            }
+
             order.items.forEach(item => {
                 const s = item.status;
-
+                // Don't override finalized states
                 if (!["Cancelled", "Returned", "Return Approved", "Return Rejected"].includes(s)) {
                     if (normalizedGlobal === "confirmed") item.status = "Placed";
                     else if (normalizedGlobal === "shipped") item.status = "Shipped";
@@ -59,11 +71,10 @@ export const updateAdminManifest = async (req, res, next) => {
             });
         }
 
+        // 3. Item Status Update
         if (itemId && itemStatus) {
             const item = order.items.id(itemId);
-
             if (item) {
-
                 const statusMap = {
                     'return requested': 'Return Requested',
                     'return approved': 'Return Approved',
@@ -76,11 +87,13 @@ export const updateAdminManifest = async (req, res, next) => {
                 };
 
                 const targetStatus = statusMap[itemStatus.toLowerCase()] || itemStatus;
+                const oldStatus = item.status; // Track old status to prevent double stock
 
                 item.status = targetStatus;
                 item.actionDate = new Date();
 
-                if (targetStatus === 'Returned') {
+                // Restore Stock ONLY if moving to Returned/Cancelled from a consuming state
+                if (['Returned', 'Cancelled'].includes(targetStatus) && !['Returned', 'Cancelled'].includes(oldStatus)) {
                     await Variant.findOneAndUpdate(
                         { _id: item.variantId, "sizes.size": item.size },
                         { $inc: { "sizes.$.stock": item.quantity } }
@@ -89,15 +102,20 @@ export const updateAdminManifest = async (req, res, next) => {
             }
         }
 
+        // 4. 🟢 AGGREGATE CHECK: Handle Order Closure & Refunds
         const allItems = order.items;
-        const isFullyReturned = allItems.length > 0 && allItems.every(i => i.status === 'Returned');
+        const allCancelled = allItems.length > 0 && allItems.every(i => i.status === 'Cancelled');
+        const allReturnedOrCancelled = allItems.length > 0 && allItems.every(i => ['Returned', 'Cancelled'].includes(i.status));
 
-        const isFullyCancelled = allItems.length > 0 && allItems.every(i => i.status === 'Cancelled');
-
-        if (isFullyReturned) {
-            order.status = 'returned';
-        } else if (isFullyCancelled) {
+        if (allCancelled) {
             order.status = 'cancelled';
+        } else if (allReturnedOrCancelled) {
+            order.status = 'returned';
+        }
+
+        // If Order is effectively closed (Returned/Cancelled) AND was Paid -> Refund
+        if ((order.status === 'returned' || order.status === 'cancelled') && order.paymentStatus === 'Paid') {
+            order.paymentStatus = 'Refunded';
         }
 
         await order.save();
@@ -108,7 +126,7 @@ export const updateAdminManifest = async (req, res, next) => {
     }
 };
 
-
+// 🟢 FIX 2: Handle Return Approval (Specific Return Actions)
 export const handleReturnApproval = async (req, res, next) => {
     try {
         const { orderId, itemId, action, comment } = req.body;
@@ -119,6 +137,8 @@ export const handleReturnApproval = async (req, res, next) => {
         const item = order.items.id(itemId);
         if (!item) return res.status(404).json({ success: false, message: "Item not found" });
 
+        const oldStatus = item.status; // Track logic
+
         if (action === 'approve') {
             item.status = "Return Approved";
             item.adminComment = comment || "Return request verified.";
@@ -128,10 +148,26 @@ export const handleReturnApproval = async (req, res, next) => {
         } else if (action === 'complete') {
             item.status = "Returned";
 
-            await Variant.findOneAndUpdate(
-                { _id: item.variantId, "sizes.size": item.size },
-                { $inc: { "sizes.$.stock": item.quantity } }
-            );
+            // Restore Stock if not already done
+            if (oldStatus !== 'Returned') {
+                await Variant.findOneAndUpdate(
+                    { _id: item.variantId, "sizes.size": item.size },
+                    { $inc: { "sizes.$.stock": item.quantity } }
+                );
+            }
+        }
+
+        // 🟢 AGGREGATE CHECK: Handle Order Closure & Refunds
+        const allItems = order.items;
+        const allReturnedOrCancelled = allItems.length > 0 && allItems.every(i => ['Returned', 'Cancelled'].includes(i.status));
+
+        if (allReturnedOrCancelled) {
+            order.status = 'returned'; // If mix of Cancelled/Returned, usually 'returned' takes precedence for the order record
+
+            // Auto Refund Logic
+            if (order.paymentStatus === 'Paid') {
+                order.paymentStatus = 'Refunded';
+            }
         }
 
         await order.save();
@@ -141,6 +177,7 @@ export const handleReturnApproval = async (req, res, next) => {
     }
 };
 
+// User Side Return Request (No changes needed here for payment status, just status update)
 export const returnOrderItem = async (req, res, next) => {
     try {
         const { orderId, itemId } = req.params;

@@ -2,8 +2,8 @@ import React, { useState, useDeferredValue } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Search, Eye, ShoppingBag, Truck, XCircle, Clock,
-    FileText, CreditCard, ChevronLeft, ChevronRight
-} from "lucide-react"; // Added Chevrons
+    FileText, CreditCard, ChevronLeft, ChevronRight, AlertOctagon
+} from "lucide-react";
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import DataTable from "../../tables/admin/DataTable";
@@ -19,7 +19,7 @@ const AdminOrderListing = () => {
 
     const { data, isLoading: loading } = useAdminOrders({
         page,
-        limit: 6, // 🟢 FIX: Set Limit to 6 Items per page
+        limit: 6,
         search: deferredSearch,
         status: statusFilter
     });
@@ -31,6 +31,7 @@ const AdminOrderListing = () => {
         total: data?.totalOrders ?? 0,
     };
 
+    // 🟢 UPDATED: Included Payment Failed styles
     const getStatusStyles = (status) => {
         const s = status?.toLowerCase();
         switch (s) {
@@ -38,8 +39,9 @@ const AdminOrderListing = () => {
             case 'shipped': return "bg-blue-50 text-blue-600 border-blue-100";
             case 'out_for_delivery': return "bg-purple-50 text-purple-600 border-purple-100";
             case 'pending': return "bg-orange-50 text-orange-600 border-orange-100";
-            case 'cancelled': return "bg-red-50 text-red-600 border-red-100";
-            case 'return_requested': return "bg-amber-50 text-amber-600 border-amber-100 animate-pulse";
+            case 'cancelled': return "bg-slate-100 text-slate-500 border-slate-200";
+            case 'payment_failed': return "bg-red-50 text-red-600 border-red-100 animate-pulse";
+            case 'return_requested': return "bg-amber-50 text-amber-600 border-amber-100";
             default: return "bg-slate-50 text-slate-500 border-slate-100";
         }
     };
@@ -50,10 +52,9 @@ const AdminOrderListing = () => {
 
             <main className="flex-1 flex flex-col gap-3 h-[calc(100vh-24px)] overflow-hidden">
 
-                {/* --- HEADER --- */}
                 <header className="bg-white border border-slate-200 rounded-[20px] px-6 py-4 flex justify-between items-center shadow-sm shrink-0">
                     <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                        Terminal / <span className="text-[#0F172A] font-black">Global Manifests</span>
+                        Terminal / <span className="text-[#0F172A] font-black">Order Manifests</span>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -70,35 +71,33 @@ const AdminOrderListing = () => {
                         <select
                             value={statusFilter}
                             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                            className="bg-white border border-slate-200 text-[#0F172A] px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none transition-all shadow-sm cursor-pointer"
+                            className="bg-white border border-slate-200 text-[#0F172A] px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none transition-all shadow-sm cursor-pointer hover:border-[#7a6af6]"
                         >
                             <option value="all">All States</option>
                             <option value="pending">Pending</option>
                             <option value="shipped">Shipped</option>
-                            <option value="out_for_delivery">Out for Delivery</option>
                             <option value="delivered">Delivered</option>
                             <option value="cancelled">Cancelled</option>
+                            <option value="payment_failed">Payment Failed</option> {/* 🟢 Added Filter */}
                         </select>
                     </div>
                 </header>
 
                 <div className="flex-1 flex flex-col gap-3 overflow-hidden">
-                    {/* --- STATS --- */}
+                    {/* --- STATS (Including Failure Tracking) --- */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3 shrink-0">
                         <StatsCard title="Total Manifests" value={pagination.total} icon={<ShoppingBag size={18} />} color="blue" />
                         <StatsCard title="In Transit" value={orders.filter(o => o.status === 'shipped').length} icon={<Truck size={18} />} color="blue" />
                         <StatsCard title="Pending Action" value={orders.filter(o => o.status === 'pending').length} icon={<Clock size={18} />} color="orange" />
-                        <StatsCard title="Voided" value={orders.filter(o => o.status === 'cancelled').length} icon={<XCircle size={18} />} color="red" />
+                        <StatsCard title="Failed Payments" value={orders.filter(o => o.status === 'payment_failed').length} icon={<AlertOctagon size={18} />} color="red" /> {/* 🟢 Added Stat */}
                     </div>
 
-                    {/* --- TABLE CONTAINER --- */}
                     <div className="flex-1 bg-white rounded-[24px] shadow-sm border border-slate-200 overflow-hidden flex flex-col">
                         <div className="flex-1 overflow-y-auto custom-scrollbar">
                             <DataTable
                                 columns={["Manifest / ID", "Customer Entity", "Settlement", "Logistics State", "Timestamp", "Trace"]}
                                 data={orders}
                                 loading={loading}
-                                // We handle pagination externally below for better control
                                 pagination={null}
                                 renderRow={(order) => (
                                     <tr key={order._id} className="group hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-none">
@@ -138,7 +137,7 @@ const AdminOrderListing = () => {
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusStyles(order.status)}`}>
                                                 <div className="w-1 h-1 rounded-full bg-current mr-2 shadow-[0_0_5px_currentColor]" />
-                                                {order.status?.replace(/_/g, ' ')}
+                                                {order.status === 'payment_failed' ? 'FAILED' : order.status?.replace(/_/g, ' ')}
                                             </span>
                                         </td>
 
@@ -164,7 +163,6 @@ const AdminOrderListing = () => {
                             />
                         </div>
 
-                        {/* --- 🟢 FIXED FOOTER: SMART PAGINATION --- */}
                         <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                 Showing {orders.length} of {pagination.total} records
@@ -183,12 +181,10 @@ const AdminOrderListing = () => {
     );
 };
 
-// --- 🟢 NEW COMPONENT: SMART PAGINATION ---
 const SmartPagination = ({ currentPage, totalPages, onPageChange }) => {
-    // Logic to show [1, 2, ..., 8, 9, 10]
     const getPageNumbers = () => {
         const pages = [];
-        const maxVisible = 5; // Max buttons to show
+        const maxVisible = 5;
 
         if (totalPages <= maxVisible) {
             for (let i = 1; i <= totalPages; i++) pages.push(i);
@@ -209,7 +205,7 @@ const SmartPagination = ({ currentPage, totalPages, onPageChange }) => {
             <button
                 onClick={() => onPageChange(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-[#0F172A] hover:text-white hover:border-[#0F172A] transition-all disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-slate-500"
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-[#0F172A] hover:text-white transition-all disabled:opacity-50"
             >
                 <ChevronLeft size={14} />
             </button>
@@ -233,7 +229,7 @@ const SmartPagination = ({ currentPage, totalPages, onPageChange }) => {
             <button
                 onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-[#0F172A] hover:text-white hover:border-[#0F172A] transition-all disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-slate-500"
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-[#0F172A] hover:text-white transition-all disabled:opacity-50"
             >
                 <ChevronRight size={14} />
             </button>
@@ -241,7 +237,6 @@ const SmartPagination = ({ currentPage, totalPages, onPageChange }) => {
     );
 };
 
-// ... StatsCard Component (unchanged) ...
 const StatsCard = ({ title, value, icon, color }) => {
     const colors = {
         blue: "bg-blue-50 text-blue-600 border-blue-100",

@@ -41,12 +41,12 @@ import ProductDetails from "./pages/user/ProductDetails.jsx";
 import CartPage from "./pages/user/CartPage.jsx";
 import WishlistPage from "./pages/user/WishlistPage.jsx";
 import CheckoutPage from "./pages/user/CheckoutPage.jsx";
-import OrderSuccessPage from "./components/user/OrderSuccessPage.jsx";
 import OrderHistory from "./pages/user/OrderHistory.jsx";
 import OrderDetailPage from "./pages/user/OrderDetailPage.jsx";
 import AdminOrderListing from "./pages/admin/AdminOrderListing.jsx";
 import AdminOrderDetail from "./pages/admin/AdminOrderDetail.jsx";
 import AdminReturnRequests from "./pages/admin/AdminReturnRequests.jsx";
+import OrderStatusPage from "./components/user/OrderStatusPage.jsx";
 
 
 
@@ -167,8 +167,10 @@ export const App = () => {
               <Route path="/cart" element={<CartPage />} />
               <Route path="/wishlist" element={<WishlistPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/checkout/success/:orderId" element={<OrderSuccessPage />} />
 
+              <Route path="/checkout/success/:orderId" element={<OrderStatusPage type="success" />} />
+              <Route path="/payment-failed" element={<OrderStatusPage type="failed" />} />
+              <Route path="/payment-failed/:orderId" element={<OrderStatusPage type="failed" />} />
 
               <Route path="/profile" element={<ProfileLayout />}>
                 <Route index element={<Navigate to="info" replace />} />
@@ -176,16 +178,14 @@ export const App = () => {
                 <Route path="changePassword" element={<ChangePasswordModal />} />
                 <Route path="address" element={<Addresses />} />
 
-                {/* NEW: Order Management Routes */}
                 <Route path="orders" element={<OrderHistory />} />
-                <Route path="/profile/orders/:orderId" element={<OrderDetailPage />} />
-
+                <Route path="orders/:orderId" element={<OrderDetailPage />} />
               </Route>
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </MainLayout >
+        </MainLayout>
       )}
     </>
   );

@@ -82,7 +82,7 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 t">
 
                     <div>
                         <label className={labelClasses}>Current Credentials</label>
@@ -90,7 +90,7 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
                             <input
                                 type={showCurrent ? "text" : "password"}
                                 {...register("currentPassword", { required: "Current password is required" })}
-                                className={inputClasses(errors.currentPassword)}
+                                className={inputClasses(errors.currentPassword)} 
                                 placeholder="••••••••"
                             />
                             <button
@@ -131,7 +131,7 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
 
                     <div>
                         <label className={labelClasses}>Verify New Key</label>
-                        <div className="relative">
+                        <div className="relative text-black">
                             <input
                                 type={showConfirm ? "text" : "password"}
                                 {...register("confirmPassword", {

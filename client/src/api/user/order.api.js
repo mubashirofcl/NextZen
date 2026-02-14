@@ -29,3 +29,10 @@ export const returnOrderItemApi = async ({ orderId, itemId, reason }) => {
     const { data } = await userAxios.patch(`/users/orders/${orderId}/items/${itemId}/return`, { reason });
     return data;
 };
+
+export const completeRetryPaymentApi = async ({ orderId, paymentInfo }) => {
+    const { data } = await userAxios.patch(`/users/orders/${orderId}/complete-retry`, { 
+        paymentInfo 
+    });
+    return data;
+};
