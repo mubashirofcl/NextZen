@@ -10,7 +10,7 @@ import { useSelector } from 'react-redux';
 import { nxToast } from '../../utils/userToast';
 import { useWishlist } from '../../hooks/user/useWishlist';
 
-/* ---------------- INDUSTRIAL RIB COMPONENT ---------------- */
+
 const NewCollectionRib = ({ rotation, top, text = "NEW COLLECTION" }) => (
     <div
         className="absolute w-[180%] py-3 md:py-5 bg-[#8676ff] flex overflow-hidden whitespace-nowrap border-y border-black/20 z-20 shadow-[0_10px_40px_rgba(0,0,0,0.3)] select-none pointer-events-none"
@@ -71,8 +71,8 @@ const Home = () => {
 
                 <div className="relative z-30 text-center select-none px-4">
                     <h1 className="text-[clamp(3.5rem,14vw,10rem)] font-black uppercase italic leading-[0.82] tracking-tighter text-white drop-shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
-                        ARCHIVE STORE<br />
-                        <span className="text-transparent text-outline-white opacity-50">FOR YOUR SOUL</span>
+                        FOR YOUR SOUL<br />
+                        <span className="text-transparent text-outline-white opacity-50">ARCHIVE STORE</span>
                     </h1>
                 </div>
             </section>
@@ -173,22 +173,17 @@ const CategoryTile = ({ title, img, onClick }) => (
         </div>
     </div>
 );
+
 const StandardProductCard = ({ prod, tag }) => {
     const navigate = useNavigate();
-    const { toggle, wishlist } = useWishlist();
+
+    const { toggleWishlist, isInWishlist, isPending } = useWishlist();
     const { isAuthenticated } = useSelector((state) => state.userAuth);
 
-    // 1. Unified ID Detection
     const pId = prod._id?.toString();
     const vId = (prod.variantId?._id || prod.variantId || prod.variants?.[0]?._id)?.toString();
 
-    // 2. Normalized Wishlist Check
-    // We convert everything to strings to ensure the comparison is 100% accurate
-    const isWishlisted = wishlist?.some(p => {
-        const wishProductId = (p.productId?._id || p.productId)?.toString();
-        const wishVariantId = (p.variantId?._id || p.variantId)?.toString();
-        return wishProductId === pId && wishVariantId === vId;
-    });
+    const isWishlisted = isInWishlist(pId);
 
     const handleWishlistToggle = (e) => {
         e.stopPropagation();
@@ -201,23 +196,7 @@ const StandardProductCard = ({ prod, tag }) => {
             return nxToast.security("Protocol Error", "Asset data missing.");
         }
 
-        toggle.mutate({
-            productId: pId,
-            variantId: vId
-        }, {
-            // Note: Use destructuring { data } to get the backend response directly
-            onSuccess: ({ data }) => {
-                // Now data refers to { success: true, action: 'added' }
-                if (data.action === 'added') {
-                    nxToast.success("Secured in Wishlist", "Item added to your archive manifest.");
-                } else {
-                    nxToast.success("Removed from Wishlist", "Item removed from your archive.");
-                }
-            },
-            onError: (err) => {
-                nxToast.security("Sync Error", err.response?.data?.message || "Communication failed.");
-            }
-        });
+        toggleWishlist(pId, vId);
     };
 
     return (
@@ -232,13 +211,13 @@ const StandardProductCard = ({ prod, tag }) => {
                 <div className="absolute top-6 right-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 z-30">
                     <button
                         onClick={handleWishlistToggle}
-                        disabled={toggle.isPending}
+                        disabled={isPending}
                         className={`p-4 rounded-2xl shadow-2xl transition-all active:scale-90 border backdrop-blur-md ${isWishlisted
-                                ? 'bg-red-500 border-red-500 text-white'
-                                : 'bg-white border-white text-black hover:bg-[#7a6af6] hover:border-[#7a6af6] hover:text-white'
+                            ? 'bg-red-500 border-red-500 text-white'
+                            : 'bg-white border-white text-black hover:bg-[#7a6af6] hover:border-[#7a6af6] hover:text-white'
                             }`}
                     >
-                        {toggle.isPending ? (
+                        {isPending ? (
                             <Loader2 size={18} className="animate-spin" />
                         ) : (
                             <Heart size={18} className={isWishlisted ? "fill-white" : ""} />

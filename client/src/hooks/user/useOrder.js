@@ -4,7 +4,6 @@ import { placeCodOrderApi } from "../../api/user/order.api";
 import { nxToast } from "../../utils/userToast";
 import userAxios from "../../api/baseAxios";
 
-// 1. Hook for placing/creating orders
 export const useOrder = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -12,12 +11,12 @@ export const useOrder = () => {
     const placeOrder = useMutation({
         mutationFn: placeCodOrderApi,
         onSuccess: (data, variables) => {
-            // Force clear cart and order cache to refresh UI
+
             queryClient.invalidateQueries({ queryKey: ["cart"] });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
 
             if (variables.status === 'payment_failed') {
-                // Navigate to failure page with state
+  
                 navigate("/payment-failed", {
                     state: {
                         error: "Transaction not authorized.",
@@ -40,7 +39,6 @@ export const useOrder = () => {
     return { placeOrder };
 };
 
-// 2. Hook for fetching all orders (The missing export)
 export const useOrders = () => {
     return useQuery({
         queryKey: ["orders"],
@@ -53,7 +51,6 @@ export const useOrders = () => {
     });
 };
 
-// 3. Hook for fetching a single order detail
 export const useOrderDetail = (orderId) => {
     return useQuery({
         queryKey: ["order", orderId],
@@ -62,11 +59,10 @@ export const useOrderDetail = (orderId) => {
             return data.order;
         },
         enabled: !!orderId,
-        refetchInterval: 5000, // Sync status every 5 seconds
+        refetchInterval: 5000, 
     });
 };
 
-// 4. Hook for cancelling a specific item
 export const useCancelItem = () => {
     const queryClient = useQueryClient();
     return useMutation({
@@ -80,12 +76,11 @@ export const useCancelItem = () => {
             nxToast.success("Item Cancelled", "Stock restored to inventory.");
         },
         onError: (err) => {
-            nxToast.error("Cancel Failed", err.response?.data?.message || "Action blocked.");
+            nxToast.security("Cancel Failed", err.response?.data?.message || "Action blocked.");
         }
     });
 };
 
-// 5. Hook for returning a specific item
 export const useReturnItem = () => {
     const queryClient = useQueryClient();
     return useMutation({
@@ -101,7 +96,6 @@ export const useReturnItem = () => {
     });
 };
 
-// 6. Hook for cancelling the entire order
 export const useCancelFullOrder = () => {
     const queryClient = useQueryClient();
     return useMutation({

@@ -1,54 +1,55 @@
-import Wishlist from "./wishlist.model.js"; 
+import Wishlist from "./wishlist.model.js";
+import mongoose from "mongoose";
+
 
 export const toggleWishlist = async (userId, productId, variantId) => {
+    if (!productId) throw new Error("Product ID is required.");
 
-    if (!productId || !variantId) {
-        throw new Error("Archive protocol error: IDs required.");
+    // If no variantId is provided (Shop page), find the first available one
+    if (!variantId || variantId === productId) {
+        const Product = mongoose.model("Product");
+        const productData = await Product.findById(productId);
+        // Note: Make sure your Product model has a variants array or use Variant model to find
+        const Variant = mongoose.model("Variant");
+        const firstVariant = await Variant.findOne({ productId, isDeleted: false });
+        variantId = firstVariant?._id || null;
     }
 
     let wishlist = await Wishlist.findOne({ userId });
 
     if (!wishlist) {
-        console.log("⚠️ No wishlist found. Creating new one.");
         wishlist = new Wishlist({
             userId,
-            products: [{ productId, variantId }],
+            products: [{ productId, variantId: variantId || undefined }],
         });
         await wishlist.save();
         return { action: "added" };
     }
 
     const targetPid = String(productId);
-    const targetVid = String(variantId);
+    const targetVid = variantId ? String(variantId) : null;
 
     const index = wishlist.products.findIndex((item) => {
-        const dbPid = String(item.productId);
-        const dbVid = String(item.variantId);
-        
+        const dbPid = String(item.productId?._id || item.productId);
+        const dbVid = item.variantId ? String(item.variantId?._id || item.variantId) : null;
         return dbPid === targetPid && dbVid === targetVid;
     });
 
-    console.log("👉 Match Found at Index:", index);
-
     if (index > -1) {
-
         wishlist.products.splice(index, 1);
-        await wishlist.save();
-        return { action: "removed" };
     } else {
-
         wishlist.products.push({ productId, variantId });
-        await wishlist.save();
-        return { action: "added" };
     }
+
+    await wishlist.save();
+    return { action: index > -1 ? "removed" : "added" };
 };
 
 export const getUserWishlist = async (userId) => {
-
     const wishlist = await Wishlist.findOne({ userId })
         .populate({
             path: "products.productId",
-            select: "name isActive isDeleted description brand thumbnail",
+            select: "name isActive isDeleted description",
         })
         .populate({
             path: "products.variantId",
@@ -57,16 +58,19 @@ export const getUserWishlist = async (userId) => {
 
     if (!wishlist) return [];
 
-    const validItems = wishlist.products.filter(item => 
-        item.productId && item.variantId && 
-        !item.productId.isDeleted && !item.variantId.isDeleted
+    // Filter out items where the product or variant was deleted
+    const validItems = wishlist.products.filter(item =>
+        item.productId &&
+        !item.productId.isDeleted &&
+        (!item.variantId || !item.variantId.isDeleted)
     );
 
+    // Filter duplicates
     const unique = [];
     const seen = new Set();
-
     validItems.forEach(item => {
-        const id = `${item.productId._id}-${item.variantId._id}`;
+        const vKey = item.variantId?._id || "base";
+        const id = `${item.productId._id}-${vKey}`;
         if (!seen.has(id)) {
             seen.add(id);
             unique.push(item);
@@ -81,12 +85,12 @@ export const removeFromWishlist = async (userId, productId, variantId) => {
     if (!wishlist) return;
 
     const targetPid = String(productId);
-    const targetVid = String(variantId);
+    const targetVid = variantId ? String(variantId) : null;
 
     const originalLength = wishlist.products.length;
     wishlist.products = wishlist.products.filter(p => {
-        const pId = p.productId ? String(p.productId) : "";
-        const vId = p.variantId ? String(p.variantId) : "";
+        const pId = String(p.productId?._id || p.productId);
+        const vId = String(p.variantId?._id || p.variantId);
         return !(pId === targetPid && vId === targetVid);
     });
 

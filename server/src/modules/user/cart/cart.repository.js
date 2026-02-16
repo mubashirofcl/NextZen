@@ -1,6 +1,7 @@
 import Cart from "./cart.model.js";
 import Variant from "../../admin/productManagement/variant.model.js";
 
+// 🟢 ADD ITEM: Uses pure salePrice without tax considerations
 export const addItemToCart = async (userId, { productId, variantId, size, quantity = 1 }) => {
     let cart = await Cart.findOne({ userId });
     if (!cart) cart = new Cart({ userId, items: [] });
@@ -19,13 +20,17 @@ export const addItemToCart = async (userId, { productId, variantId, size, quanti
         if (!sizeData || sizeData.stock < 1) throw new Error("Size out of stock.");
 
         cart.items.push({
-            productId, variantId, size, quantity,
-            unitPrice: sizeData.salePrice
+            productId, 
+            variantId, 
+            size, 
+            quantity,
+            unitPrice: sizeData.salePrice // Pure Sale Price
         });
     }
     return await cart.save();
 };
 
+// 🟢 GET USER CART: Simplified math (No Tax)
 export const getUserCart = async (userId) => {
     const cart = await Cart.findOne({ userId })
         .populate('items.productId')
@@ -37,9 +42,7 @@ export const getUserCart = async (userId) => {
         const product = item.productId;
         const variant = item.variantId;
 
-        // If product is null, 'product?.name' is undefined, so it falls back to the string.
         const safeName = product?.name || "Archive Item";
-
         const sizeData = variant?.sizes?.find(s => s.size === item.size);
         const stockAvailable = sizeData?.stock || 0;
 
@@ -55,7 +58,6 @@ export const getUserCart = async (userId) => {
         } else if (!isLive) {
             conflictMsg = `${safeName} has been decommissioned.`;
         } else if (!hasStock) {
-
             conflictMsg = stockAvailable > 0
                 ? `Only ${stockAvailable} left for ${safeName}.`
                 : `${safeName} is out of stock.`;
@@ -70,12 +72,25 @@ export const getUserCart = async (userId) => {
         };
     });
 
-    const subtotal = processedItems.reduce((acc, i) => i.isCheckoutReady ? acc + (i.currentPrice * i.quantity) : acc, 0);
-    const totalMarketPrice = processedItems.reduce((acc, i) => i.isCheckoutReady ? acc + (i.marketPrice * i.quantity) : acc, 0);
+    // 🟢 Simplified Totals: Subtotal + Market Price Calculation
+    // Only includes items that are ready for checkout
+    const subtotal = processedItems.reduce((acc, i) => 
+        i.isCheckoutReady ? acc + (i.currentPrice * i.quantity) : acc, 0
+    );
 
-    return { items: processedItems, subtotal, totalMarketPrice, totalDiscount: totalMarketPrice - subtotal };
+    const totalMarketPrice = processedItems.reduce((acc, i) => 
+        i.isCheckoutReady ? acc + (i.marketPrice * i.quantity) : acc, 0
+    );
+
+    return { 
+        items: processedItems, 
+        subtotal, 
+        totalMarketPrice, 
+        totalDiscount: totalMarketPrice - subtotal 
+    };
 };
 
+// 🟢 UPDATE QUANTITY
 export const updateItemQuantity = async (userId, itemId, action) => {
     const cart = await Cart.findOne({ userId });
     const item = cart.items.id(itemId);
@@ -92,10 +107,20 @@ export const updateItemQuantity = async (userId, itemId, action) => {
     return await cart.save();
 };
 
+// 🟢 REMOVE ITEM
 export const removeItem = async (userId, itemId) => {
-    return await Cart.findOneAndUpdate({ userId }, { $pull: { items: { _id: itemId } } }, { new: true });
+    return await Cart.findOneAndUpdate(
+        { userId }, 
+        { $pull: { items: { _id: itemId } } }, 
+        { new: true }
+    );
 };
 
+// 🟢 CLEAR CART
 export const clearUserCart = async (userId) => {
-    return await Cart.findOneAndUpdate({ userId }, { $set: { items: [] } }, { new: true });
+    return await Cart.findOneAndUpdate(
+        { userId }, 
+        { $set: { items: [] } }, 
+        { new: true }
+    );
 };

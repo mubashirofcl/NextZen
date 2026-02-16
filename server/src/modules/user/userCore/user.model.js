@@ -57,7 +57,7 @@ const userSchema = new mongoose.Schema(
         blockedAt: {
             type: Date
         },
-        refreshToken: { 
+        refreshToken: {
             type: String,
             select: false
         },
@@ -66,6 +66,17 @@ const userSchema = new mongoose.Schema(
         timestamps: true,
     }
 );
+
+userSchema.virtual('walletData', {
+    ref: 'Wallet',           // The name of your Wallet model
+    localField: '_id',       // The user ID stored in User model
+    foreignField: 'userId',  // The field in Wallet model that stores the User ID
+    justOne: true            // A user only has one wallet
+});
+
+// Ensure virtuals are included when converting to JSON
+userSchema.set('toJSON', { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
 
 const User = mongoose.model("User", userSchema);
 

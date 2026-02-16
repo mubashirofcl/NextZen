@@ -23,6 +23,7 @@ import cartRoutes from "./modules/user/cart/cart.routes.js";
 import wishlistRoutes from "./modules/user/wishlist/wishlist.routes.js";
 import orderRoutes from "./modules/user/order/order.routes.js";
 import paymentRoutes from "./modules/user/payment/payment.routes.js";
+import walletRoutes from './modules/user/wallet/wallet.routes.js';
 
 const app = express();
 
@@ -63,7 +64,7 @@ app.use("/api/users/orders", (req, res, next) => {
   next();
 }, orderRoutes);
 app.use("/api/user/payment", paymentRoutes);
-
+app.use('/api/users/wallet', walletRoutes);
 
 
 app.use((err, req, res, next) => {

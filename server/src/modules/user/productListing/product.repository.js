@@ -58,22 +58,18 @@ export const getProductsRepository = async (filters) => {
             },
         });
     }
-
-    // 4. Variant & Size Logic (Fix: Filter deleted variants early)
     pipeline.push(
         { $lookup: { from: "variants", localField: "_id", foreignField: "productId", as: "variants" } },
         { $unwind: "$variants" },
-        { $match: { "variants.isDeleted": false } }, // ONLY active variants
+        { $match: { "variants.isDeleted": false } }, 
         { $unwind: "$variants.sizes" }
     );
 
-    // 5. Size Filter
     if (size && size.length > 0) {
         const sizeArray = Array.isArray(size) ? size : size.split(",");
         pipeline.push({ $match: { "variants.sizes.size": { $in: sizeArray } } });
     }
 
-    // 6. Grouping & Price Calculation
     pipeline.push({
         $group: {
             _id: "$_id",
@@ -86,16 +82,12 @@ export const getProductsRepository = async (filters) => {
             isFeatured: { $first: "$isFeatured" },
             minSalePrice: { $min: "$variants.sizes.salePrice" },
             maxOriginalPrice: { $max: "$variants.sizes.originalPrice" },
-
-            // 🛡️ THE FIX: Keep the ID of the first active variant found
             variantId: { $first: "$variants._id" },
-
-            // Optional: If you want to support color switching on Home, keep all IDs
             allVariantIds: { $addToSet: "$variants._id" }
         },
     });
 
-    // 7. Price Range Filter
+
     const finalMatch = { minSalePrice: { $ne: null } };
     if (minPrice || maxPrice) {
         finalMatch.minSalePrice = {
@@ -105,14 +97,14 @@ export const getProductsRepository = async (filters) => {
     }
     pipeline.push({ $match: finalMatch });
 
-    // 8. Sorting
+
     let sortStage = { createdAt: -1 };
     if (sort === "price_asc") sortStage = { minSalePrice: 1 };
     else if (sort === "price_desc") sortStage = { minSalePrice: -1 };
     else if (sort === "name_asc") sortStage = { name: 1 };
     pipeline.push({ $sort: sortStage });
 
-    // 9. Pagination Facet
+
     pipeline.push({
         $facet: {
             data: [{ $skip: skip }, { $limit: Number(limit) }],

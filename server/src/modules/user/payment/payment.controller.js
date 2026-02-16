@@ -35,7 +35,6 @@ export const verifyRazorpayPayment = async (req, res) => {
             .digest("hex");
 
         if (expectedSignature === razorpay_signature) {
-            // Save to DB here using Payment Model if needed
             return res.status(200).json({ success: true, message: "Payment verified" });
         } else {
             return res.status(400).json({ success: false, message: "Invalid Signature" });

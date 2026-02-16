@@ -6,9 +6,16 @@ import { generateOTP, sendOTPEmail } from "../../../utils/otp.util.js";
 
 
 export const getUserMe = async (userId) => {
-    const user = await userRepo.findById(userId);
+    const user = await User.findById(userId)
+        .populate('walletData') 
+        .lean(); 
+
     if (!user) throw new Error("User not found");
-    return user;
+
+    return {
+        ...user,
+        walletBalance: user.walletData?.balance || 0
+    };
 };
 
 export const updateProfile = async (userId, payload) => {

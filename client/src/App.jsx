@@ -40,13 +40,14 @@ import Shop from "./pages/user/Shop.jsx";
 import ProductDetails from "./pages/user/ProductDetails.jsx";
 import CartPage from "./pages/user/CartPage.jsx";
 import WishlistPage from "./pages/user/WishlistPage.jsx";
-import CheckoutPage from "./pages/user/CheckoutPage.jsx";
+import CheckoutPage from './pages/user/CheckoutPage';
 import OrderHistory from "./pages/user/OrderHistory.jsx";
 import OrderDetailPage from "./pages/user/OrderDetailPage.jsx";
 import AdminOrderListing from "./pages/admin/AdminOrderListing.jsx";
 import AdminOrderDetail from "./pages/admin/AdminOrderDetail.jsx";
 import AdminReturnRequests from "./pages/admin/AdminReturnRequests.jsx";
 import OrderStatusPage from "./components/user/OrderStatusPage.jsx";
+import WalletDashboard from "./pages/user/WalletDashboard.jsx";
 
 
 
@@ -180,6 +181,8 @@ export const App = () => {
 
                 <Route path="orders" element={<OrderHistory />} />
                 <Route path="orders/:orderId" element={<OrderDetailPage />} />
+
+                <Route path="wallet" element={<WalletDashboard />} />
               </Route>
             </Route>
 

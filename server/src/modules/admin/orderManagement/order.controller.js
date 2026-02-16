@@ -1,6 +1,8 @@
 import Order from '../../user/order/order.model.js';
 import Variant from '../../admin/productManagement/variant.model.js';
 import * as orderRepository from './order.repository.js';
+import mongoose from 'mongoose';
+import { updateWalletBalance } from '../../user/wallet/wallet.service.js';
 
 export const getAllOrders = async (req, res) => {
     try {
@@ -30,103 +32,156 @@ export const getOrderDetail = async (req, res) => {
     }
 };
 
-// 🟢 FIX 1: Update Manifest (General Status Updates)
 export const updateAdminManifest = async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const orderId = req.params.orderId || req.params.id;
-        const { globalStatus, itemId, itemStatus, paymentStatus } = req.body; // Added paymentStatus support
+        const { globalStatus, itemId, itemStatus, paymentStatus } = req.body;
 
-        if (!orderId) {
-            return res.status(400).json({ success: false, message: "Server Error: Order ID missing." });
-        }
-
-        const order = await Order.findById(orderId);
+        const order = await Order.findById(orderId).session(session);
         if (!order) return res.status(404).json({ success: false, message: "Order not found." });
 
-        // 1. Manual Payment Status Update (Optional Override)
-        if (paymentStatus) {
-            order.paymentStatus = paymentStatus;
-        }
+        if (paymentStatus) order.paymentStatus = paymentStatus;
 
-        // 2. Global Status Update
         if (globalStatus) {
             const normalizedGlobal = globalStatus.toLowerCase();
+            const oldGlobalStatus = order.status;
             order.status = normalizedGlobal;
 
-            // Auto-update Payment for COD Delivery
             if (normalizedGlobal === 'delivered' && order.paymentMethod === 'cashOnDelivery') {
                 order.paymentStatus = 'Paid';
             }
 
-            order.items.forEach(item => {
-                const s = item.status;
-                // Don't override finalized states
-                if (!["Cancelled", "Returned", "Return Approved", "Return Rejected"].includes(s)) {
-                    if (normalizedGlobal === "confirmed") item.status = "Placed";
-                    else if (normalizedGlobal === "shipped") item.status = "Shipped";
-                    else if (normalizedGlobal === "out_for_delivery") item.status = "Shipped";
-                    else if (normalizedGlobal === "delivered") item.status = "Delivered";
-                    else if (normalizedGlobal === "cancelled") item.status = "Cancelled";
-                }
-            });
-        }
-
-        // 3. Item Status Update
-        if (itemId && itemStatus) {
-            const item = order.items.id(itemId);
-            if (item) {
-                const statusMap = {
-                    'return requested': 'Return Requested',
-                    'return approved': 'Return Approved',
-                    'return rejected': 'Return Rejected',
-                    'returned': 'Returned',
-                    'delivered': 'Delivered',
-                    'cancelled': 'Cancelled',
-                    'shipped': 'Shipped',
-                    'placed': 'Placed'
-                };
-
-                const targetStatus = statusMap[itemStatus.toLowerCase()] || itemStatus;
-                const oldStatus = item.status; // Track old status to prevent double stock
-
-                item.status = targetStatus;
-                item.actionDate = new Date();
-
-                // Restore Stock ONLY if moving to Returned/Cancelled from a consuming state
-                if (['Returned', 'Cancelled'].includes(targetStatus) && !['Returned', 'Cancelled'].includes(oldStatus)) {
-                    await Variant.findOneAndUpdate(
-                        { _id: item.variantId, "sizes.size": item.size },
-                        { $inc: { "sizes.$.stock": item.quantity } }
+            if (normalizedGlobal === 'cancelled' && oldGlobalStatus !== 'cancelled') {
+                if (order.paymentStatus === 'Paid') {
+                    await updateWalletBalance(
+                        order.userId,
+                        order.totalAmount,
+                        'credit',
+                        `Full refund for order cancellation by Admin #${order.orderNumber}`,
+                        order._id,
+                        { session }
                     );
+                    order.paymentStatus = 'Refunded';
                 }
+
+                for (const item of order.items) {
+                    if (item.status !== 'Cancelled') {
+                        item.status = 'Cancelled';
+                        await Variant.findOneAndUpdate(
+                            { _id: item.variantId, "sizes.size": item.size },
+                            { $inc: { "sizes.$.stock": item.quantity } },
+                            { session }
+                        );
+                    }
+                }
+            } else {
+                order.items.forEach(item => {
+                    if (!["Cancelled", "Returned", "Return Approved", "Return Rejected"].includes(item.status)) {
+                        if (normalizedGlobal === "confirmed") item.status = "Placed";
+                        else if (normalizedGlobal === "shipped") item.status = "Shipped";
+                        else if (normalizedGlobal === "delivered") item.status = "Delivered";
+                    }
+                });
             }
         }
 
-        // 4. 🟢 AGGREGATE CHECK: Handle Order Closure & Refunds
+        if (itemId && itemStatus) {
+            const item = order.items.id(itemId);
+            if (item) {
+                const oldItemStatus = item.status;
+                const targetItemStatus = itemStatus;
+
+                if (['Returned', 'Cancelled'].includes(targetItemStatus) && oldItemStatus !== targetItemStatus) {
+                    if (order.paymentStatus === 'Paid' || order.paymentStatus === 'Refunded') {
+                        await updateWalletBalance(
+                            order.userId,
+                            item.totalAmount,
+                            'credit',
+                            `Refund for item ${targetItemStatus.toLowerCase()}: ${item.productId?.name}`,
+                            order._id,
+                            { session }
+                        );
+                    }
+
+                    await Variant.findOneAndUpdate(
+                        { _id: item.variantId, "sizes.size": item.size },
+                        { $inc: { "sizes.$.stock": item.quantity } },
+                        { session }
+                    );
+                }
+
+                item.status = targetItemStatus;
+                item.actionDate = new Date();
+            }
+        }
+
         const allItems = order.items;
-        const allCancelled = allItems.length > 0 && allItems.every(i => i.status === 'Cancelled');
-        const allReturnedOrCancelled = allItems.length > 0 && allItems.every(i => ['Returned', 'Cancelled'].includes(i.status));
+        const totalItems = allItems.length;
+        const cancelledCount = allItems.filter(i => i.status === 'Cancelled').length;
+        const returnedCount = allItems.filter(i => i.status === 'Returned').length;
 
-        if (allCancelled) {
+        if (cancelledCount === totalItems) {
             order.status = 'cancelled';
-        } else if (allReturnedOrCancelled) {
+            if (order.paymentStatus === 'Paid') order.paymentStatus = 'Refunded';
+        } else if (returnedCount === totalItems || (cancelledCount + returnedCount === totalItems)) {
             order.status = 'returned';
+            if (order.paymentStatus === 'Paid') order.paymentStatus = 'Refunded';
         }
 
-        // If Order is effectively closed (Returned/Cancelled) AND was Paid -> Refund
-        if ((order.status === 'returned' || order.status === 'cancelled') && order.paymentStatus === 'Paid') {
-            order.paymentStatus = 'Refunded';
-        }
-
-        await order.save();
-        res.status(200).json({ success: true, message: "Order updated successfully." });
-
+        await order.save({ session });
+        await session.commitTransaction();
+        res.status(200).json({ success: true, message: "Ledger and Stock synchronized." });
     } catch (error) {
+        await session.abortTransaction();
         next(error);
+    } finally {
+        session.endSession();
     }
 };
 
-// 🟢 FIX 2: Handle Return Approval (Specific Return Actions)
+export const authorizeItemRefund = async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { orderId, itemId } = req.params;
+        const order = await Order.findById(orderId).session(session);
+        const item = order.items.id(itemId);
+
+        const itemTaxRefund = Math.round(item.totalAmount * 0.18);
+        const totalRefundToWallet = item.totalAmount + itemTaxRefund;
+
+        await updateWalletBalance(
+            order.userId,
+            totalRefundToWallet,
+            'credit',
+            `Refund (incl. GST) for: ${item.productId?.name}`,
+            order._id,
+            { session }
+        );
+
+        item.status = 'Returned';
+        item.actionDate = new Date();
+
+        const allSettled = order.items.every(i => ['Returned', 'Cancelled'].includes(i.status));
+        if (allSettled) {
+            order.status = 'returned';
+            order.paymentStatus = 'Refunded';
+        }
+
+        await order.save({ session });
+        await session.commitTransaction();
+        res.status(200).json({ success: true, message: "Refund with Tax Authorized" });
+    } catch (error) {
+        await session.abortTransaction();
+        next(error);
+    } finally {
+        session.endSession();
+    }
+};
+
+
 export const handleReturnApproval = async (req, res, next) => {
     try {
         const { orderId, itemId, action, comment } = req.body;
@@ -148,7 +203,6 @@ export const handleReturnApproval = async (req, res, next) => {
         } else if (action === 'complete') {
             item.status = "Returned";
 
-            // Restore Stock if not already done
             if (oldStatus !== 'Returned') {
                 await Variant.findOneAndUpdate(
                     { _id: item.variantId, "sizes.size": item.size },
@@ -157,14 +211,13 @@ export const handleReturnApproval = async (req, res, next) => {
             }
         }
 
-        // 🟢 AGGREGATE CHECK: Handle Order Closure & Refunds
+
         const allItems = order.items;
         const allReturnedOrCancelled = allItems.length > 0 && allItems.every(i => ['Returned', 'Cancelled'].includes(i.status));
 
         if (allReturnedOrCancelled) {
-            order.status = 'returned'; // If mix of Cancelled/Returned, usually 'returned' takes precedence for the order record
+            order.status = 'returned';
 
-            // Auto Refund Logic
             if (order.paymentStatus === 'Paid') {
                 order.paymentStatus = 'Refunded';
             }
@@ -177,7 +230,6 @@ export const handleReturnApproval = async (req, res, next) => {
     }
 };
 
-// User Side Return Request (No changes needed here for payment status, just status update)
 export const returnOrderItem = async (req, res, next) => {
     try {
         const { orderId, itemId } = req.params;

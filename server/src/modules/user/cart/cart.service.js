@@ -2,8 +2,8 @@ import Cart from "./cart.model.js";
 import Wishlist from "../wishlist/wishlist.model.js";
 import Product from "../../admin/productManagement/product.model.js";
 import Variant from "../../admin/productManagement/variant.model.js";
-import * as cartService from "./cart.service.js";
 
+// 🟢 ADD ITEM: Uses pure salePrice with no tax references
 export const addItemToCart = async (userId, { productId, variantId, size, quantity = 1 }) => {
     let cart = await Cart.findOne({ userId });
     if (!cart) cart = new Cart({ userId, items: [] });
@@ -28,13 +28,14 @@ export const addItemToCart = async (userId, { productId, variantId, size, quanti
             variantId,
             size,
             quantity,
-            unitPrice: sizeData.salePrice
+            unitPrice: sizeData.salePrice // Pure integer price
         });
     }
 
     return await cart.save();
 };
 
+// 🟢 GET USER CART: Simplified math (No Tax)
 export const getUserCart = async (userId) => {
     const cart = await Cart.findOne({ userId })
         .populate('items.productId')
@@ -55,11 +56,13 @@ export const getUserCart = async (userId) => {
 
         const readyForCheckout = isProductLive && isVariantLive && hasStock;
 
+        // Current price from DB (Sale Price)
         const itemPrice = sizeData?.salePrice || 0;
-        const marketPrice = sizeData?.marketPrice || sizeData?.salePrice || 0; 
+        // Market price from DB (Original Price)
+        const marketPrice = sizeData?.originalPrice || sizeData?.salePrice || 0;
 
         return {
-            ...item.toObject(), 
+            ...item.toObject(),
             currentPrice: itemPrice,
             marketPrice: marketPrice,
             currentStock: stockAvailable,
@@ -70,6 +73,7 @@ export const getUserCart = async (userId) => {
         };
     });
 
+    // 🟢 Pure Integer Summation
     const subtotal = processedItems.reduce((acc, i) => {
         return i.isCheckoutReady ? acc + (i.currentPrice * i.quantity) : acc;
     }, 0);
@@ -78,32 +82,30 @@ export const getUserCart = async (userId) => {
         return i.isCheckoutReady ? acc + (i.marketPrice * i.quantity) : acc;
     }, 0);
 
-    return { 
-        items: processedItems, 
-        subtotal, 
-        totalMarketPrice, 
-        totalDiscount: totalMarketPrice - subtotal 
+    return {
+        items: processedItems,
+        subtotal,
+        totalMarketPrice,
+        totalDiscount: totalMarketPrice - subtotal
     };
 };
 
-
+// 🟢 REMOVE ITEM
 export const removeItem = async (userId, itemId) => {
-
     const cart = await Cart.findOne({ userId });
     const item = cart?.items.id(itemId);
 
     if (!item) return { success: true };
 
-    const { productId, variantId } = item;
-
     await Cart.findOneAndUpdate(
         { userId },
         { $pull: { items: { _id: itemId } } }
-    )
+    );
 
     return { success: true };
 };
 
+// 🟢 CLEAR CART
 export const clearUserCart = async (userId) => {
     const cart = await Cart.findOne({ userId });
 

@@ -9,49 +9,67 @@ import { nxToast } from '../../utils/userToast';
 import { loadRazorpayScript } from '../../utils/loadRazorpay';
 
 const OrderStatusPage = ({ type = 'success' }) => {
-    const { orderId } = useParams(); // Works for both success and fail routes
+    const { orderId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
 
     // Data passed via navigate(..., { state: { ... } })
     const { error, razorpayOrderId, orderPayload, totalAmount } = location.state || {};
-    
+
     const isSuccess = type === 'success';
     const themeColor = isSuccess ? "#7a6af6" : "#ef4444";
     const statusLabel = isSuccess ? "Verified" : "Unsuccessful";
 
     const handleRetry = async () => {
-        // If we don't have the data from state, we can't retry securely here
-        if (!razorpayOrderId) {
-            nxToast.error("Session Expired", "Please restart from your bag.");
-            return navigate('/cart');
+        try {
+            // 🟢 SECURITY CHECK: We need the amount to create a fresh session
+            if (!totalAmount) {
+                nxToast.error("Session Expired", "Please restart from your history.");
+                return navigate('/profile/orders');
+            }
+
+            const isLoaded = await loadRazorpayScript();
+            if (!isLoaded) return nxToast.error("Gateway Offline");
+
+            // 🟢 FIX: Create a FRESH Razorpay Order to avoid "Something went wrong"
+            const { data: sessionData } = await userAxios.post("/user/payment/create-order", {
+                amount: totalAmount
+            });
+
+            if (!sessionData.success) return nxToast.error("Could not refresh session");
+
+            const options = {
+                key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+                amount: sessionData.order.amount,
+                currency: "INR",
+                name: "Next Zen Store",
+                description: "Re-attempting Payment",
+                order_id: sessionData.order.id, // Using the NEW ID
+                handler: async function (response) {
+                    try {
+                        const verifyRes = await userAxios.post("/user/payment/verify-payment", response);
+                        if (verifyRes.data.success) {
+                            const targetId = orderPayload?._id || orderId;
+
+                            // 🟢 FIX: Pass the NEW Razorpay ID so the backend can update the manifest
+                            await userAxios.patch(`/users/orders/${targetId}/complete-retry`, {
+                                paymentInfo: response,
+                                newRazorpayOrderId: sessionData.order.id
+                            });
+
+                            nxToast.success("Success", "Manifest Synchronized.");
+                            navigate(`/checkout/success/${targetId}`, { replace: true });
+                        }
+                    } catch (err) { nxToast.error("Sync Error"); }
+                },
+                theme: { color: themeColor },
+                modal: { ondismiss: () => nxToast.security("Retry Cancelled") }
+            };
+            const rzp = new window.Razorpay(options);
+            rzp.open();
+        } catch (err) {
+            nxToast.error("Gateway Error", "Failed to initialize retry.");
         }
-
-        const isLoaded = await loadRazorpayScript();
-        if (!isLoaded) return nxToast.error("Gateway Offline");
-
-        const options = {
-            key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-            amount: (totalAmount || 0) * 100,
-            currency: "INR",
-            name: "Next Zen Store",
-            order_id: razorpayOrderId,
-            handler: async function (response) {
-                try {
-                    const verifyRes = await userAxios.post("/user/payment/verify-payment", response);
-                    if (verifyRes.data.success) {
-                        // Use the ID from params if payload doesn't have it
-                        const targetId = orderPayload?._id || orderId;
-                        await userAxios.patch(`/users/orders/${targetId}/complete-retry`, { paymentInfo: response });
-                        nxToast.success("Success", "Manifest Synchronized.");
-                        navigate(`/checkout/success/${targetId}`, { replace: true });
-                    }
-                } catch (err) { nxToast.error("Sync Error"); }
-            },
-            theme: { color: themeColor },
-            modal: { ondismiss: () => nxToast.security("Retry Cancelled") }
-        };
-        new window.Razorpay(options).open();
     };
 
     const glassStyle = "bg-gradient-to-br from-white/[0.10] to-transparent backdrop-blur-2xl border border-white/10 shadow-2xl rounded-[2rem]";
@@ -60,7 +78,7 @@ const OrderStatusPage = ({ type = 'success' }) => {
         <div className="min-h-screen mt-12 text-white flex flex-col font-sans selection:bg-[#7a6af6]/30 overflow-hidden">
             <Header />
             <main className="flex-1 flex items-center justify-center w-full px-6 pt-20 pb-10 relative">
-                
+
                 <motion.div
                     animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.15, 0.1] }}
                     transition={{ duration: 8, repeat: Infinity }}
@@ -69,7 +87,7 @@ const OrderStatusPage = ({ type = 'success' }) => {
                 />
 
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`${glassStyle} max-w-[420px] w-full p-8 text-center space-y-8 relative overflow-hidden`}>
-                    
+
                     <motion.div
                         initial={{ top: "-100%" }} animate={{ top: "100%" }}
                         transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
@@ -83,7 +101,7 @@ const OrderStatusPage = ({ type = 'success' }) => {
                             className="absolute inset-0 border-2 rounded-full"
                             style={{ borderColor: themeColor }}
                         />
-                        {isSuccess ? 
+                        {isSuccess ?
                             <CheckCircle2 size={64} className="text-[#02faa7] relative z-10 drop-shadow-[0_0_15px_rgba(2,250,167,0.4)]" /> :
                             <XCircle size={64} className="text-red-500 relative z-10 drop-shadow-[0_0_15px_rgba(239,68,68,0.4)]" />
                         }
@@ -111,7 +129,7 @@ const OrderStatusPage = ({ type = 'success' }) => {
 
                     <div className="grid grid-cols-1 gap-2 pt-4 relative z-10">
                         {isSuccess ? (
-                            <button onClick={() => navigate(`/profile/orders/${orderId}`)} className="w-full py-4 bg-[#7a6af6] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2 hover:bg-white hover:text-black transition-all group shadow-xl">
+                            <button onClick={() => navigate(`/profile/orders/${orderId}`)} className="w-full py-4 bg-[#7a6af6] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.4em] flex items-center justify-center gap-2 hover:bg-white hover:text-black transition-all group shadow-xl">
                                 <FileText size={14} className="group-hover:rotate-12 transition-transform" /> View Manifest
                             </button>
                         ) : (

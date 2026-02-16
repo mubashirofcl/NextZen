@@ -18,7 +18,7 @@ const wishlistSchema = new mongoose.Schema(
         variantId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Variant",
-          required: true, 
+          required: false,
         },
         addedAt: {
           type: Date,

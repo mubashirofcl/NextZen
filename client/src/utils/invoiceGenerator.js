@@ -23,110 +23,101 @@ export const generateInvoice = (order) => {
     doc.setTextColor(...theme.accent);
     doc.setFont("helvetica", "bold");
     doc.text("OFFICIAL INVOICE // DEPLOYMENT MANIFEST", margin, cursorY);
-    
+
     cursorY += 8;
-    doc.setFontSize(26);
+    doc.setFontSize(24);
     doc.setTextColor(...theme.primary);
     doc.text("NEXTGEN", margin, cursorY);
     doc.setTextColor(...theme.accent);
-    doc.text("ARCHIVE.", margin + 48, cursorY);
+    doc.text("CLOTHING.", margin + 44, cursorY);
 
-    doc.setFontSize(10);
-    doc.setTextColor(...theme.muted);
-    doc.text("ORDER REFERENCE", 195, 20, { align: "right" });
-    
-    doc.setFontSize(12);
-    doc.setTextColor(...theme.primary);
-    const invoiceNum = order.orderNumber || order._id.slice(-8).toUpperCase();
-    doc.text(`#${invoiceNum}`, 195, 26, { align: "right" });
-    
     doc.setFontSize(9);
     doc.setTextColor(...theme.muted);
-    doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`, 195, 33, { align: "right" });
+    doc.text("ORDER REFERENCE", 195, 20, { align: "right" });
 
-    // Status Badge
+    doc.setFontSize(11);
+    doc.setTextColor(...theme.primary);
+    const invoiceNum = order.orderNumber || (order._id ? order._id.slice(-8).toUpperCase() : "NA");
+    doc.text(`#${invoiceNum}`, 195, 26, { align: "right" });
+
+    doc.setFontSize(8);
+    doc.setTextColor(...theme.muted);
+    doc.text(`DATE: ${new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()}`, 195, 32, { align: "right" });
+
     const statusLabel = (order.status === 'pending' ? 'PROCESSING' : order.status).toUpperCase();
     const statusColor = order.status === 'delivered' ? theme.success : theme.primary;
     doc.setFillColor(...statusColor);
-    doc.roundedRect(155, 38, 40, 7, 1, 1, 'F');
+    doc.roundedRect(165, 36, 30, 6, 0.5, 0.5, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    doc.text(statusLabel, 175, 42.5, { align: "center" });
+    doc.setFontSize(7);
+    doc.text(statusLabel, 180, 40.2, { align: "center" });
 
-    cursorY += 25;
+    cursorY += 28;
 
-    // --- ADDRESS SECTION ---
+    // --- ENTITY DETAILS ---
     doc.setDrawColor(...theme.border);
-    doc.setLineWidth(0.5);
+    doc.setLineWidth(0.1);
     doc.line(margin, cursorY, 195, cursorY);
     cursorY += 10;
+
+    const colWidth = 95;
     
+    // Left: Customer
     doc.setTextColor(...theme.muted);
     doc.setFontSize(7);
     doc.text("CUSTOMER ENTITY", margin, cursorY);
-    
-    cursorY += 5;
     doc.setTextColor(...theme.primary);
-    doc.setFontSize(10);
-    doc.text((order.userId?.name || "Verified Customer").toUpperCase(), margin, cursorY);
-    
-    cursorY += 5;
-    doc.setTextColor(...theme.slate);
     doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.text(order.userId?.email || "", margin, cursorY);
+    doc.text((order.userId?.name || "Verified Customer").toUpperCase(), margin, cursorY + 5);
+    doc.setTextColor(...theme.slate);
+    doc.setFontSize(8);
+    doc.text(order.userId?.email || "", margin, cursorY + 9);
 
-    let rightColY = cursorY - 10;
-    const rightColX = 110;
+    // Right: Shipping
     doc.setTextColor(...theme.muted);
     doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.text("SHIPPING DESTINATION", rightColX, rightColY);
-    
-    rightColY += 5;
-    doc.setTextColor(...theme.primary);
-    doc.setFontSize(10);
+    doc.text("SHIPPING DESTINATION", margin + colWidth, cursorY);
     const addr = order.addressId || {};
-    doc.text((addr.fullName || "Recipient").toUpperCase(), rightColX, rightColY);
-    
-    rightColY += 5;
-    doc.setTextColor(...theme.slate);
+    doc.setTextColor(...theme.primary);
     doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
+    doc.text((addr.fullName || "Recipient").toUpperCase(), margin + colWidth, cursorY + 5);
+    doc.setTextColor(...theme.slate);
+    doc.setFontSize(8);
     const addressLines = [
-        addr.addressLine, 
-        `${addr.city}, ${addr.state}`, 
-        `PIN: ${addr.pincode}`, 
-        addr.mobile ? `Tel: +91 ${addr.mobile}` : null
+        addr.addressLine,
+        `${addr.city}, ${addr.state} - ${addr.pincode}`,
+        addr.mobile ? `TEL: +91 ${addr.mobile}` : null
     ].filter(Boolean);
-    
-    doc.text(addressLines, rightColX, rightColY);
-    cursorY = Math.max(cursorY, rightColY + (addressLines.length * 5)) + 10;
+    doc.text(addressLines, margin + colWidth, cursorY + 9);
 
-    // --- ACCURATE MATH ENGINE ---
-    const totalAmount = Number(order.totalAmount || 0);
-    const deliveryCharge = Number(order.deliveryCharge || 0);
-    const totalDiscount = Number(order.totalDiscount || 0);
-    
-    // Reverse calculating subtotal and tax assuming 18% GST (standard for your code)
-    const taxRate = 0.18;
-    const subTotalExclTax = (totalAmount - deliveryCharge) / (1 + taxRate);
-    const calculatedTax = (totalAmount - deliveryCharge) - subTotalExclTax;
+    cursorY += 30;
 
-    // --- ITEMS TABLE ---
+    // --- MATHEMATICAL ENGINE (THE ABSOLUTE FIX) ---
+    // 1. Force the Grand Total to be an integer (The Master Anchor)
+    const finalTotalValue = Math.round(Number(order.totalAmount || 0)); 
+    const shippingCost = Number(order.deliveryCharge || 0);
+    const discountAmount = Number(order.totalDiscount || 0);
+
+    // 2. Taxable block = Total paid minus shipping
+    const netTaxable = finalTotalValue - shippingCost;
+    
+    // 3. Subtotal = Integer of the division
+    const subtotalExclTax = Math.floor(netTaxable / 1.18); 
+    
+    // 4. Force Tax to be the exactly difference (Ensures: Subtotal + GST = netTaxable)
+    const calculatedGST = netTaxable - subtotalExclTax;
+
     const tableBody = order.items.map((item, index) => {
-        const itemTotal = Number(item.totalAmount || (item.price * item.quantity));
         const unitPrice = Number(item.price);
-        
+        const qty = Number(item.quantity);
+        const lineTotal = unitPrice * qty;
+
         return [
             index + 1,
-            { 
-                content: `${item.productId?.name || "Archive Asset"}\nSize: ${item.size}`, 
-                styles: { fontStyle: 'bold' } 
-            },
-            `INR ${unitPrice.toLocaleString()}`,
-            item.quantity,
-            { content: `INR ${itemTotal.toLocaleString()}`, styles: { halign: 'right', fontStyle: 'bold' } }
+            { content: `${item.productId?.name || "Archive Asset"}\nSIZE: ${item.size}`, styles: { fontStyle: 'bold' } },
+            `INR ${unitPrice.toLocaleString('en-IN')}`,
+            qty,
+            { content: `INR ${lineTotal.toLocaleString('en-IN')}`, styles: { halign: 'right' } }
         ];
     });
 
@@ -135,61 +126,47 @@ export const generateInvoice = (order) => {
         head: [["#", "DESCRIPTION", "UNIT PRICE", "QTY", "TOTAL"]],
         body: tableBody,
         theme: 'grid',
-        headStyles: { fillColor: theme.primary, textColor: 255, fontSize: 8, cellPadding: 4 },
-        bodyStyles: { fontSize: 9, textColor: theme.slate, cellPadding: 4 },
-        columnStyles: { 0: { cellWidth: 10, halign: 'center' }, 3: { halign: 'center' }, 4: { cellWidth: 40, halign: 'right' } },
+        headStyles: { fillColor: theme.primary, fontSize: 8, cellPadding: 3, lineWidth: 0 },
+        bodyStyles: { fontSize: 8, textColor: theme.slate, cellPadding: 3, lineWidth: 0.1, strokeColor: theme.border },
+        columnStyles: { 0: { cellWidth: 8, halign: 'center' }, 3: { halign: 'center' }, 4: { cellWidth: 35, halign: 'right' } },
     });
 
     // --- SUMMARY SECTION ---
-    let finalY = doc.lastAutoTable.finalY + 10;
-    const summaryLabelX = 130;
-    const summaryValueX = 195;
+    let finalY = doc.lastAutoTable.finalY + 8;
+    const summaryX = 140;
 
-    const addRow = (label, value, color = theme.slate, isBold = false) => {
-        doc.setFontSize(9);
+    const addSummaryRow = (label, value, color = theme.slate, isBold = false) => {
+        doc.setFontSize(8);
         doc.setFont("helvetica", isBold ? "bold" : "normal");
         doc.setTextColor(...theme.muted);
-        doc.text(label, summaryLabelX, finalY);
+        doc.text(label, summaryX, finalY);
         doc.setTextColor(...color);
-        doc.text(value, summaryValueX, finalY, { align: "right" });
-        finalY += 6;
+        doc.text(value, 195, finalY, { align: "right" });
+        finalY += 5;
     };
 
-    addRow("Subtotal (Excl. Tax)", `INR ${Math.round(subTotalExclTax).toLocaleString()}`);
-    addRow("Estimated GST (18%)", `INR ${Math.round(calculatedTax).toLocaleString()}`);
-    
-    if (totalDiscount > 0) {
-        addRow("Archive Savings", `- INR ${totalDiscount.toLocaleString()}`, theme.success, true);
-    }
+    addSummaryRow("Subtotal (Excl. Tax)", `INR ${subtotalExclTax.toLocaleString('en-IN')}`);
+    addSummaryRow("Estimated GST (18%)", `INR ${calculatedGST.toLocaleString('en-IN')}`);
+    if (discountAmount > 0) addSummaryRow("Archive Savings", `- INR ${discountAmount.toLocaleString('en-IN')}`, theme.success, true);
+    addSummaryRow("Shipping & Handling", shippingCost === 0 ? "FREE" : `INR ${shippingCost.toLocaleString('en-IN')}`);
 
-    addRow("Shipping & Handling", deliveryCharge === 0 ? "FREE" : `INR ${deliveryCharge.toLocaleString()}`);
-    
     finalY += 2;
     doc.setFillColor(...theme.primary);
-    doc.roundedRect(summaryLabelX - 5, finalY, 70, 12, 1, 1, 'F');
+    doc.rect(summaryX - 5, finalY, 195 - (summaryX - 5), 10, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text("TOTAL SETTLEMENT", summaryLabelX, finalY + 8);
-    doc.text(`INR ${totalAmount.toLocaleString()}`, summaryValueX, finalY + 8, { align: "right" });
+    doc.text("TOTAL SETTLEMENT", summaryX, finalY + 6.5);
+    doc.text(`INR ${finalTotalValue.toLocaleString('en-IN')}`, 193, finalY + 6.5, { align: "right" });
 
-    // --- FOOTER ---
-    const footerY = 275;
-    doc.setDrawColor(...theme.border);
+    const footerY = 270;
+
     doc.line(margin, footerY - 5, 195, footerY - 5);
-    
-    doc.setFontSize(8);
-    doc.setTextColor(...theme.primary);
-    doc.setFont("helvetica", "bold");
-    doc.text("PAYMENT INFORMATION", margin, footerY);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...theme.slate);
-    const payMethod = (order.paymentMethod === 'cashOnDelivery' ? 'Cash on Delivery' : 'Online / Razorpay').toUpperCase();
-    doc.text(`${payMethod} // STATUS: ${(order.paymentStatus || 'Pending').toUpperCase()}`, margin, footerY + 5);
-    
+    doc.setFontSize(7);
     doc.setTextColor(...theme.muted);
-    doc.text("This is a computer-generated document. No signature required.", 195, footerY + 5, { align: "right" });
+    const payMethod = (order.paymentMethod === 'cashOnDelivery' ? 'CASH ON DELIVERY' : 'ONLINE / RAZORPAY');
+    doc.text(`PAYMENT: ${payMethod} // STATUS: ${(order.paymentStatus || 'PAID').toUpperCase()}`, margin, footerY);
+    doc.text("This is a computer-generated document. No signature required.", 195, footerY, { align: "right" });
 
     doc.save(`INVOICE_${invoiceNum}.pdf`);
 };

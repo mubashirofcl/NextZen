@@ -66,7 +66,6 @@ export const validateCartForCheckout = async (req, res) => {
         const conflict = cartData.items.find(item => !item.isCheckoutReady);
 
         if (conflict) {
-
             return res.status(400).json({
                 success: false,
                 message: conflict.errorMessage || "Inventory conflict detected."
@@ -79,6 +78,7 @@ export const validateCartForCheckout = async (req, res) => {
     }
 };
 
+// 🟢 FIXED: PLACE ORDER (Tax-Free Version)
 export const placeOrder = async (req, res) => {
     try {
         const { totals, items, addressId, paymentMethod } = req.body;
@@ -87,15 +87,25 @@ export const placeOrder = async (req, res) => {
             return res.status(400).json({ success: false, message: "Manifest data incomplete." });
         }
 
+        // 🟢 Calculation Logic without Tax
+        // items should already have totalAmount = (price * quantity) from frontend
         const newOrder = new Order({
             userId: req.user.userId,
-            items,
+            // Processed items array will no longer contain item.tax fields from DB
+            items: items.map(item => ({
+                ...item,
+                tax: 0, // Explicitly zeroing out to match your decision
+                totalAmount: item.price * item.quantity 
+            })),
             addressId,
             paymentMethod,
+            subTotal: totals.subtotal, // Adding subtotal to match Schema
+            tax: 0, // Order level tax is now 0
             deliveryCharge: totals.deliveryCharge,
             totalMarketPrice: totals.totalMarketPrice,
             totalDiscount: totals.totalDiscount,
-            totalAmount: totals.totalAmount,
+            // 🟢 Final amount is pure Subtotal + Delivery - Discount
+            totalAmount: totals.totalAmount, 
             status: 'pending'
         });
 

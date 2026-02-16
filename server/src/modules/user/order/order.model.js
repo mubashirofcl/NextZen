@@ -4,7 +4,6 @@ const orderSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     addressId: { type: mongoose.Schema.Types.ObjectId, ref: "Address", required: true },
     orderNumber: { type: String, unique: true, required: true },
-    // 🟢 Required for Razorpay Retry to work without '400 Bad Request'
     razorpayOrderId: { type: String },
 
     status: {
@@ -16,7 +15,7 @@ const orderSchema = new mongoose.Schema({
     paymentMethod: { type: String, required: true },
     paymentStatus: {
         type: String,
-        enum: ["Pending", "Paid", "Refunded", "Failed"],
+        enum: ["Pending", "Paid", "Refunded", "Failed", "Cancelled"],
         default: "Pending"
     },
 

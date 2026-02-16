@@ -39,15 +39,16 @@ const ProfileLayout = () => {
     const isGoogleUser = Boolean(user?.googleId);
 
     return (
-        <div className="min-h-screen flex flex-col">
-            <Header />
+        <div className="h-screen w-full flex flex-col overflow-hidden">
+            <div className="shrink-0 z-50">
+                <Header />
+            </div>
 
-            <main className="flex-1 w-full  mx-auto pt-32 pb-24 px-4 sm:px-6 lg:px-8">
-                <div className="flex flex-col lg:flex-row gap-8">
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden pt-24">
+                <div className="flex-1 flex flex-col lg:flex-row gap-8 px-4 sm:px-6 lg:px-12 py-8 overflow-hidden">
 
-                    <aside className="w-full lg:w-[280px] flex-shrink-0 space-y-6">
-
-                        <div className="bg-white/10 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 text-center shadow-2xl">
+                    <aside className="w-full lg:w-[320px] shrink-0 flex flex-col gap-6 overflow-y-auto custom-scrollbar pb-6 lg:pb-0">
+                        <div className="bg-white/10 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 text-center shadow-2xl shrink-0">
                             <div className="relative w-24 h-24 mx-auto mb-4">
                                 <div className="w-full h-full rounded-full overflow-hidden border-2 border-[#7a6af6] p-1">
                                     {user?.profilePicture ? (
@@ -66,7 +67,7 @@ const ProfileLayout = () => {
                                         </div>
                                     )}
                                 </div>
-                                <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 border-4 border-black rounded-full" />
+                                <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 border-4 border-[#1e293b] rounded-full" />
                             </div>
 
                             <h2 className="text-lg font-black uppercase italic text-white tracking-tighter">
@@ -77,8 +78,7 @@ const ProfileLayout = () => {
                             </p>
                         </div>
 
-                        {/* Navigation Links */}
-                        <nav className="bg-white/[0.03] backdrop-blur-md border border-white/5 rounded-[2rem] p-4 space-y-2">
+                        <nav className="bg-white/[0.03] backdrop-blur-md border border-white/5 rounded-[2rem] p-4 space-y-2 shrink-0">
                             <ProfileNavLink to="info" icon={<User size={16} />} label="Profile" />
                             <ProfileNavLink to="address" icon={<MapPin size={16} />} label="Addresses" />
                             <ProfileNavLink to="orders" icon={<ShoppingBag size={16} />} label="Orders" />
@@ -96,19 +96,18 @@ const ProfileLayout = () => {
                         </nav>
                     </aside>
 
-                    {/* RIGHT CONTENT AREA: Dynamic Width */}
-                    <section className="flex-1 min-w-0">
-                        <Outlet
-                            context={{
-                                openChangePassword: () => setIsChangePasswordOpen(true),
-                                isGoogleUser,
-                            }}
-                        />
+                    <section className="flex-1 min-w-0 overflow-y-auto custom-scrollbar pr-2 pb-24">
+                        <div className="max-w-5xl">
+                            <Outlet
+                                context={{
+                                    openChangePassword: () => setIsChangePasswordOpen(true),
+                                    isGoogleUser,
+                                }}
+                            />
+                        </div>
                     </section>
                 </div>
             </main>
-
-            <Footer />
 
             <ChangePasswordModal
                 isOpen={isChangePasswordOpen}
