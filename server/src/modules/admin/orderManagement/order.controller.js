@@ -4,6 +4,7 @@ import * as orderRepository from './order.repository.js';
 import mongoose from 'mongoose';
 import { updateWalletBalance } from '../../user/wallet/wallet.service.js';
 
+// 1. GET ALL ORDERS
 export const getAllOrders = async (req, res) => {
     try {
         const result = await orderRepository.getAdminOrdersRepository(req.query);
@@ -19,19 +20,19 @@ export const getAllOrders = async (req, res) => {
     }
 };
 
+// 2. GET ORDER DETAILS
 export const getOrderDetail = async (req, res) => {
     try {
         const { id } = req.params;
         const data = await orderRepository.getOrderDetailRepository(id);
-        if (!data) {
-            return res.status(404).json({ success: false, message: "Manifest not found." });
-        }
+        if (!data) return res.status(404).json({ success: false, message: "Manifest not found." });
         res.status(200).json({ success: true, data });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
+// 3. UPDATE MANIFEST (Main Status & Refund Handler)
 export const updateAdminManifest = async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -44,6 +45,9 @@ export const updateAdminManifest = async (req, res, next) => {
 
         if (paymentStatus) order.paymentStatus = paymentStatus;
 
+        // ---------------------------------------------------------
+        // 🟢 A. GLOBAL STATUS UPDATE
+        // ---------------------------------------------------------
         if (globalStatus) {
             const normalizedGlobal = globalStatus.toLowerCase();
             const oldGlobalStatus = order.status;
@@ -53,19 +57,23 @@ export const updateAdminManifest = async (req, res, next) => {
                 order.paymentStatus = 'Paid';
             }
 
+            // Handle Full Cancellation by Admin
             if (normalizedGlobal === 'cancelled' && oldGlobalStatus !== 'cancelled') {
                 if (order.paymentStatus === 'Paid') {
+                    // Full refund includes delivery charge automatically via totalAmount
                     await updateWalletBalance(
                         order.userId,
-                        order.totalAmount,
+                        order.totalAmount, 
                         'credit',
                         `Full refund for order cancellation by Admin #${order.orderNumber}`,
                         order._id,
                         { session }
                     );
                     order.paymentStatus = 'Refunded';
+                    order.totalAmount = 0; // Clear balance
                 }
 
+                // Return Stock
                 for (const item of order.items) {
                     if (item.status !== 'Cancelled') {
                         item.status = 'Cancelled';
@@ -77,6 +85,7 @@ export const updateAdminManifest = async (req, res, next) => {
                     }
                 }
             } else {
+                // Sync Item statuses with Global status (unless already final)
                 order.items.forEach(item => {
                     if (!["Cancelled", "Returned", "Return Approved", "Return Rejected"].includes(item.status)) {
                         if (normalizedGlobal === "confirmed") item.status = "Placed";
@@ -87,17 +96,50 @@ export const updateAdminManifest = async (req, res, next) => {
             }
         }
 
+        // ---------------------------------------------------------
+        // 🟢 B. ITEM SPECIFIC STATUS UPDATE (REFUND LOGIC)
+        // ---------------------------------------------------------
         if (itemId && itemStatus) {
             const item = order.items.id(itemId);
             if (item) {
                 const oldItemStatus = item.status;
                 const targetItemStatus = itemStatus;
 
+                // Process Refund only if moving to Final State (Returned/Cancelled) AND it wasn't there before
                 if (['Returned', 'Cancelled'].includes(targetItemStatus) && oldItemStatus !== targetItemStatus) {
+                    
+                    // 1. Calculate Safe Totals & Coupon Fallback
+                    const safeSubTotal = order.subTotal || 0;
+                    const safeDelivery = order.deliveryCharge || 0;
+                    const calculatedDiscount = Math.max(0, (safeSubTotal + safeDelivery) - order.totalAmount);
+                    const actualCouponDiscount = order.couponDiscount !== undefined ? order.couponDiscount : calculatedDiscount;
+
+                    // 2. Calculate Item's Share of Coupon
+                    let itemDiscountShare = 0;
+                    if (actualCouponDiscount > 0 && safeSubTotal > 0) {
+                        itemDiscountShare = (item.totalAmount / safeSubTotal) * actualCouponDiscount;
+                    }
+
+                    // 3. Calculate Net Refund (Price - Coupon)
+                    let netRefund = item.totalAmount - itemDiscountShare;
+
+                    // 4. 🟢 LOGIC FIX: Delivery Refund Check
+                    // If Admin is CANCELLING (not returning) and it's the LAST item, refund delivery too.
+                    if (targetItemStatus === 'Cancelled') {
+                        const isShipped = ['shipped', 'out_for_delivery', 'delivered'].includes(order.status.toLowerCase());
+                        const otherActiveItems = order.items.filter(i => i._id.toString() !== itemId && i.status !== 'Cancelled');
+                        
+                        // If no other items left AND not shipped yet -> Refund Delivery
+                        if (otherActiveItems.length === 0 && !isShipped && safeDelivery > 0) {
+                            netRefund += safeDelivery;
+                        }
+                    }
+
+                    // 5. Process Wallet Transaction
                     if (order.paymentStatus === 'Paid' || order.paymentStatus === 'Refunded') {
                         await updateWalletBalance(
                             order.userId,
-                            item.totalAmount,
+                            netRefund,
                             'credit',
                             `Refund for item ${targetItemStatus.toLowerCase()}: ${item.productId?.name}`,
                             order._id,
@@ -105,11 +147,15 @@ export const updateAdminManifest = async (req, res, next) => {
                         );
                     }
 
+                    // 6. Return Stock
                     await Variant.findOneAndUpdate(
                         { _id: item.variantId, "sizes.size": item.size },
                         { $inc: { "sizes.$.stock": item.quantity } },
                         { session }
                     );
+
+                    // 7. Update Order Totals (Only reduce Balance)
+                    order.totalAmount = Math.max(0, order.totalAmount - netRefund);
                 }
 
                 item.status = targetItemStatus;
@@ -117,6 +163,7 @@ export const updateAdminManifest = async (req, res, next) => {
             }
         }
 
+        // 🟢 C. AUTO-UPDATE GLOBAL STATUS BASED ON ITEMS
         const allItems = order.items;
         const totalItems = allItems.length;
         const cancelledCount = allItems.filter(i => i.status === 'Cancelled').length;
@@ -141,6 +188,7 @@ export const updateAdminManifest = async (req, res, next) => {
     }
 };
 
+// 4. AUTHORIZE ITEM REFUND (Manual Override Endpoint)
 export const authorizeItemRefund = async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -149,20 +197,24 @@ export const authorizeItemRefund = async (req, res, next) => {
         const order = await Order.findById(orderId).session(session);
         const item = order.items.id(itemId);
 
-        const itemTaxRefund = Math.round(item.totalAmount * 0.18);
-        const totalRefundToWallet = item.totalAmount + itemTaxRefund;
+        // Standard Manual Refund (Tax Included logic if required, else use standard)
+        // Using standard item total here for manual overrides
+        const refundAmount = item.totalAmount;
 
         await updateWalletBalance(
             order.userId,
-            totalRefundToWallet,
+            refundAmount,
             'credit',
-            `Refund (incl. GST) for: ${item.productId?.name}`,
+            `Manual Refund Authorized: ${item.productId?.name}`,
             order._id,
             { session }
         );
 
         item.status = 'Returned';
         item.actionDate = new Date();
+        
+        // Update Balance
+        order.totalAmount = Math.max(0, order.totalAmount - refundAmount);
 
         const allSettled = order.items.every(i => ['Returned', 'Cancelled'].includes(i.status));
         if (allSettled) {
@@ -172,7 +224,7 @@ export const authorizeItemRefund = async (req, res, next) => {
 
         await order.save({ session });
         await session.commitTransaction();
-        res.status(200).json({ success: true, message: "Refund with Tax Authorized" });
+        res.status(200).json({ success: true, message: "Refund Authorized" });
     } catch (error) {
         await session.abortTransaction();
         next(error);
@@ -181,7 +233,7 @@ export const authorizeItemRefund = async (req, res, next) => {
     }
 };
 
-
+// 5. HANDLE RETURN APPROVAL (Status Tagging Only)
 export const handleReturnApproval = async (req, res, next) => {
     try {
         const { orderId, itemId, action, comment } = req.body;
@@ -192,51 +244,30 @@ export const handleReturnApproval = async (req, res, next) => {
         const item = order.items.id(itemId);
         if (!item) return res.status(404).json({ success: false, message: "Item not found" });
 
-        const oldStatus = item.status; // Track logic
-
         if (action === 'approve') {
             item.status = "Return Approved";
             item.adminComment = comment || "Return request verified.";
         } else if (action === 'reject') {
             item.status = "Return Rejected";
             item.adminComment = comment || "Return policy requirements not met.";
-        } else if (action === 'complete') {
-            item.status = "Returned";
-
-            if (oldStatus !== 'Returned') {
-                await Variant.findOneAndUpdate(
-                    { _id: item.variantId, "sizes.size": item.size },
-                    { $inc: { "sizes.$.stock": item.quantity } }
-                );
-            }
         }
-
-
-        const allItems = order.items;
-        const allReturnedOrCancelled = allItems.length > 0 && allItems.every(i => ['Returned', 'Cancelled'].includes(i.status));
-
-        if (allReturnedOrCancelled) {
-            order.status = 'returned';
-
-            if (order.paymentStatus === 'Paid') {
-                order.paymentStatus = 'Refunded';
-            }
-        }
+        // Note: 'complete' action should ideally call updateAdminManifest to handle money
 
         await order.save();
-        res.status(200).json({ success: true, message: `Manifest item ${action}ed.` });
+        res.status(200).json({ success: true, message: `Item return request ${action}ed.` });
     } catch (error) {
         next(error);
     }
 };
 
+// 6. RETURN ITEM REQUEST (For Admin Testing or On-Behalf)
 export const returnOrderItem = async (req, res, next) => {
     try {
         const { orderId, itemId } = req.params;
         const { reason } = req.body;
-        const userId = req.user.userId;
-
-        const order = await Order.findOne({ _id: orderId, userId });
+        
+        // Admin doesn't need userId check usually, but kept for consistency
+        const order = await Order.findById(orderId);
         if (!order) return res.status(404).json({ success: false, message: "Order not found." });
 
         if (order.status.toLowerCase() !== 'delivered') {
@@ -245,12 +276,12 @@ export const returnOrderItem = async (req, res, next) => {
 
         await Order.updateOne(
             { _id: orderId, "items._id": itemId },
-            {
-                $set: {
-                    "items.$.status": "Return Requested",
-                    "items.$.returnReason": reason,
-                    "items.$.requestDate": new Date()
-                }
+            { 
+                $set: { 
+                    "items.$.status": "Return Requested", 
+                    "items.$.returnReason": reason || "Admin Initiated", 
+                    "items.$.requestDate": new Date() 
+                } 
             }
         );
 

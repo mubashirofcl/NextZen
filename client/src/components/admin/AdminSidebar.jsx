@@ -5,16 +5,13 @@ import { logoutAdmin } from "../../store/admin/authSlice";
 import { 
     LayoutDashboard, 
     Users, 
-    Wallet, 
     Settings, 
     BarChart3, 
     Package, 
     ChevronDown, 
     LogOut, 
     TicketPercent, 
-    MessageSquare, 
-    FileText, 
-    ShoppingBag // Added for Orders
+    ShoppingBag
 } from "lucide-react";
 
 const AdminSidebar = () => {
@@ -22,10 +19,11 @@ const AdminSidebar = () => {
     const location = useLocation();
     const dispatch = useDispatch();
 
-    // 1. Updated state to handle the Order menu toggle
+    // 1. Added 'promotions' to state to handle the Coupons menu toggle
     const [openMenus, setOpenMenus] = useState({
         products: location.pathname.includes("/admin/products") || location.pathname.includes("/admin/category") || location.pathname.includes("/admin/brand"),
         orders: location.pathname.includes("/admin/orders"),
+        promotions: location.pathname.includes("/admin/coupons") || location.pathname.includes("/admin/offers"),
     });
 
     const toggleMenu = (menu) => setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
@@ -68,7 +66,7 @@ const AdminSidebar = () => {
                     currentPath={location.pathname}
                 />
 
-                {/* --- 2. NEW ORDERS SECTION --- */}
+                {/* --- ORDERS SECTION --- */}
                 <DropdownItem
                     icon={<ShoppingBag size={16} />}
                     label="Orders"
@@ -83,10 +81,21 @@ const AdminSidebar = () => {
                 />
 
                 <NavItem icon={<Users size={16} />} label="Customers" active={isActive("/admin/customers")} onClick={() => navigate("/admin/customers")} />
-                <NavItem icon={<Wallet size={16} />} label="Wallet & Payments" />
-                <NavItem icon={<TicketPercent size={16} />} label="Promotions" />
-                <NavItem icon={<MessageSquare size={16} />} label="Support Chat" />
-                <NavItem icon={<FileText size={16} />} label="CMS" />
+
+                {/* --- 2. UPDATED PROMOTIONS (COUPONS) SECTION --- */}
+                <DropdownItem
+                    icon={<TicketPercent size={16} />}
+                    label="Promotions"
+                    isOpen={openMenus.promotions}
+                    onClick={() => toggleMenu("promotions")}
+                    subItems={[
+                        { label: "Coupons", path: "/admin/coupons" },
+                        { label: "Offers", path: "/admin/offers" }
+                    ]}
+                    navigate={navigate}
+                    currentPath={location.pathname}
+                />
+
                 <NavItem icon={<BarChart3 size={16} />} label="Reports" />
                 <NavItem icon={<Settings size={16} />} label="Settings" />
             </nav>

@@ -9,7 +9,23 @@ export const getWalletByUserId = async (userId) => {
 };
 
 export const updateWalletBalance = async (userId, amount, type, description, orderId = null) => {
-    const updateQuery = type === 'credit' ? { $inc: { balance: amount } } : { $inc: { balance: -amount } };
+
+    const updateQuery = type === 'credit'
+        ? { $inc: { balance: amount } }
+        : { $inc: { balance: -amount } };
+
+    let safeDescription = "Terminal Transaction";
+
+    if (description && !description.toLowerCase().includes('undefined') && description.trim() !== "") {
+        safeDescription = description;
+    } else {
+
+        if (type === 'credit') {
+            safeDescription = "Refund Credited to Wallet";
+        } else {
+            safeDescription = "Debit for Order Purchase";
+        }
+    }
 
     return await Wallet.findOneAndUpdate(
         { userId },
@@ -19,12 +35,16 @@ export const updateWalletBalance = async (userId, amount, type, description, ord
                 transactions: {
                     amount,
                     type,
-                    description,
+                    description: safeDescription,
                     orderId,
                     date: new Date()
                 }
             }
         },
-        { upsert: true, new: true }
+        {
+            upsert: true,
+            new: true,
+            runValidators: true
+        }
     );
 };

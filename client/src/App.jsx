@@ -43,11 +43,15 @@ import WishlistPage from "./pages/user/WishlistPage.jsx";
 import CheckoutPage from './pages/user/CheckoutPage';
 import OrderHistory from "./pages/user/OrderHistory.jsx";
 import OrderDetailPage from "./pages/user/OrderDetailPage.jsx";
-import AdminOrderListing from "./pages/admin/AdminOrderListing.jsx";
+import AdminOrderListing from "./pages/admin/AdminOrderManagement.jsx";
 import AdminOrderDetail from "./pages/admin/AdminOrderDetail.jsx";
 import AdminReturnRequests from "./pages/admin/AdminReturnRequests.jsx";
 import OrderStatusPage from "./components/user/OrderStatusPage.jsx";
 import WalletDashboard from "./pages/user/WalletDashboard.jsx";
+import CouponManagement from "./pages/admin/CouponManagement.jsx";
+import CouponForm from "./pages/admin/CouponForm.jsx";
+import OfferManagement from "./pages/admin/OfferManagement.jsx";
+import OfferForm from "./pages/admin/OfferForm.jsx";
 
 
 
@@ -126,6 +130,14 @@ export const App = () => {
             <Route path="customers" element={<UserManagement />} />
             <Route path="category" element={<CategoryManagement />} />
             <Route path="brand" element={<BrandManagement />} />
+
+            <Route path="coupons" element={<CouponManagement />} />
+            <Route path="coupons/add" element={<CouponForm />} />
+            <Route path="coupons/edit/:id" element={<CouponForm />} />
+
+            <Route path="offers" element={<OfferManagement />} />
+            <Route path="offers/add" element={<OfferForm />} />
+            <Route path="offers/edit/:id" element={<OfferForm />} />
 
             {/* PRODUCTS */}
             <Route path="products">

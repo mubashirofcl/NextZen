@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Edit3, Tag, Layers, List, Search, Ban, CheckCircle, Trash2 } from "lucide-react";
+import { Plus, Edit3, Tag, Layers, List, Search, Ban, CheckCircle, Trash2, Percent } from "lucide-react"; // Added Percent icon
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import DataTable from "../../tables/admin/DataTable";
@@ -36,11 +36,11 @@ const CategoryManagement = () => {
 
     /* ------------------ FETCH LEVEL 1 ------------------ */
     const { data, isLoading } = useAdminCategories({
-    page,
-    search: debouncedSearch,
-    level: 1,
-    status: "all", 
-});
+        page,
+        search: debouncedSearch,
+        level: 1,
+        status: "all",
+    });
 
     const categories = data?.items ?? [];
     const pagination = {
@@ -84,14 +84,12 @@ const CategoryManagement = () => {
         );
     };
 
-    const deleteMutation = useDeleteCategory();
-
     return (
         <div className="min-h-screen flex bg-[#f8fafc] p-3 gap-3">
             <AdminSidebar />
 
             <main className="flex-1 flex flex-col gap-3 overflow-hidden">
-                {/* HEADER - SYNCHRONIZED DESIGN */}
+                {/* HEADER */}
                 <header className="bg-white/80 backdrop-blur-md border border-white rounded-[20px] px-6 py-3 flex justify-between items-center shadow-sm">
                     <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         Admin / <span className="text-[#0F172A] font-black">Categories</span>
@@ -99,13 +97,7 @@ const CategoryManagement = () => {
 
                     <div className="flex items-center gap-3">
                         <div className="relative group">
-                            {/* SEARCH ICON */}
-                            <Search
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                                size={14}
-                            />
-
-                            {/* INPUT */}
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                             <input
                                 type="text"
                                 placeholder="Search categories..."
@@ -116,23 +108,16 @@ const CategoryManagement = () => {
                                 }}
                                 className="pl-9 pr-8 py-2 bg-slate-200/50 focus:bg-white rounded-xl text-xs w-64 outline-none transition-all"
                             />
-
-                            {/* CLEAR BUTTON */}
                             {searchTerm && (
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setSearchTerm("");
-                                        setPage(1);
-                                    }}
+                                    onClick={() => { setSearchTerm(""); setPage(1); }}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
-                                    title="Clear search"
                                 >
                                     ✕
                                 </button>
                             )}
                         </div>
-
 
                         <button
                             onClick={() => {
@@ -150,7 +135,7 @@ const CategoryManagement = () => {
                 {/* TABLE SECTION */}
                 <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                     <div className="bg-white rounded-[20px] shadow-sm overflow-hidden">
-                        <div className="p-5 border-b flex justify-between items-center">
+                        <div className="p-5 border-b flex justify-between items-center bg-slate-50/30">
                             <h2 className="text-xs font-black uppercase tracking-widest text-[#0F172A]">
                                 Category Master List
                             </h2>
@@ -158,20 +143,20 @@ const CategoryManagement = () => {
                         </div>
 
                         <DataTable
-                            columns={["Category Details", "Description", "No. Subcategory", "Status", "Actions"]}
+                            columns={["Category Details", "Offer Rule", "No. Subcategory", "Status", "Actions"]}
                             data={categories}
                             loading={isLoading}
                             pagination={pagination}
                             onPageChange={setPage}
                             emptyText="No categories assigned to the catalog"
                             renderRow={(cat) => (
-                                <tr key={cat._id} className="group hover:bg-slate-50/30 transition-colors">
+                                <tr key={cat._id} className="group hover:bg-slate-50/30 transition-colors border-b last:border-0 border-slate-50">
 
                                     {/* COLUMN 1: CATEGORY DETAILS */}
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200 group-hover:border-[#0F172A] transition-all">
-                                                <Tag size={18} strokeWidth={2.5} />
+                                                <Tag size={18} strokeWidth={2.5} className="text-slate-500 group-hover:text-[#0F172A]" />
                                             </div>
                                             <div>
                                                 <p className="text-xs font-bold text-[#0F172A] uppercase mb-1">
@@ -184,76 +169,75 @@ const CategoryManagement = () => {
                                         </div>
                                     </td>
 
-                                    {/* COLUMN 2: DESCRIPTION */}
+                                    {/* COLUMN 2: OFFER RULE (NEW BADGE SYSTEM) */}
                                     <td className="px-6 py-4">
-                                        <p className="text-xs font-medium text-slate-500 italic max-w-xs truncate">
-                                            {cat.description || "Description pending..."}
-                                        </p>
+                                        {cat.offerId ? (
+                                            <div className="flex flex-col gap-1">
+                                                <div className="inline-flex items-center px-2 py-1 bg-purple-50 text-[#7a6af6] rounded-lg border border-purple-100 shadow-sm w-fit">
+                                                    <Percent size={10} className="mr-1.5 stroke-[3]" />
+                                                    <span className="text-[9px] font-black uppercase tracking-tight">
+                                                        {cat.offerId.discountValue}% OFF
+                                                    </span>
+                                                </div>
+                                                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[100px]">
+                                                    {cat.offerId.title}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest italic">No Offer</span>
+                                        )}
                                     </td>
 
                                     {/* COLUMN 3: SUBCATEGORY COUNT */}
                                     <td className="px-6 py-4">
-                                        <span className="text-xs font-bold text-slate-600">
-                                            {cat.subCategoryCount ?? 0}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <Layers size={12} className="text-slate-400" />
+                                            <span className="text-xs font-bold text-slate-600">
+                                                {cat.subCategoryCount ?? 0}
+                                            </span>
+                                        </div>
                                     </td>
 
                                     {/* COLUMN 4: STATUS */}
                                     <td className="px-6 py-4">
                                         <span
-                                            className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase border ${cat.isActive
+                                            className={`inline-flex items-center px-2 py-1 rounded-md text-[9px] font-black uppercase border ${cat.isActive
                                                 ? "bg-green-50 text-green-600 border-green-100"
                                                 : "bg-red-50 text-red-600 border-red-100"
-                                                }`}
+                                            }`}
                                         >
-                                            <span
-                                                className={`w-1 h-1 rounded-full mr-1.5 ${cat.isActive ? "bg-green-500" : "bg-red-500"
-                                                    }`}
-                                            />
+                                            <span className={`w-1 h-1 rounded-full mr-1.5 ${cat.isActive ? "bg-green-500" : "bg-red-500"}`} />
                                             {cat.isActive ? "Active" : "Disabled"}
                                         </span>
                                     </td>
 
                                     {/* COLUMN 5: ACTIONS */}
                                     <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center justify-end gap-2">
-
-                                            {/* EDIT */}
+                                        <div className="flex items-center justify-end gap-1">
                                             <button
                                                 onClick={() => {
                                                     setMode("edit");
                                                     setSelectedCategory(cat);
                                                     setCatModal(true);
                                                 }}
-                                                className="p-2 text-slate-300 hover:text-[#7a6af6] hover:bg-[#7a6af6]/5 rounded-xl"
+                                                className="p-2 text-slate-300 hover:text-[#7a6af6] hover:bg-[#7a6af6]/5 rounded-xl transition-all"
                                                 title="Edit Category"
                                             >
-                                                <Edit3 size={18} strokeWidth={2.5} />
+                                                <Edit3 size={16} strokeWidth={2.5} />
                                             </button>
 
-                                            {/* TOGGLE STATUS */}
-                                            {cat.isActive ? (
-                                                <button
-                                                    onClick={() => toggleCategoryStatus(cat)}
-                                                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl"
-                                                    title="Deactivate"
-                                                >
-                                                    <Ban size={18} strokeWidth={2.5} />
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => toggleCategoryStatus(cat)}
-                                                    className="p-2 text-green-600 hover:bg-green-50 rounded-xl"
-                                                    title="Activate"
-                                                >
-                                                    <CheckCircle size={18} strokeWidth={2.5} />
-                                                </button>
-                                            )}
-
+                                            <button
+                                                onClick={() => toggleCategoryStatus(cat)}
+                                                className={`p-2 rounded-xl transition-all ${cat.isActive 
+                                                    ? 'text-slate-300 hover:text-red-500 hover:bg-red-50' 
+                                                    : 'text-green-600 hover:bg-green-50'}`}
+                                                title={cat.isActive ? "Deactivate" : "Activate"}
+                                            >
+                                                {cat.isActive ? <Ban size={16} strokeWidth={2.5} /> : <CheckCircle size={16} strokeWidth={2.5} />}
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
-
                             )}
                         />
                     </div>

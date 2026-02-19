@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, ArrowUpRight, ShoppingBag, ArrowRight, Loader2, Heart } from 'lucide-react';
+import { Star, ArrowUpRight, ShoppingBag, ArrowRight, Loader2, Heart, Percent } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
@@ -185,17 +185,14 @@ const StandardProductCard = ({ prod, tag }) => {
 
     const isWishlisted = isInWishlist(pId);
 
+    // 🟢 DYNAMIC OFFER LOGIC
+    const activeDiscount = Number(prod.discountValue || 0);
+    const hasOffer = activeDiscount > 0;
+
     const handleWishlistToggle = (e) => {
         e.stopPropagation();
-
-        if (!isAuthenticated) {
-            return nxToast.security("Access Denied", "Please login to archive items.");
-        }
-
-        if (!pId || !vId) {
-            return nxToast.security("Protocol Error", "Asset data missing.");
-        }
-
+        if (!isAuthenticated) return nxToast.security("Access Denied", "Please login to archive items.");
+        if (!pId || !vId) return nxToast.security("Protocol Error", "Asset data missing.");
         toggleWishlist(pId, vId);
     };
 
@@ -207,6 +204,18 @@ const StandardProductCard = ({ prod, tag }) => {
                     alt={prod.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90 group-hover:opacity-100"
                 />
+
+                {/* 🟢 ENHANCED OFFER BADGE */}
+                {hasOffer && (
+                    <div className="absolute top-6 left-6 z-30 animate-in slide-in-from-left-4 duration-500">
+                        <div className="bg-gradient-to-r from-[#7a6af6] to-[#9b8df9] text-white px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-[0_0_25px_rgba(122,106,246,0.4)] border border-white/20">
+                            <Percent size={10} strokeWidth={4} />
+                            <span className="text-[10px] font-black italic tracking-tighter">
+                                {activeDiscount}% DROP
+                            </span>
+                        </div>
+                    </div>
+                )}
 
                 <div className="absolute top-6 right-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 z-30">
                     <button
@@ -239,9 +248,13 @@ const StandardProductCard = ({ prod, tag }) => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <p className="text-[18px] font-black text-[#7a6af6] italic">₹{prod.minSalePrice || prod.minPrice}</p>
-                    {prod.minPrice > prod.minSalePrice && (
-                        <p className="text-[12px] text-white/20 line-through italic font-bold">₹{prod.minPrice}</p>
+                    <p className={`text-[18px] font-black italic ${hasOffer ? 'text-[#7a6af6]' : 'text-white'}`}>
+                        ₹{(prod.minSalePrice || prod.minPrice)?.toLocaleString()}
+                    </p>
+                    {hasOffer && (
+                        <p className="text-[12px] text-white/20 line-through italic font-bold">
+                            ₹{prod.minOriginalPrice?.toLocaleString() || prod.minPrice?.toLocaleString()}
+                        </p>
                     )}
                 </div>
             </div>

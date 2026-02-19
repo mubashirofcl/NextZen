@@ -14,6 +14,8 @@ import categoryRoutes from "./modules/admin/categorieManagement/category.routes.
 import productRoutes from "./modules/admin/productManagement/product.routes.js";
 import brandRoutes from "./modules/admin/brandManagement/brand.routes.js";
 import adminOrderRoutes from "./modules/admin/orderManagement/order.routes.js";
+import couponRoutes from './modules/admin/couponManagemen/coupon.routes.js';
+import offerRoutes from './modules/admin/offerManagement/offer.routes.js';
 
 import productListRoutes from "./modules/user/productListing/product.routes.js"
 import userCategoryRoutes from "./modules/user/category/category.routes.js";
@@ -50,6 +52,8 @@ app.use("/api/admin/categories", categoryRoutes);
 app.use("/api/admin", productRoutes);
 app.use("/api/admin/brands", brandRoutes);
 app.use('/api/admin/orders', adminOrderRoutes);
+app.use('/api/admin/coupons', couponRoutes);
+app.use('/api/admin/offers', offerRoutes)
 
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
@@ -65,6 +69,7 @@ app.use("/api/users/orders", (req, res, next) => {
 }, orderRoutes);
 app.use("/api/user/payment", paymentRoutes);
 app.use('/api/users/wallet', walletRoutes);
+app.use('/api/users/coupons', couponRoutes);
 
 
 app.use((err, req, res, next) => {

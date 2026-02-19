@@ -4,7 +4,7 @@ import {
     ChevronLeft, User, MapPin,
     Loader2, Box, Truck, Wallet,
     ArrowDownLeft, LayoutDashboard, RotateCcw,
-    XCircle, CheckCircle2
+    XCircle, CheckCircle2, CreditCard, Tag, Percent
 } from "lucide-react";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { useAdminOrderDetails, useUpdateOrderStatus } from "../../hooks/admin/useAdminOrders";
@@ -40,52 +40,77 @@ const AdminOrderDetail = () => {
         return -1;
     })();
 
-    // 🟢 FIXED FINANCIALS: Persist all details even after cancellation
     const financials = useMemo(() => {
-        if (!order) return { initialSubtotal: 0, delivery: 0, totalRefunded: 0, net: 0, savings: 0 };
+        if (!order) return { initialSubtotal: 0, delivery: 0, totalRefunded: 0, net: 0, savings: 0, couponDiscount: 0, isFullyCancelled: false };
 
-        const masterSubtotal = order.subTotal || 0;
         const delivery = order.deliveryCharge || 0;
-        const masterTotal = order.totalAmount || 0;
-        const totalDiscount = order.totalDiscount || 0;
+        const couponDiscount = order.couponDiscount || 0;
+        
+        const originalGrossSubtotal = order.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        
+        const totalProductSavings = order.items?.reduce((acc, item) => {
+            const savingsPerUnit = (item.originalPrice || item.price) - item.price;
+            return acc + (savingsPerUnit * item.quantity);
+        }, 0) || 0;
 
-        // Check shipment status for shipping refund logic
         const isShippedOrBeyond = ['shipped', 'out_for_delivery', 'delivered', 'returned'].includes(order.status.toLowerCase());
         
-        let refundedItemsTotal = 0;
+        let calculatedRefundTotal = 0;
         let cancelledItemsCount = 0;
 
         order.items.forEach(item => {
             if (['Cancelled', 'Returned'].includes(item.status)) {
-                refundedItemsTotal += (item.totalAmount || 0);
+                let itemCouponShare = 0;
+                if (couponDiscount > 0 && originalGrossSubtotal > 0) {
+                    itemCouponShare = (item.totalAmount / originalGrossSubtotal) * couponDiscount;
+                }
+                calculatedRefundTotal += (item.totalAmount - itemCouponShare);
                 cancelledItemsCount++;
             }
         });
 
         const isFullyVoided = cancelledItemsCount === order.items.length;
 
-        // Calculate refund based on shipping logic (No refund for shipping if already shipped)
-        const finalRefundValue = (isFullyVoided && !isShippedOrBeyond) 
-            ? (refundedItemsTotal + delivery) 
-            : refundedItemsTotal;
+        if (isFullyVoided && !isShippedOrBeyond) {
+            calculatedRefundTotal += delivery;
+        }
+
+        const netInvoiceValue = Math.max(0, (originalGrossSubtotal + delivery) - couponDiscount);
 
         return {
-            initialSubtotal: masterSubtotal,
+            initialSubtotal: originalGrossSubtotal,
             delivery: delivery,
-            savings: totalDiscount,
-            totalRefunded: finalRefundValue,
-            // 🟢 FIXED: Always show the Master Total from DB for audit trail
-            net: masterTotal 
+            totalProductSavings: totalProductSavings,
+            couponDiscount: couponDiscount,
+            totalRefunded: calculatedRefundTotal,
+            net: netInvoiceValue, 
+            isFullyCancelled: isFullyVoided,
+            grossSubtotalForRatio: originalGrossSubtotal 
         };
     }, [order]);
 
-    if (isLoading) return <GlobalLoader message="Accessing Order Terminal..." />;
+    const resolvedPaymentStatus = useMemo(() => {
+        if (!order) return "N/A";
+        if (order.paymentMethod === 'cashOnDelivery' && financials.isFullyCancelled) {
+            return "Cancelled";
+        }
+        return order.paymentStatus || "Pending";
+    }, [order, financials.isFullyCancelled]);
+
+    if (isLoading) return <GlobalLoader message="Opening Order Details..." />;
 
     const getFriendlyStatus = (status) => {
         const s = status?.toLowerCase();
         if (s === 'pending') return 'Processing';
         if (s === 'payment_failed') return 'Failed';
         return status?.replace(/_/g, ' ');
+    };
+
+    const getStatusTheme = (status) => {
+        const s = status?.toLowerCase();
+        if (s === 'cancelled' || s === 'failed') return 'text-red-600 bg-red-50 border-red-100';
+        if (s === 'delivered' || s === 'paid' || s === 'refunded') return 'text-green-600 bg-green-50 border-green-100';
+        return 'text-[#7a6af6] bg-[#7a6af6]/5 border-[#7a6af6]/20';
     };
 
     const getItemFinancialStatus = (item) => {
@@ -96,40 +121,42 @@ const AdminOrderDetail = () => {
         return { label: 'PENDING', color: 'text-amber-600 bg-amber-50 border-amber-100' };
     };
 
+    // 🟢 HELPERS: Check if actual payment happened
+    const hasBeenPaid = ['Paid', 'Refunded'].includes(order?.paymentStatus);
+
     return (
         <div className="h-screen w-full flex bg-[#f1f5f9] p-3 gap-3 font-sans text-slate-800 overflow-hidden">
             <AdminSidebar />
             {isUpdating && <GlobalLoader message="Updating Status..." />}
 
             <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden gap-4">
-
                 <header className="bg-white border border-slate-200 rounded-2xl p-4 flex justify-between items-center shadow-sm shrink-0">
                     <div className="flex items-center gap-4">
                         <button onClick={() => navigate(-1)} className="p-2 bg-slate-50 rounded-lg hover:bg-slate-100 border border-slate-100">
                             <ChevronLeft size={18} className="text-slate-600" />
                         </button>
                         <div>
-                            <h2 className="text-sm font-black uppercase tracking-tight text-slate-800 leading-none">Order Management</h2>
-                            <p className="text-[9px] font-bold text-[#7a6af6] tracking-[0.2em] mt-2 uppercase">Order ID: {order?.orderNumber}</p>
+                            <h2 className="text-sm font-black uppercase tracking-tight text-slate-800 leading-none">Order Overview</h2>
+                            <p className="text-[9px] font-bold text-[#7a6af6] tracking-[0.2em] mt-2 uppercase">ID: {order?.orderNumber}</p>
                         </div>
                     </div>
-                    <div className={`px-4 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest ${order?.status === 'payment_failed' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                    <div className={`px-4 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest ${getStatusTheme(order?.status)}`}>
                         {getFriendlyStatus(order?.status)}
                     </div>
                 </header>
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start pb-10">
-
                         <div className="lg:col-span-8 space-y-4">
                             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10">
                                 <h2 className="text-[10px] font-black uppercase text-[#7a6af6] italic tracking-[0.3em] mb-12 flex items-center gap-2">
-                                    <Truck size={14} /> Tracking Status
+                                    <Truck size={14} /> Shipping Progress
                                 </h2>
-                                {['cancelled', 'payment_failed'].includes(order?.status?.toLowerCase()) ? (
+                                
+                                {financials.isFullyCancelled || order?.status === 'payment_failed' ? (
                                     <div className="py-10 border-2 border-dashed border-red-100 rounded-3xl flex flex-col items-center justify-center gap-2 text-red-400">
                                         <XCircle size={32} />
-                                        <p className="text-[10px] font-black uppercase tracking-widest">Fulfillment Terminated</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest">Order Ended</p>
                                     </div>
                                 ) : (
                                     <div className="relative flex justify-between px-2 sm:px-10">
@@ -153,64 +180,87 @@ const AdminOrderDetail = () => {
                             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                                 <div className="px-6 py-3 bg-slate-50/50 border-b border-slate-100 flex items-center gap-2">
                                     <Box size={14} className="text-[#7a6af6]" />
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-700">Product Details</h3>
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-700">Items Manifest</h3>
                                 </div>
                                 <table className="w-full text-left">
                                     <thead className="text-[8px] font-black uppercase tracking-widest text-slate-400 border-b bg-white">
                                         <tr>
-                                            <th className="px-6 py-3">Product</th>
+                                            <th className="px-6 py-3">Product Name & Offer</th>
                                             <th className="px-6 py-3">Item Status</th>
-                                            <th className="px-6 py-3 text-center">Qty</th>
+                                            <th className="px-6 py-3 text-center">Quantity</th>
                                             <th className="px-6 py-3 text-right">Settlement</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 bg-white">
-                                        {order?.items?.map((item, idx) => (
-                                            <tr key={idx} className="hover:bg-slate-50/30 transition-all">
-                                                <td className="px-6 py-4 flex items-center gap-3">
-                                                    <div className="w-10 h-14 bg-slate-100 rounded-lg overflow-hidden border border-slate-100 shrink-0 shadow-sm">
-                                                        <img src={item.variantId?.images?.[0] || item.productId?.thumbnail} className="w-full h-full object-cover" alt="" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[11px] font-black text-slate-800 uppercase leading-tight mb-1">{item.productId?.name}</p>
-                                                        <span className="px-2 py-0.5 bg-slate-100 rounded text-[8px] font-black text-slate-500 uppercase tracking-tighter">Size: {item.size}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    {item.status === 'Return Requested' ? (
-                                                        <div className="bg-amber-50/50 border border-amber-200 rounded-xl p-3 w-[240px] shadow-sm">
-                                                            <div className="flex items-center gap-2 mb-2 text-amber-700">
-                                                                <RotateCcw size={12} strokeWidth={3} />
-                                                                <p className="text-[9px] font-black uppercase tracking-widest">Return Requested</p>
-                                                            </div>
-                                                            <p className="text-[9px] font-bold text-slate-600 mb-3 italic">"{item.returnReason || "No reason provided"}"</p>
-                                                            <div className="flex gap-2">
-                                                                <button onClick={() => updateOrderStatus({ orderId: id, itemId: item._id, itemStatus: 'Return Approved' })} className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-[8px] font-black uppercase hover:bg-green-600 transition-colors shadow-sm">Approve</button>
-                                                                <button onClick={() => updateOrderStatus({ orderId: id, itemId: item._id, itemStatus: 'Return Rejected' })} className="flex-1 py-1.5 bg-red-500 text-white rounded-lg text-[8px] font-black uppercase hover:bg-red-600 transition-colors shadow-sm">Reject</button>
+                                        {order?.items?.map((item, idx) => {
+                                            const itemSavings = (item.originalPrice || item.price) - item.price;
+                                            
+                                            const itemCouponShare = (financials.couponDiscount > 0 && financials.grossSubtotalForRatio > 0)
+                                                ? (item.totalAmount / financials.grossSubtotalForRatio) * financials.couponDiscount
+                                                : 0;
+                                            const netRefundable = item.totalAmount - itemCouponShare;
+
+                                            return (
+                                                <tr key={idx} className="hover:bg-slate-50/30 transition-all">
+                                                    <td className="px-6 py-4 flex items-center gap-3">
+                                                        <div className="w-10 h-14 bg-slate-100 rounded-lg overflow-hidden border border-slate-100 shrink-0 shadow-sm">
+                                                            <img src={item.variantId?.images?.[0] || item.productId?.thumbnail} className="w-full h-full object-cover" alt="" />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <p className="text-[11px] font-black text-slate-800 uppercase leading-tight">{item.productId?.name}</p>
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <span className="px-1.5 py-0.5 bg-slate-100 rounded text-[7px] font-black text-slate-500 uppercase">Size: {item.size}</span>
+                                                                {itemSavings > 0 && (
+                                                                    <span className="px-1.5 py-0.5 bg-green-50 text-green-600 rounded text-[7px] font-black border border-green-100 uppercase flex items-center gap-0.5">
+                                                                        <Percent size={8} strokeWidth={3} /> Offer
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         </div>
-                                                    ) : (
-                                                        <select
-                                                            value={item.status}
-                                                            disabled={['Delivered', 'Returned', 'Cancelled'].includes(item.status)}
-                                                            onChange={(e) => updateOrderStatus({ orderId: id, itemId: item._id, itemStatus: e.target.value })}
-                                                            className="text-[9px] font-black uppercase tracking-widest bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg outline-none cursor-pointer hover:bg-white disabled:opacity-50"
-                                                        >
-                                                            <option value="Placed" disabled={itemStatusRank[item.status] > 1}>Confirmed {itemStatusRank[item.status] > 1 && "✓"}</option>
-                                                            <option value="Shipped" disabled={itemStatusRank[item.status] > 2}>Shipped {itemStatusRank[item.status] > 2 && "✓"}</option>
-                                                            <option value="Delivered" disabled={itemStatusRank[item.status] > 3}>Delivered {itemStatusRank[item.status] > 3 && "✓"}</option>
-                                                            <option value="Cancelled">Cancel Item</option>
-                                                            {item.status === 'Return Approved' && <option value="Returned">Issue Refund</option>}
-                                                        </select>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 text-center text-[10px] font-black text-slate-500">{item.quantity} Qty</td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <p className="text-[11px] font-black text-slate-800">₹{item.totalAmount?.toLocaleString()}</p>
-                                                    <span className={`text-[7px] font-black px-1.5 py-0.5 rounded border uppercase mt-1 inline-block shadow-sm ${getItemFinancialStatus(item).color}`}>{getItemFinancialStatus(item).label}</span>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {item.status === 'Return Requested' ? (
+                                                            <div className="bg-amber-50/50 border border-amber-200 rounded-xl p-3 w-[240px] shadow-sm">
+                                                                <div className="flex items-center gap-2 mb-2 text-amber-700">
+                                                                    <RotateCcw size={12} strokeWidth={3} />
+                                                                    <p className="text-[9px] font-black uppercase tracking-widest">Return Requested</p>
+                                                                </div>
+                                                                <p className="text-[9px] font-bold text-slate-600 mb-3 italic">"{item.returnReason || "No reason provided"}"</p>
+                                                                <div className="flex gap-2">
+                                                                    <button onClick={() => updateOrderStatus({ orderId: id, itemId: item._id, itemStatus: 'Return Approved' })} className="flex-1 py-1.5 bg-green-500 text-white rounded-lg text-[8px] font-black uppercase hover:bg-green-600 transition-colors shadow-sm">Approve</button>
+                                                                    <button onClick={() => updateOrderStatus({ orderId: id, itemId: item._id, itemStatus: 'Return Rejected' })} className="flex-1 py-1.5 bg-red-500 text-white rounded-lg text-[8px] font-black uppercase hover:bg-red-600 transition-colors shadow-sm">Reject</button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <select
+                                                                value={item.status}
+                                                                disabled={['Delivered', 'Returned', 'Cancelled'].includes(item.status)}
+                                                                onChange={(e) => updateOrderStatus({ orderId: id, itemId: item._id, itemStatus: e.target.value })}
+                                                                className="text-[9px] font-black uppercase tracking-widest bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg outline-none cursor-pointer hover:bg-white disabled:opacity-50"
+                                                            >
+                                                                <option value="Placed" disabled={itemStatusRank[item.status] > 1}>Confirmed {itemStatusRank[item.status] > 1 && "✓"}</option>
+                                                                <option value="Shipped" disabled={itemStatusRank[item.status] > 2}>Shipped {itemStatusRank[item.status] > 2 && "✓"}</option>
+                                                                <option value="Delivered" disabled={itemStatusRank[item.status] > 3}>Delivered {itemStatusRank[item.status] > 3 && "✓"}</option>
+                                                                <option value="Cancelled">Cancel Item</option>
+                                                                {item.status === 'Return Approved' && <option value="Returned">Issue Refund</option>}
+                                                            </select>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center text-[10px] font-black text-slate-500">{item.quantity} Units</td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <p className="text-[11px] font-black text-slate-800">₹{item.totalAmount?.toLocaleString()}</p>
+                                                        {itemSavings > 0 && <p className="text-[8px] font-bold text-slate-300 line-through">MRP: ₹{(item.originalPrice * item.quantity).toLocaleString()}</p>}
+                                                        
+                                                        {/* 🟢 ONLY SHOW REFUND AMOUNT IF THE ORDER WAS ACTUALLY PAID */}
+                                                        {['Cancelled', 'Returned'].includes(item.status) && hasBeenPaid && (
+                                                            <p className="text-[8px] font-bold text-red-400 mt-1 uppercase">Refund: ₹{netRefundable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                                        )}
+                                                        
+                                                        <span className={`text-[7px] font-black px-1.5 py-0.5 rounded border uppercase mt-1 inline-block shadow-sm ${getItemFinancialStatus(item).color}`}>{getItemFinancialStatus(item).label}</span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
@@ -251,44 +301,65 @@ const AdminOrderDetail = () => {
                         <div className="lg:col-span-4 lg:sticky lg:top-0 space-y-4">
                             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
                                 <div className="flex items-center gap-3 border-b border-slate-50 pb-3">
-                                    <Wallet size={16} className="text-[#7a6af6]" />
-                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-800">Order Summary</h3>
+                                    <CreditCard size={16} className="text-[#7a6af6]" />
+                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-800">Payment Monitor</h3>
                                 </div>
                                 <div className="space-y-4 text-[10px] font-bold uppercase text-slate-500 tracking-tight relative z-10">
-                                    <div className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Payment Method</p>
-                                        <p className="text-[10px] font-black text-slate-700 uppercase tracking-tighter italic">
-                                            {order?.paymentMethod === 'cashOnDelivery' ? 'Cash/COD' : order?.paymentMethod === 'wallet' ? 'Wallet' : 'Razorpay'}
-                                        </p>
+                                    <div className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                        <div>
+                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
+                                            <p className={`text-[10px] font-black uppercase tracking-tighter italic ${getStatusTheme(resolvedPaymentStatus)} px-2 py-0.5 rounded border inline-block`}>
+                                                {resolvedPaymentStatus}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Method</p>
+                                            <p className="text-[10px] font-black text-slate-700 uppercase italic">
+                                                {order?.paymentMethod === 'cashOnDelivery' ? 'Cash/COD' : order?.paymentMethod === 'wallet' ? 'Wallet' : 'Online Payment'}
+                                            </p>
+                                        </div>
                                     </div>
                                     <div className="pt-2 space-y-3">
                                         <div className="flex justify-between">
-                                            <span>Original Subtotal</span>
+                                            <span>Subtotal</span>
                                             <span className="text-black">₹{financials.initialSubtotal.toLocaleString()}</span>
                                         </div>
-                                        <div className="flex justify-between border-b border-slate-50 pb-3">
-                                            <span>Shipping Fee</span>
-                                            <span className="text-black">{financials.delivery > 0 ? `₹${financials.delivery}` : 'FREE'}</span>
-                                        </div>
 
-                                        {financials.savings > 0 && (
-                                            <div className="text-[9px] text-green-600 font-black italic text-right">
-                                                Informational Savings: ₹{financials.savings.toLocaleString()}
+                                        {financials.totalProductSavings > 0 && (
+                                            <div className="flex justify-between text-green-600 italic">
+                                                <span className="flex items-center gap-1"><Percent size={10} strokeWidth={3} /> Product Offer Savings</span>
+                                                <span className="font-black">- ₹{financials.totalProductSavings.toLocaleString()}</span>
                                             </div>
                                         )}
 
+                                        {financials.couponDiscount > 0 && (
+                                            <div className="flex justify-between text-indigo-600 italic animate-in slide-in-from-right duration-500">
+                                                <span className="flex items-center gap-1"><Tag size={10} /> Coupon ({order?.couponCode})</span>
+                                                <span className="font-black">- ₹{financials.couponDiscount.toLocaleString()}</span>
+                                            </div>
+                                        )}
+
+                                        <div className="flex justify-between border-b border-slate-50 pb-3">
+                                            <span>Delivery Fee</span>
+                                            <span className="text-black">{financials.delivery > 0 ? `₹${financials.delivery}` : 'FREE'}</span>
+                                        </div>
+
+                                        {/* 🟢 CHANGE TEXT BASED ON IF IT WAS ACTUALLY PAID */}
                                         {financials.totalRefunded > 0 && (
-                                            <div className="flex justify-between text-[9px] text-green-600 font-black uppercase bg-green-50 p-3 rounded-xl border border-green-100 shadow-sm">
-                                                <span className="flex items-center gap-1.5"><ArrowDownLeft size={12} strokeWidth={3} /> Total Refunded</span>
-                                                <span className="tracking-tighter">- ₹{financials.totalRefunded.toLocaleString()}</span>
+                                            <div className="flex justify-between text-[9px] text-red-500 font-black uppercase bg-red-50 p-3 rounded-xl border border-red-100 shadow-sm">
+                                                <span className="flex items-center gap-1.5"><ArrowDownLeft size={12} strokeWidth={3} /> {hasBeenPaid ? 'Refund Issued' : 'Cancelled Value'}</span>
+                                                <span className="tracking-tighter">- ₹{financials.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                                             </div>
                                         )}
 
                                         <div className="pt-4 border-t border-dashed flex flex-col items-end">
                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">
-                                                {financials.totalRefunded > 0 ? 'Settled Total' : 'Order Total'}
+                                                {/* 🟢 UPDATE TEXT LOGIC */}
+                                                {financials.totalRefunded > 0 ? (hasBeenPaid ? 'Settled Total' : 'Revised Payable') : 'Net Payable'}
                                             </span>
-                                            <span className="text-3xl font-black text-[#7a6af6] tracking-tighter italic leading-none">₹{financials.net.toLocaleString()}</span>
+                                            <span className="text-3xl font-black text-[#7a6af6] tracking-tighter italic leading-none">
+                                                ₹{order.totalAmount.toLocaleString()}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -308,7 +379,6 @@ const AdminOrderDetail = () => {
                                 </button>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </main>

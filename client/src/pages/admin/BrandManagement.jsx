@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Edit3, Award, Search, BanIcon, CheckCircle2, Globe, Hash, List } from "lucide-react";
+import { Plus, Edit3, Award, Search, BanIcon, CheckCircle2, Globe, Hash, List, Percent } from "lucide-react";
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import DataTable from "../../tables/admin/DataTable";
@@ -109,13 +109,13 @@ const BrandManagement = () => {
                         </div>
 
                         <DataTable
-                            columns={["Brand Identity", "Status", "Actions"]}
+                            columns={["Brand Identity", "Offer Rule", "Status", "Actions"]}
                             data={brands}
                             loading={isLoading}
                             pagination={pagination}
                             onPageChange={setPage}
                             renderRow={(brand) => (
-                                <tr key={brand._id} className="group hover:bg-slate-50 transition-all duration-200">
+                                <tr key={brand._id} className="group hover:bg-slate-50 transition-all duration-200 border-b border-slate-50 last:border-0">
 
                                     {/* BRAND IDENTITY CELL */}
                                     <td className="px-6 py-3">
@@ -133,14 +133,28 @@ const BrandManagement = () => {
                                                     <p className="flex items-center gap-1 text-[8px] text-slate-400 font-bold uppercase tracking-tight">
                                                         <Hash size={8} /> {brand._id.slice(-6)}
                                                     </p>
-                                                    {brand.website && (
-                                                        <p className="flex items-center gap-1 text-[8px] text-blue-500 font-black uppercase tracking-tighter">
-                                                            <Globe size={8} /> Linked
-                                                        </p>
-                                                    )}
                                                 </div>
                                             </div>
                                         </div>
+                                    </td>
+
+                                    {/* OFFER RULE CELL (NEW) */}
+                                    <td className="px-6 py-3">
+                                        {brand.offerId ? (
+                                            <div className="flex flex-col gap-1">
+                                                <div className="inline-flex items-center px-2 py-1 bg-purple-50 text-[#7a6af6] rounded-lg border border-purple-100 shadow-sm w-fit">
+                                                    <Percent size={10} className="mr-1.5 stroke-[3]" />
+                                                    <span className="text-[9px] font-black uppercase tracking-tight">
+                                                        {brand.offerId.discountValue}% OFF
+                                                    </span>
+                                                </div>
+                                                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[120px]">
+                                                    {brand.offerId.title}
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest italic">Standard Pricing</span>
+                                        )}
                                     </td>
 
                                     {/* STATUS CELL */}

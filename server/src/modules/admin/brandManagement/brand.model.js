@@ -12,6 +12,12 @@ const brandSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    // --- NEW FIELD FOR OFFERS ---
+    offerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Offer",
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -23,5 +29,7 @@ const brandSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+brandSchema.index({ offerId: 1 });
 
 export default mongoose.model("Brand", brandSchema);

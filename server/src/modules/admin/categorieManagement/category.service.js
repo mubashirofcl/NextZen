@@ -10,8 +10,10 @@ import {
     findSubCategoryByNameAndParent,
 } from "./category.repository.js";
 
-export const createCategoryService = async ({ name, level, parentId, description }) => {
+export const createCategoryService = async ({ name, level, parentId, description, offerId }) => {
     name = name.trim();
+
+    const normalizedOfferId = offerId === "" ? null : offerId;
 
     if (level === 1 && parentId) {
         throw new Error("Level 1 category cannot have parentId");
@@ -52,6 +54,7 @@ export const createCategoryService = async ({ name, level, parentId, description
         level,
         parentId: parentId || null,
         description,
+        offerId: normalizedOfferId,
     });
 };
 
@@ -101,6 +104,10 @@ export const updateCategoryService = async (id, payload) => {
 
     const category = await findById(id);
     if (!category) throw new Error("Category not found");
+
+    if ("offerId" in payload && payload.offerId === "") {
+        payload.offerId = null;
+    }
 
     if ("level" in payload || "parentId" in payload) {
         throw new Error("Hierarchy (level or parent) cannot be modified");

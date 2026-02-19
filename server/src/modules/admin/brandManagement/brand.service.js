@@ -17,9 +17,10 @@ export const createBrandService = async (data) => {
     });
   }
 
-  return  brandRepo.createBrand({
+  return brandRepo.createBrand({
     ...data,
     logo: logoUrl,
+    offerId: data.offerId || null, 
   });
 };
 
@@ -36,10 +37,20 @@ export const updateBrandService = async (id, data = {}) => {
     });
   }
 
-  return brandRepo.updateBrandById(id, {
+  const updatePayload = {
     ...data,
     ...(logoUrl && { logo: logoUrl }),
-  });
+  };
+  if (data.offerId === "" || data.offerId === null) {
+    updatePayload.offerId = null;
+  } else if (data.offerId) {
+    updatePayload.offerId = data.offerId;
+  } else {
+
+    updatePayload.offerId = brand.offerId;
+  }
+
+  return brandRepo.updateBrandById(id, updatePayload);
 };
 
 export const toggleBrandStatusService = async (id) => {

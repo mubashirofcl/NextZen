@@ -6,7 +6,7 @@ export const createBrand = (data) => {
 };
 
 export const findBrandById = (id) => {
-  return Brand.findOne({ _id: id, isDeleted: false });
+  return Brand.findOne({ _id: id, isDeleted: false }).populate("offerId");
 };
 
 export const updateBrandById = (id, data) => {
@@ -14,7 +14,7 @@ export const updateBrandById = (id, data) => {
     { _id: id, isDeleted: false },
     data,
     { new: true }
-  );
+  ).populate("offerId");
 };
 
 export const toggleBrandStatusById = (id, isActive) => {
@@ -36,7 +36,7 @@ export const getBrands = ({ page, limit, search, isActive }) => {
     query.name = { $regex: search, $options: "i" };
   }
 
-  const result = Brand.find(query).sort({ createdAt: -1 });
+  const result = Brand.find(query).populate("offerId").sort({ createdAt: -1 });
 
   if (limit > 0) {
     result.skip((page - 1) * limit).limit(limit);

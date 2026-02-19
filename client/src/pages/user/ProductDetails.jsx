@@ -133,9 +133,9 @@ const ProductDetails = () => {
         <div className="relative min-h-screen font-sans text-white pt-16 selection:bg-[#7a6af6]/30">
             <Header />
 
-            <main className="w-full px-4 md:px-8 lg:px-10 py-6 relative z-10">
+            <main className="w-full px-4 md:px-8 lg:px-10 py-10 relative z-10">
                 {/* 1. BREADCRUMBS */}
-                <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.3em] text-white/20 mb-6 pl-1">
+                <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.3em] text-white mb-6 pl-1">
                     <span onClick={() => navigate('/')} className="hover:text-white cursor-pointer transition-colors">Home</span>
                     <ChevronRight size={8} />
                     <span onClick={() => navigate('/shop')} className="hover:text-white cursor-pointer transition-colors">Shop</span>
@@ -183,7 +183,7 @@ const ProductDetails = () => {
                     </div>
 
                     {/* RIGHT: DETAILS */}
-                    <div className="lg:w-1/2 p-8 lg:p-14 flex flex-col justify-center">
+                    <div className="lg:w-1/2 p-8 lg:p-16 flex flex-col justify-center">
                         <div className="space-y-6">
                             <header className="space-y-2">
                                 <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-white/30">

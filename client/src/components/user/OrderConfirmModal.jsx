@@ -1,11 +1,19 @@
 import React from 'react';
-import { X, ArrowRight, Loader2, AlertCircle, ShoppingBag, Wallet as WalletIcon, Truck } from 'lucide-react';
+import { X, ArrowRight, Loader2, AlertCircle, ShoppingBag, Wallet as WalletIcon, Truck, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const OrderConfirmModal = ({ isOpen, onClose, onConfirm, totals, isPending, inventoryConflict, paymentMethod }) => {
+const OrderConfirmModal = ({ 
+    isOpen, 
+    onClose, 
+    onConfirm, 
+    totals, 
+    isPending, 
+    inventoryConflict, 
+    paymentMethod,
+    couponCode 
+}) => {
     const navigate = useNavigate();
-    
-    // 🟢 Guard clause to prevent rendering with null data
+
     if (!isOpen || !totals) return null;
 
     const glassStyle = "bg-white text-[#0F172A] p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden w-full max-w-[500px] animate-in fade-in zoom-in duration-300";
@@ -23,7 +31,7 @@ const OrderConfirmModal = ({ isOpen, onClose, onConfirm, totals, isPending, inve
                             {inventoryConflict ? 'Inventory Conflict' : 'Protocol Check'}
                         </p>
                         <h2 className="text-3xl font-black uppercase italic tracking-tighter leading-none">
-                            {inventoryConflict ? 'Stock Mismatch' : 'Finalize order'}
+                            {inventoryConflict ? 'Stock Mismatch' : 'Finalize Order'}
                         </h2>
                     </div>
                     <button onClick={onClose} className="p-2.5 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-black">
@@ -51,8 +59,8 @@ const OrderConfirmModal = ({ isOpen, onClose, onConfirm, totals, isPending, inve
                                 {paymentMethod === 'wallet' ? <WalletIcon size={18} className="text-green-500" /> : <Truck size={18} className="text-[#7a6af6]" />}
                             </div>
                             <p className="text-[10px] font-bold text-slate-500 uppercase leading-relaxed tracking-wide">
-                                {paymentMethod === 'wallet' 
-                                    ? "Amount will be deducted from your Digital Wallet instantly." 
+                                {paymentMethod === 'wallet'
+                                    ? "Amount will be deducted from your Digital Wallet instantly."
                                     : "Authorization requested for standard logistics fulfillment."}
                             </p>
                         </div>
@@ -61,26 +69,32 @@ const OrderConfirmModal = ({ isOpen, onClose, onConfirm, totals, isPending, inve
                         <div className="space-y-4 mb-10 relative z-10 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
                             <div className="flex justify-between text-[11px] font-bold uppercase text-slate-400 tracking-tighter">
                                 <span>Order Base</span>
-                                <span className="text-slate-900 font-black">₹{(totals.subtotal || 0).toLocaleString()}</span>
-                            </div>
-                            
-                            <div className="flex justify-between text-[11px] font-bold uppercase text-slate-400 tracking-tighter">
-                                <span>GST (18%)</span>
-                                <span className="text-slate-900 font-black">₹{(totals.tax || 0).toLocaleString()}</span>
+                                <span className="text-zinc-900 font-black">₹{(totals.subtotal || 0).toLocaleString()}</span>
                             </div>
 
+                            {/* 🟢 FIXED: Check totals.couponDiscount instead of totals.couponSavings */}
+                            {totals.couponDiscount > 0 && (
+                                <div className="flex justify-between text-[11px] font-bold uppercase text-indigo-600 tracking-tighter italic">
+                                    <span className="flex items-center gap-1">
+                                        <Tag size={10} /> 
+                                        <span>Coupon {couponCode ? `(${couponCode})` : ''}</span>
+                                    </span>
+                                    {/* 🟢 FIXED: Display totals.couponDiscount */}
+                                    <span className="font-black">- ₹{(totals.couponDiscount).toLocaleString()}</span>
+                                </div>
+                            )}
+
                             <div className="flex justify-between text-[11px] font-bold uppercase text-slate-400 tracking-tighter border-b border-dashed border-slate-200 pb-4">
-                                <span>Delivery</span>
-                                <span className="text-slate-900 font-black">
+                                <span>Logistics Fee</span>
+                                <span className="text-zinc-900 font-black">
                                     {totals.deliveryCharge > 0 ? `₹${totals.deliveryCharge}` : 'FREE'}
                                 </span>
                             </div>
 
                             <div className="pt-2 flex justify-between items-end">
-                                <span className="text-xs font-black uppercase text-slate-900 italic">Settlement Total</span>
+                                <span className="text-xs font-black uppercase text-slate-900 italic">Settlement</span>
                                 <span className="text-4xl font-black italic tracking-tighter text-[#0F172A] leading-none">
-                                    {/* 🟢 Render Total Amount correctly */}
-                                    ₹{(totals.totalAmount || 0).toLocaleString()}
+                                    ₹{(totals.finalTotal || 0).toLocaleString()}
                                 </span>
                             </div>
                         </div>

@@ -1,11 +1,12 @@
 import variantModel from "../../admin/productManagement/variant.model.js";
 import * as orderRepo from "./order.repository.js";
 import cartModel from "../cart/cart.model.js";
+import couponModel from "../../admin/couponManagemen/coupon.model.js";
 
 export const processCODOrder = async (userId, orderPayload) => {
-    const { addressId, items, totals, paymentMethod } = orderPayload;
+    
+    const { addressId, items, totals, paymentMethod, couponCode } = orderPayload;
 
-    // 1. Inventory Check & Update
     for (const item of items) {
         const variant = await variantModel.findOneAndUpdate(
             {
@@ -19,10 +20,8 @@ export const processCODOrder = async (userId, orderPayload) => {
         if (!variant) throw new Error(`Inventory conflict: ${item.size} out of stock.`);
     }
 
-    // 2. 🟢 Process Items (Tax Removed)
     const processedItems = items.map(i => {
         const productBaseTotal = i.price * i.quantity;
-
         return {
             productId: i.productId,
             variantId: i.variantId,
@@ -30,16 +29,33 @@ export const processCODOrder = async (userId, orderPayload) => {
             quantity: i.quantity,
             price: i.price,
             originalPrice: i.originalPrice || i.price,
-            // 🟢 totalAmount is now just the base total
             totalAmount: productBaseTotal,
             status: "Placed"
         };
     });
 
-    // 3. 🟢 Order Data (Simplified Math)
     const subTotal = items.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
     const deliveryCharge = totals.deliveryCharge || 0;
-    const totalDiscount = totals.totalDiscount || 0;
+
+    let discountAmount = 0;
+    if (couponCode) {
+        const coupon = await couponModel.findOne({ code: couponCode, isActive: true });
+        if (coupon) {
+            const now = new Date();
+            if (coupon.endDate >= now && subTotal >= coupon.minPurchaseAmt) {
+                if (coupon.discountType === 'PERCENT') {
+                    discountAmount = (subTotal * coupon.discountValue) / 100;
+                    if (coupon.maxDiscount) discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+                } else {
+                    discountAmount = coupon.discountValue;
+                }
+
+                await couponModel.updateOne({ _id: coupon._id }, { $inc: { usedCount: 1 } });
+            }
+        }
+    }
+
+    const totalAmount = Math.max(0, (subTotal + deliveryCharge) - discountAmount);
 
     const orderData = {
         userId,
@@ -48,16 +64,16 @@ export const processCODOrder = async (userId, orderPayload) => {
         status: "pending",
         paymentMethod: paymentMethod || 'COD',
         subTotal: subTotal,
-        totalDiscount: totalDiscount,
+        totalDiscount: totals.totalDiscount || 0, 
+        couponCode: couponCode || null, 
+        couponDiscount: discountAmount, 
         deliveryCharge: deliveryCharge,
-        // 🟢 Final Total = Subtotal + Delivery - Discount
-        totalAmount: subTotal + deliveryCharge - totalDiscount,
+        totalAmount: totalAmount,
         items: processedItems
     };
 
     const newOrder = await orderRepo.createOrder(orderData);
 
-    // Clear cart after successful placement
     await cartModel.findOneAndUpdate({ userId }, { items: [], subtotal: 0 });
 
     return newOrder;

@@ -1,11 +1,13 @@
 import Category from "./category.model.js";
 
 export const findById = (id) => {
-  return Category.findById(id);
+  return Category.findById(id).populate("offerId");
 };
 
 export const findCategories = (filter, skip, limit) => {
-  const query = Category.find(filter).sort({ createdAt: -1 });
+  const query = Category.find(filter)
+    .populate("offerId")
+    .sort({ createdAt: -1 });
 
   if (limit > 0) {
     query.skip(skip).limit(limit);
@@ -34,6 +36,14 @@ export const findCategoriesWithSubCount = async (filter, skip, limit) => {
     { $match: filter },
     {
       $lookup: {
+        from: "offers", // Lookup from offers collection
+        localField: "offerId",
+        foreignField: "_id",
+        as: "offerDetails",
+      },
+    },
+    {
+      $lookup: {
         from: "categories",
         localField: "_id",
         foreignField: "parentId",
@@ -42,6 +52,7 @@ export const findCategoriesWithSubCount = async (filter, skip, limit) => {
     },
     {
       $addFields: {
+        offerId: { $arrayElemAt: ["$offerDetails", 0] }, 
         subCategoryCount: {
           $size: {
             $filter: {
@@ -53,11 +64,7 @@ export const findCategoriesWithSubCount = async (filter, skip, limit) => {
         },
       },
     },
-    {
-      $project: {
-        subCategories: 0,
-      },
-    },
+    { $project: { subCategories: 0, offerDetails: 0 } },
     { $sort: { createdAt: -1 } },
     { $skip: skip },
     { $limit: limit },

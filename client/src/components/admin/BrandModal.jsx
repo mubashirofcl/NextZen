@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { X, Save, Upload, Loader2, Award } from "lucide-react";
+import { X, Save, Upload, Loader2, Award, Percent } from "lucide-react";
 import { adminToast } from "../../utils/adminToast";
+import { useOffers } from "../../hooks/admin/useOffers"; // Integrated Offer Hook
 
 const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
   const {
@@ -17,15 +18,20 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
   const [uploading, setUploading] = useState(false);
   const logo = watch("logo");
 
+  // Fetch only active BRAND level offers
+  const { offers } = useOffers();
+  const brandOffers = offers?.filter(o => o.applyFor === "BRAND" && o.isActive) || [];
+
   useEffect(() => {
     if (!isOpen) return;
     if (mode === "edit" && initialData) {
       reset({
         name: initialData.name,
         logo: initialData.logo,
+        offerId: initialData.offerId?._id || initialData.offerId || "" // Handle populated or raw ID
       });
     } else {
-      reset({ name: "", logo: "" });
+      reset({ name: "", logo: "", offerId: "" });
     }
   }, [isOpen, mode, initialData, reset]);
 
@@ -62,7 +68,12 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
 
   const submitHandler = async (data) => {
     try {
-      await onSubmit(data);
+      // Ensure offerId is null if "None" is selected
+      const payload = {
+        ...data,
+        offerId: data.offerId === "" ? null : data.offerId
+      };
+      await onSubmit(payload);
       onClose();
     } catch (err) {
       const msg = err.response?.data?.message || "Brand already exists!";
@@ -94,7 +105,7 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
         </div>
 
         <div className="p-8">
-          <form onSubmit={handleSubmit(submitHandler)} className="space-y-8">
+          <form onSubmit={handleSubmit(submitHandler)} className="space-y-6">
             <div className="flex justify-center">
               <label className="relative cursor-pointer group">
                 <div className={`w-32 h-32 rounded-[28px] border-4 border-dashed transition-all flex flex-col items-center justify-center overflow-hidden bg-white shadow-inner ${errors.logo ? 'border-red-200 bg-red-50' : 'border-slate-100 group-hover:border-[#7a6af6] group-hover:bg-slate-50'}`}>
@@ -120,6 +131,7 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
 
             <input type="hidden" {...register("logo", { required: true })} />
 
+            {/* BRAND NAME FIELD */}
             <div className="space-y-2">
               <div className="flex justify-between items-end mb-1">
                 <label className="text-[10px] font-black uppercase text-[#0F172A] tracking-widest ml-1">
@@ -138,7 +150,6 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
                     notEmpty: (val) => val.trim().length > 0 || "Cannot be empty",
                     noLeadingSpace: (val) => !/^\s/.test(val) || "No leading spaces",
                     onlyLettersAndSpaces: (val) => /^[A-Za-z ]+$/.test(val) || "Letters only",
-                    noOnlyDots: (val) => !/^[.]+$/.test(val) || "Dots not allowed",
                   }
                 })}
                 placeholder="e.g. NIKE"
@@ -150,11 +161,37 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
               />
             </div>
 
+            {/* OFFER STRATEGY FIELD (NEW) */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-[#0F172A] tracking-widest ml-1">
+                Campaign Strategy
+              </label>
+              <div className="relative">
+                <select
+                  {...register("offerId")}
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 text-xs font-bold text-[#0F172A] outline-none appearance-none cursor-pointer focus:border-[#7a6af6] focus:bg-white transition-all"
+                >
+                  <option value="">No Active Campaign</option>
+                  {brandOffers.map(offer => (
+                    <option key={offer._id} value={offer._id}>
+                      {offer.title} ({offer.discountValue}% OFF)
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <Percent size={14} />
+                </div>
+              </div>
+              <p className="text-[7px] text-slate-400 font-bold uppercase tracking-widest mt-1 ml-1">
+                Applies to all products linked to this partner
+              </p>
+            </div>
+
             <div className="pt-2">
               <button
                 type="submit"
                 disabled={isSubmitting || uploading}
-                className="w-full bg-[#0F172A] text-white py-4.5 p-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:bg-black hover:shadow-slate-300 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-[#0F172A] text-white py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200 hover:bg-black hover:shadow-slate-300 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <Loader2 className="animate-spin" size={16} />

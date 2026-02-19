@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../hooks/user/useCart';
 import { useAddress } from '../../hooks/user/useAddress';
@@ -10,7 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
     CheckCircle2, ArrowRight, Loader2, MapPin,
     CreditCard, Plus, ShieldCheck, ShoppingCart,
-    Edit2, Wallet, Box, AlertCircle
+    Edit2, Wallet, Box, AlertCircle, Tag, X, ChevronDown, Ticket
 } from 'lucide-react';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
@@ -35,31 +35,93 @@ const CheckoutPage = () => {
     const [frozenTotals, setFrozenTotals] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
+    const [couponInput, setCouponInput] = useState("");
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [availableCoupons, setAvailableCoupons] = useState([]);
+    const [showCouponList, setShowCouponList] = useState(false);
+    const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+    const [couponError, setCouponError] = useState("");
+
     const allItems = cart?.items || [];
     const brokenItems = allItems.filter(i => i.isCheckoutReady === false);
     const activeItems = allItems.filter(i => i.isCheckoutReady !== false);
     const hasInventoryConflict = brokenItems.length > 0;
 
-    // 🟢 UPDATED FINANCIALS: Removed all Tax logic
-    const getFinancials = () => {
-        if (!cart?.items) return { subtotal: 0, totalMRP: 0, deliveryCharge: 0, finalTotal: 0, totalDiscount: 0 };
+    useEffect(() => {
+        const loadCoupons = async () => {
+            try {
+                const { data } = await userAxios.get("/users/coupons/available");
+                if (data.success) setAvailableCoupons(data.coupons);
+            } catch (err) { console.error("Coupon fetch failed"); }
+        };
+        loadCoupons();
+    }, []);
 
-        // Subtotal of only checkout-ready items
+    const financials = useMemo(() => {
+        if (!cart?.items) return { subtotal: 0, totalMRP: 0, deliveryCharge: 0, finalTotal: 0, totalDiscount: 0, couponDiscount: 0 };
+
         const subtotal = cart?.subtotal || 0;
         const totalMRP = cart?.totalMarketPrice || 0;
-
-        // Shipping Logic
         const deliveryCharge = (subtotal > 0 && subtotal < 1999) ? 99 : 0;
 
-        // Final Total is now simple: Subtotal + Delivery
-        // (Savings are already reflected in the subtotal via item.currentPrice)
-        const finalTotal = subtotal + deliveryCharge;
-        const totalDiscount = totalMRP - subtotal;
+        let couponDiscount = 0;
+        if (appliedCoupon) {
+            if (appliedCoupon.discountType === 'PERCENT') {
+                couponDiscount = (subtotal * appliedCoupon.discountValue) / 100;
+                if (appliedCoupon.maxDiscount && appliedCoupon.maxDiscount > 0) {
+                    couponDiscount = Math.min(couponDiscount, appliedCoupon.maxDiscount);
+                }
+            } else {
+                couponDiscount = appliedCoupon.discountValue;
+            }
+        }
 
-        return { subtotal, totalMRP, deliveryCharge, finalTotal, totalDiscount };
+        const finalTotal = Math.max(0, (subtotal + deliveryCharge) - couponDiscount);
+        const totalDiscount = (totalMRP - subtotal) + couponDiscount;
+
+        return { subtotal, totalMRP, deliveryCharge, finalTotal, totalDiscount, couponDiscount };
+    }, [cart, appliedCoupon]);
+
+    const handleApplyCoupon = async (codeFromList = null) => {
+        const targetCode = codeFromList || couponInput;
+        setCouponError("");
+
+        if (!targetCode.trim()) {
+            setCouponError("Please enter a coupon code.");
+            return;
+        }
+        if (appliedCoupon) {
+            setCouponError("Please remove the current coupon first.");
+            return;
+        }
+
+        try {
+            setIsApplyingCoupon(true);
+            const { data } = await userAxios.post("/users/coupons/validate", {
+                code: targetCode.toUpperCase(),
+                subtotal: financials.subtotal
+            });
+
+            if (data.success) {
+                setAppliedCoupon(data.coupon);
+                setCouponInput("");
+                setShowCouponList(false);
+                nxToast.success("Coupon Applied", `${data.coupon.code} activated successfully!`);
+            }
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || "Invalid or expired coupon code.";
+            setCouponError(errorMsg);
+        } finally {
+            setIsApplyingCoupon(false);
+        }
     };
 
-    const financials = getFinancials();
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponInput("");
+        setCouponError("");
+        nxToast.success("Coupon removed");
+    };
 
     useEffect(() => {
         if (!isProcessing && !isCartLoading && (!cart?.items || cart.items.length === 0)) {
@@ -83,22 +145,22 @@ const CheckoutPage = () => {
     const handleOnlinePayment = async (orderPayload) => {
         try {
             const isLoaded = await loadRazorpayScript();
-            if (!isLoaded) return nxToast.security("Payment gateway is offline");
+            if (!isLoaded) return nxToast.security("Gateway offline");
 
-            // Create Order with simplified amount
             const { data } = await userAxios.post("/user/payment/create-order", {
                 amount: financials.finalTotal,
-                items: cart.items, // Sending items for backend verification
-                totals: financials
+                items: cart.items,
+                totals: financials,
+                orderId: `TMP_${Date.now()}`
             });
 
-            if (!data.success) return nxToast.security("Payment initialization failed");
+            if (!data.success) return nxToast.security("Init failed");
 
             const options = {
                 key: import.meta.env.VITE_RAZORPAY_KEY_ID,
                 amount: data.order.amount,
                 currency: "INR",
-                name: "Next Zen Store",
+                name: "NextZen Clothing",
                 order_id: data.order.id,
                 handler: async function (response) {
                     try {
@@ -114,78 +176,79 @@ const CheckoutPage = () => {
                             clearCartUI();
                             navigate(`/checkout/success/${finalRes.orderId}`, { replace: true });
                         }
-                    } catch (err) { nxToast.security("Payment sync error"); }
+                    } catch (err) {
+                        nxToast.security("Sync error");
+                        setIsProcessing(false);
+                    }
                 },
                 modal: {
                     ondismiss: async function () {
-                        setIsProcessing(true);
-                        const failRes = await placeOrder.mutateAsync({ ...orderPayload, razorpayOrderId: data.order.id, status: 'payment_failed' });
-                        clearCartUI();
-                        navigate("/payment-failed", {
-                            state: {
+                        try {
+                            setIsProcessing(true);
+
+                            const failRes = await placeOrder.mutateAsync({
+                                ...orderPayload,
                                 razorpayOrderId: data.order.id,
-                                orderPayload: { ...orderPayload, _id: failRes.orderId },
-                                totalAmount: financials.finalTotal
-                            },
-                            replace: true
-                        });
+                                status: 'payment_failed'
+                            });
+
+                            clearCartUI();
+
+                            navigate(`/payment-failed/${failRes.orderId}`, {
+                                replace: true,
+                                state: {
+                                    type: 'error',
+                                    totalAmount: financials.finalTotal,
+                                    orderPayload: orderPayload,
+                                    error: "Transaction cancelled by user."
+                                }
+                            });
+
+                        } catch (err) {
+                            setIsProcessing(false);
+                            nxToast.error("Order Creation Failed", "Could not process the cancellation.");
+                        }
                     }
                 },
-                theme: { color: "#3395FF" }
+                theme: { color: "#0F172A" }
             };
             new window.Razorpay(options).open();
         } catch (error) {
-            console.error(error);
-            nxToast.security("Payment system error.");
+            nxToast.security("System error.");
+            setIsProcessing(false);
         }
     };
 
     const handleConfirmRequest = () => {
-        if (hasInventoryConflict) return nxToast.security("Please update your cart items");
-        if (!selectedAddress) return nxToast.security("Please select a delivery address");
-
+        if (hasInventoryConflict) return nxToast.security("Conflict detected");
+        if (!selectedAddress) return nxToast.security("Select address");
         if (paymentMethod === 'wallet' && (wallet?.balance || 0) < financials.finalTotal) {
-            return nxToast.security("Insufficient wallet balance");
+            return nxToast.security("Insufficient balance");
         }
-
-        setFrozenTotals({
-            subtotal: financials.subtotal,
-            deliveryCharge: financials.deliveryCharge,
-            totalAmount: financials.finalTotal,
-            totalDiscount: financials.totalDiscount
-        });
+        setFrozenTotals({ ...financials, totalAmount: financials.finalTotal });
         setIsConfirmModalOpen(true);
     };
 
     const handleFinalOrderPlacement = () => {
-        const liveActiveItems = cart?.items?.filter(i => i.isCheckoutReady !== false) || [];
-        if (liveActiveItems.length === 0) return;
-
+        if (activeItems.length === 0) return;
         setIsConfirmModalOpen(false);
-
         const orderPayload = {
             addressId: selectedAddress._id,
-            items: liveActiveItems.map(item => ({
+            items: activeItems.map(item => ({
                 productId: item.productId._id,
                 variantId: item.variantId._id,
                 size: item.size,
                 quantity: item.quantity,
                 price: item.currentPrice,
-                originalPrice: item.marketPrice,
-                totalAmount: item.currentPrice * item.quantity // Pure price * qty
+                totalAmount: item.currentPrice * item.quantity
             })),
             paymentMethod,
-            totals: {
-                subtotal: financials.subtotal,
-                totalDiscount: financials.totalDiscount,
-                deliveryCharge: financials.deliveryCharge,
-                totalAmount: financials.finalTotal
-            }
+            totals: { ...financials, totalAmount: financials.finalTotal },
+            couponCode: appliedCoupon?.code || null
         };
 
-        if (paymentMethod === 'razorpay') {
-            handleOnlinePayment(orderPayload);
-        } else {
+        if (paymentMethod === 'razorpay') handleOnlinePayment(orderPayload);
+        else {
             setIsProcessing(true);
             placeOrder.mutate(orderPayload, {
                 onSuccess: (data) => {
@@ -214,67 +277,62 @@ const CheckoutPage = () => {
     if (isCartLoading || isAddrLoading || isWalletLoading) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-[#7a6af6]" size={32} /></div>;
 
     return (
-        <div className="min-h-screen text-white flex flex-col font-sans">
+        <div className="min-h-screen text-white flex flex-col font-sans selection:bg-[#7a6af6]/30">
             <Header />
             <main className="max-w-[1440px] mx-auto px-6 md:px-10 pt-32 pb-32 w-full">
-
                 <div className="flex justify-between items-end mb-12 border-b border-white/5 pb-8">
                     <div className="space-y-2">
-                        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#7a6af6] italic">Final Step // Checkout</p>
-                        <h1 className="text-5xl font-black uppercase tracking-tighter italic">Order <span className="text-white/20">Review</span></h1>
+                        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#7a6af6] italic">Phase 03 // Deployment</p>
+                        <h1 className="text-5xl font-black uppercase tracking-tighter italic text-white">Review <span className="text-white/20">Order</span></h1>
                     </div>
                 </div>
 
                 <div className="flex flex-col lg:flex-row gap-8 items-start max-w-[1200px] mx-auto w-full">
                     <div className="w-full lg:flex-1 space-y-8">
-
                         {hasInventoryConflict && (
                             <section className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <AlertCircle className="text-red-500" size={24} />
                                     <div>
-                                        <p className="text-xs font-black uppercase text-red-500 tracking-widest">Stock Update</p>
-                                        <p className="text-[10px] text-white/40 font-bold uppercase italic">Some items are no longer available.</p>
+                                        <p className="text-xs font-black uppercase text-red-500 tracking-widest">Integrity Alert</p>
+                                        <p className="text-[10px] text-white/40 font-bold uppercase italic">Unavailable items in archive.</p>
                                     </div>
                                 </div>
-                                <button onClick={() => navigate('/cart')} className="px-6 py-2 bg-red-500/20 text-red-500 border border-red-500/30 rounded-xl text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition-all">Go to Cart</button>
+                                <button onClick={() => navigate('/cart')} className="px-6 py-2 bg-red-500/20 text-red-500 rounded-xl text-[10px] font-black uppercase">Sync Cart</button>
                             </section>
                         )}
 
-                        {/* 01 // DELIVERY ADDRESS */}
                         <section className={`${glassStyle} p-10 ${hasInventoryConflict ? 'opacity-30 pointer-events-none' : ''}`}>
                             <div className="flex justify-between items-center mb-8">
-                                <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.4em] flex items-center gap-2"><MapPin size={14} /> 01 // Delivery Address</h2>
-                                <button onClick={() => navigate('/profile/address')} className="text-[8px] font-black uppercase px-5 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-[#7a6af6] transition-all tracking-widest"><Plus size={10} className="inline mr-1" /> Add New</button>
+                                <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.4em] flex items-center gap-2"><MapPin size={14} /> 01 // Shipping Info</h2>
+                                <button onClick={() => navigate('/profile/address')} className="text-[8px] font-black uppercase px-5 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-[#7a6af6] transition-all">Add New</button>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {addressData?.map((addr) => (
-                                    <div key={addr._id} onClick={() => setSelectedAddress(addr)} className={`group relative p-6 rounded-3xl border transition-all duration-500 cursor-pointer ${selectedAddress?._id === addr._id ? 'bg-white/[0.08] border-[#7a6af6] shadow-[0_0_30px_rgba(122,106,246,0.1)]' : 'bg-white/[0.02] border-white/5 hover:border-white/20'}`}>
+                                    <div key={addr._id} onClick={() => setSelectedAddress(addr)} className={`group relative p-6 rounded-3xl border transition-all duration-500 cursor-pointer ${selectedAddress?._id === addr._id ? 'bg-white/[0.08] border-[#7a6af6]' : 'bg-white/[0.02] border-white/5'}`}>
                                         <div className="flex justify-between items-start mb-4">
-                                            <span className={`px-2.5 py-0.5 rounded-lg text-[7px] font-black uppercase ${selectedAddress?._id === addr._id ? 'bg-[#7a6af6] text-white' : 'bg-white/5 text-white/40'}`}>{addr.addressType}</span>
+                                            <span className={`px-2.5 py-0.5 rounded-lg text-[7px] font-black uppercase ${selectedAddress?._id === addr._id ? 'bg-[#7a6af6]' : 'bg-white/5 text-white/40'}`}>{addr.addressType}</span>
                                             <div className="flex items-center gap-2">
                                                 <button onClick={(e) => handleEditAddress(e, addr)} className="p-1.5 text-white/20 hover:text-white transition-all"><Edit2 size={14} /></button>
                                                 {selectedAddress?._id === addr._id && <CheckCircle2 size={18} className="text-[#7a6af6]" />}
                                             </div>
                                         </div>
-                                        <h3 className="text-sm font-black uppercase italic text-white mb-1">{addr.fullName}</h3>
-                                        <p className="text-[10px] text-white/30 uppercase tracking-widest leading-relaxed">{addr.addressLine}, {addr.city}<br />{addr.state} — {addr.pincode}</p>
+                                        <h3 className="text-sm font-black uppercase italic text-white">{addr.fullName}</h3>
+                                        <p className="text-[10px] text-white/30 uppercase mt-1 leading-relaxed">{addr.addressLine}, {addr.city}</p>
                                     </div>
                                 ))}
                             </div>
                         </section>
 
-                        {/* 02 // YOUR SELECTION */}
                         <section className="space-y-4">
-                            <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.4em] px-2 flex items-center gap-2"><Box size={14} /> 02 // Your Selection</h2>
+                            <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.4em] px-2 flex items-center gap-2"><Box size={14} /> 02 // Selection</h2>
                             <div className="space-y-3">
                                 {allItems.map((item) => (
-                                    <div key={item._id} className={`${glassStyle} p-5 flex items-center gap-6 relative overflow-hidden ${item.isCheckoutReady === false ? 'border-red-500/20' : 'hover:bg-white/[0.01]'}`}>
-                                        {item.isCheckoutReady === false && <div className="absolute inset-0 bg-red-950/40 backdrop-blur-sm flex items-center justify-center z-10"><span className="bg-red-600 text-white text-[8px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest">Out of Stock</span></div>}
-                                        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-black border border-white/5 shrink-0"><img src={item.variantId?.images?.[0]} className="w-full h-full object-cover opacity-80" alt="" /></div>
+                                    <div key={item._id} className={`${glassStyle} p-5 flex items-center gap-6 relative overflow-hidden ${item.isCheckoutReady === false ? 'border-red-500/20' : ''}`}>
+                                        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-black border border-white/5"><img src={item.variantId?.images?.[0]} className="w-full h-full object-cover" alt="" /></div>
                                         <div className="flex-1">
                                             <h3 className="text-xs font-black italic uppercase text-white">{item.productId?.name}</h3>
-                                            <p className="text-[9px] text-white/20 font-bold mt-1 uppercase tracking-widest">Size: {item.size} <span className="mx-2 text-white/5">//</span> Qty: {item.quantity}</p>
+                                            <p className="text-[9px] text-white/20 font-bold mt-1 uppercase">Size: {item.size} // Qty: {item.quantity}</p>
                                         </div>
                                         <div className="text-right">
                                             <span className="text-xl font-black italic text-white tracking-tighter">₹{(item.currentPrice * item.quantity).toLocaleString()}</span>
@@ -284,101 +342,128 @@ const CheckoutPage = () => {
                             </div>
                         </section>
 
-                        {/* 03 // PAYMENT METHOD */}
                         <section className={`${glassStyle} p-10 ${hasInventoryConflict ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
                             <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.4em] mb-10 flex items-center gap-2"><CreditCard size={14} /> 03 // Payment Method</h2>
                             <div className="space-y-4">
-                                <div onClick={() => setPaymentMethod('razorpay')} className={`p-6 rounded-[2rem] border cursor-pointer flex items-center gap-5 transition-all duration-500 ${paymentMethod === 'razorpay' ? 'border-[#3395FF] bg-[#3395FF]/[0.08] shadow-[0_0_40px_rgba(51,149,255,0.1)]' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}>
-                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${paymentMethod === 'razorpay' ? 'border-[#3395FF]' : 'border-white/10'}`}>
-                                        {paymentMethod === 'razorpay' && <div className="w-2.5 h-2.5 rounded-full bg-[#3395FF]" />}
-                                    </div>
-                                    <div className="flex-1 flex items-center gap-4">
-                                        <p className="text-sm font-black uppercase italic text-white tracking-tighter mt-0.5">Pay Online with Razorpay</p>
-                                        <span className={`bg-[#3395FF]/20 text-[#3395FF] text-[7px] font-black px-2 py-0.5 rounded border border-[#3395FF]/20 tracking-widest`}>SECURE</span>
-                                    </div>
-                                    <img src="../../public/Razorpay_logo.png" alt="Razorpay" className={`h-4 transition-all duration-700 ${paymentMethod === 'razorpay' ? 'grayscale-0' : 'grayscale invert brightness-200 opacity-10'}`} />
+                                <div onClick={() => setPaymentMethod('razorpay')} className={`p-6 rounded-[2rem] border cursor-pointer flex items-center gap-5 transition-all ${paymentMethod === 'razorpay' ? 'border-[#3395FF] bg-[#3395FF]/[0.08]' : 'bg-white/[0.02] border-white/5'}`}>
+                                    <div className="flex-1 flex items-center gap-4"><p className="text-sm font-black uppercase italic text-white">Razorpay Online</p><span className="bg-[#3395FF]/20 text-[#3395FF] text-[7px] font-black px-2 py-0.5 rounded border border-[#3395FF]/20">SECURE</span></div>
+                                    <img src="/Razorpay_logo.png" className="h-4" alt="" />
                                 </div>
-
-                                <div onClick={() => setPaymentMethod('wallet')} className={`p-6 rounded-[2rem] border cursor-pointer flex items-center gap-5 transition-all duration-500 ${paymentMethod === 'wallet' ? 'border-[#7a6af6] bg-[#7a6af6]/[0.08] shadow-[0_0_40px_rgba(122,106,246,0.15)]' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}>
-                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${paymentMethod === 'wallet' ? 'border-[#7a6af6]' : 'border-white/10'}`}>
-                                        {paymentMethod === 'wallet' && <div className="w-2.5 h-2.5 rounded-full bg-[#7a6af6]" />}
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-black uppercase italic text-white tracking-tighter">Use Digital Wallet Balance</p>
-                                        <p className="text-[9px] text-white/30 font-bold uppercase mt-1 italic tracking-widest">Available: <span className={(wallet?.balance || 0) >= financials.finalTotal ? 'text-green-400' : 'text-red-500/50'}>₹{wallet?.balance?.toLocaleString()}</span></p>
-                                    </div>
-                                    <Wallet className={paymentMethod === 'wallet' ? 'text-[#7a6af6]' : 'text-white/10'} size={24} />
+                                <div onClick={() => setPaymentMethod('wallet')} className={`p-6 rounded-[2rem] border cursor-pointer flex items-center gap-5 transition-all ${paymentMethod === 'wallet' ? 'border-[#7a6af6] bg-[#7a6af6]/[0.08]' : 'bg-white/[0.02] border-white/5'}`}>
+                                    <div className="flex-1"><p className="text-sm font-black uppercase italic text-white">Wallet Credits</p><p className="text-[9px] text-white/30 font-bold mt-1 uppercase tracking-widest">Balance: <span className={(wallet?.balance || 0) >= financials.finalTotal ? 'text-green-400' : 'text-red-500/50'}>₹{wallet?.balance?.toLocaleString()}</span></p></div>
+                                    <Wallet className={paymentMethod === 'wallet' ? 'text-[#7a6af6]' : 'text-white/10'} />
                                 </div>
-
-                                <div onClick={() => setPaymentMethod('cashOnDelivery')} className={`p-6 rounded-[2rem] border cursor-pointer flex items-center gap-5 transition-all duration-500 ${paymentMethod === 'cashOnDelivery' ? 'border-white/40 bg-white/[0.08]' : 'bg-white/[0.02] border-white/5 hover:border-white/10'}`}>
-                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${paymentMethod === 'cashOnDelivery' ? 'border-white' : 'border-white/10'}`}>
-                                        {paymentMethod === 'cashOnDelivery' && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
-                                    </div>
-                                    <p className="flex-1 text-sm font-black uppercase italic text-white tracking-tighter">Cash on Delivery</p>
-                                    <Box className="text-white/10" size={24} />
+                                <div onClick={() => setPaymentMethod('cashOnDelivery')} className={`p-6 rounded-[2rem] border cursor-pointer flex items-center gap-5 transition-all ${paymentMethod === 'cashOnDelivery' ? 'border-white/40 bg-white/[0.08]' : 'bg-white/[0.02] border-white/5'}`}>
+                                    <p className="flex-1 text-sm font-black uppercase italic text-white">Cash on Delivery</p>
+                                    <Box className="text-white/10" />
                                 </div>
                             </div>
                         </section>
                     </div>
 
-                    {/* SETTLEMENT SIDEBAR */}
-                    <aside className="w-full lg:w-[320px] lg:sticky lg:top-32">
-                        <div className="bg-white text-black p-8 rounded-[2.5rem] shadow-2xl overflow-hidden relative group">
-                            <div className="absolute top-0 right-0 p-4 opacity-[0.04] transition-opacity pointer-events-none"><ShieldCheck size={160} /></div>
-
+                    <aside className="w-full lg:w-[320px] lg:sticky lg:top-32 space-y-6">
+                        <div className="bg-white text-black p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-4 opacity-[0.04] pointer-events-none"><ShieldCheck size={160} /></div>
                             <h3 className="text-[10px] font-black uppercase text-black/30 mb-8 border-b border-black/5 pb-4 italic text-center tracking-[0.5em]">Payment Summary</h3>
 
-                            <div className="space-y-4 mb-10 relative z-10">
-                                <div className="flex justify-between text-[11px] font-black text-black/40 uppercase tracking-widest"><span>Item Total</span><span className="text-black font-black">₹{financials.subtotal.toLocaleString()}</span></div>
-                                {financials.totalDiscount > 0 && <div className="flex justify-between text-[11px] font-black text-green-600 uppercase tracking-widest"><span>Your Savings</span><span>- ₹{financials.totalDiscount.toLocaleString()}</span></div>}
+                            <div className="space-y-4 mb-8 relative z-10">
+                                <div className="flex justify-between text-[11px] font-black text-black/40 uppercase"><span>Subtotal</span><span className="text-black">₹{financials.subtotal.toLocaleString()}</span></div>
 
-                                {/* 🔴 TAX ROW REMOVED COMPLETELY */}
+                                {appliedCoupon && (
+                                    <div className="flex justify-between text-[11px] font-black text-indigo-600 uppercase italic">
+                                        <span className="flex items-center gap-1"><Tag size={10} /> {appliedCoupon.code}</span>
+                                        <span>- ₹{financials.couponDiscount.toLocaleString()}</span>
+                                    </div>
+                                )}
 
-                                <div className="flex justify-between text-[11px] font-black text-black/40 border-b border-black/5 pb-6 uppercase tracking-widest"><span>Shipping Fee</span><span className="text-black font-black">{financials.deliveryCharge > 0 ? `₹${financials.deliveryCharge}` : 'FREE'}</span></div>
+                                <div className="flex justify-between text-[11px] font-black text-black/40 border-b border-black/5 pb-6 uppercase"><span>Shipping</span><span>{financials.deliveryCharge > 0 ? `₹${financials.deliveryCharge}` : 'FREE'}</span></div>
 
                                 <div className="pt-2 flex justify-between items-center text-lg font-black italic">
-                                    <span className="text-black/30 text-[9px] font-black uppercase tracking-[0.3em]">Total Amount</span>
+                                    <span className="text-black/30 text-[9px] font-black uppercase">Payable Total</span>
                                     <span className="text-4xl tracking-tighter text-[#000] leading-none font-black">₹{financials.finalTotal.toLocaleString()}</span>
                                 </div>
                             </div>
 
+                            {/* 🟢 DYNAMIC COUPON INPUT UI */}
+                            <div className="mb-8 p-4 bg-zinc-50 rounded-2xl border border-dashed border-zinc-200">
+                                <div className="flex justify-between items-center mb-3">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-1"><Ticket size={12} /> Offers</p>
+                                    <button
+                                        onClick={() => setShowCouponList(!showCouponList)}
+                                        className="text-[8px] font-black text-[#7a6af6] underline uppercase"
+                                    >
+                                        {showCouponList ? "Hide" : "View All"}
+                                    </button>
+                                </div>
+
+                                {/* Available Coupons List */}
+                                {showCouponList && (
+                                    <div className="mb-4 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                                        {availableCoupons.map(cpn => (
+                                            <div
+                                                key={cpn.code}
+                                                onClick={() => handleApplyCoupon(cpn.code)}
+                                                className="p-2 bg-white border border-zinc-100 rounded-xl cursor-pointer hover:border-[#7a6af6] transition-all"
+                                            >
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-[10px] font-black text-[#7a6af6]">{cpn.code}</span>
+                                                    <span className="text-[8px] font-bold text-green-600">
+                                                        {cpn.discountValue}{cpn.discountType === 'PERCENT' ? '%' : ' OFF'}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[7px] text-zinc-400 uppercase mt-1">Min: ₹{cpn.minPurchaseAmt}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="flex gap-2">
+                                    <input
+                                        value={couponInput}
+                                        onChange={(e) => {
+                                            setCouponInput(e.target.value.toUpperCase());
+                                            setCouponError(""); // 🟢 Clear error on typing
+                                        }}
+                                        placeholder="CODE"
+                                        className="flex-1 bg-white border border-zinc-200 rounded-xl px-3 py-2 text-[10px] font-bold outline-none focus:border-[#7a6af6] transition-all"
+                                    />
+                                    <button
+                                        onClick={() => handleApplyCoupon()}
+                                        disabled={isApplyingCoupon || appliedCoupon}
+                                        className="bg-black text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase hover:bg-[#7a6af6] disabled:opacity-30 transition-all shadow-md active:scale-95"
+                                    >
+                                        {isApplyingCoupon ? <Loader2 className="animate-spin" size={12} /> : 'Apply'}
+                                    </button>
+                                </div>
+
+                                {/* 🟢 INLINE ERROR DISPLAY */}
+                                {couponError && (
+                                    <p className="text-[9px] font-bold text-red-500 mt-2 flex items-start gap-1 leading-tight animate-in fade-in">
+                                        <AlertCircle size={12} className="shrink-0" /> {couponError}
+                                    </p>
+                                )}
+
+                                {appliedCoupon && (
+                                    <div className="mt-3 flex justify-between items-center bg-indigo-50 p-2.5 rounded-lg border border-indigo-100 animate-in fade-in slide-in-from-top-1">
+                                        <span className="text-[8px] font-black text-indigo-600 uppercase italic tracking-tighter">Verified: {appliedCoupon.code}</span>
+                                        <button onClick={handleRemoveCoupon} className="text-indigo-600 hover:text-red-500 transition-colors"><X size={14} /></button>
+                                    </div>
+                                )}
+                            </div>
+
                             <button
                                 onClick={handleConfirmRequest}
-                                disabled={placeOrder.isPending || isProcessing}
-                                className={`group w-full py-6 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.5em] flex items-center justify-center gap-3 transition-all duration-500 active:scale-95 shadow-xl ${paymentMethod === 'razorpay'
-                                    ? 'bg-[#7a6af6] text-white shadow-[#3395FF]/20'
-                                    : 'bg-[#0F172A] text-white hover:bg-[#7a6af6]'
-                                    } disabled:opacity-30`}
+                                disabled={isProcessing}
+                                className="w-full py-6 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.5em] flex items-center justify-center gap-3 transition-all bg-[#0F172A] text-white hover:bg-[#7a6af6] disabled:opacity-30 active:scale-95 shadow-xl"
                             >
-                                {placeOrder.isPending || isProcessing ? (
-                                    <Loader2 className="animate-spin" size={18} />
-                                ) : (
-                                    <>Review Order <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>
-                                )}
+                                {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <>Place Order <ArrowRight size={18} /></>}
                             </button>
                         </div>
                     </aside>
                 </div>
             </main>
-
-            <OrderConfirmModal
-                isOpen={isConfirmModalOpen}
-                onClose={() => setIsConfirmModalOpen(false)}
-                onConfirm={handleFinalOrderPlacement}
-                isPending={placeOrder.isPending}
-                totals={frozenTotals}
-                inventoryConflict={hasInventoryConflict}
-                paymentMethod={paymentMethod}
-            />
-            {isAddressModalOpen && (
-                <AddressModal
-                    isOpen={isAddressModalOpen}
-                    onClose={() => setIsAddressModalOpen(false)}
-                    mode="edit"
-                    initialData={addressToEdit}
-                    onSubmit={handleAddressMutation}
-                />
-            )}
+            <OrderConfirmModal couponCode={appliedCoupon?.code} isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} onConfirm={handleFinalOrderPlacement} isPending={placeOrder.isPending} totals={frozenTotals} inventoryConflict={hasInventoryConflict} paymentMethod={paymentMethod} />
+            {isAddressModalOpen && <AddressModal isOpen={isAddressModalOpen} onClose={() => setIsAddressModalOpen(false)} mode="edit" initialData={addressToEdit} onSubmit={handleAddressMutation} />}
             <Footer />
         </div>
     );

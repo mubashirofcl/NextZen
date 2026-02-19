@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createAdminCategory,
   updateAdminCategory,
@@ -13,17 +13,11 @@ export const useCreateCategory = () => {
 
   return useMutation({
     mutationFn: createAdminCategory,
-
     onSuccess: () => {
-      qc.invalidateQueries({
-        queryKey: ["admin-categories"],
-        exact: false,
-      });
-
-      qc.invalidateQueries({
-        queryKey: ["admin-subcategories"],
-        exact: false,
-      });
+      // Invalidate both levels to ensure counts and offers sync
+      qc.invalidateQueries({ queryKey: ["admin-categories"] });
+      qc.invalidateQueries({ queryKey: ["admin-subcategories"] });
+      qc.invalidateQueries({ queryKey: ["categories-selection"] });
     },
   });
 };
@@ -35,21 +29,11 @@ export const useUpdateCategory = () => {
 
   return useMutation({
     mutationFn: updateAdminCategory,
-
     onSuccess: () => {
-      qc.invalidateQueries({
-        queryKey: ["admin-categories"],
-        exact: false,
-      });
-      qc.invalidateQueries({
-        queryKey: ["categories-dropdown"],
-        exact: false,
-      });
-
-      qc.invalidateQueries({
-        queryKey: ["admin-subcategories"],
-        exact: false,
-      });
+      qc.invalidateQueries({ queryKey: ["admin-categories"] });
+      qc.invalidateQueries({ queryKey: ["admin-subcategories"] });
+      qc.invalidateQueries({ queryKey: ["categories-dropdown"] });
+      qc.invalidateQueries({ queryKey: ["categories-selection"] });
     },
   });
 };
@@ -61,20 +45,24 @@ export const useDeleteCategory = () => {
 
   return useMutation({
     mutationFn: deleteAdminCategory,
-
     onSuccess: () => {
-      qc.invalidateQueries({
-        queryKey: ["admin-categories"],
-        exact: false,
-      });
-
-      qc.invalidateQueries({
-        queryKey: ["admin-subcategories"],
-        exact: false,
-      });
+      qc.invalidateQueries({ queryKey: ["admin-categories"] });
+      qc.invalidateQueries({ queryKey: ["admin-subcategories"] });
     },
   });
 };
 
-/* ================= SUBCATEGORY ================= */
+/* ================= SUBCATEGORY FETCH ================= */
 
+/**
+ * Fetches subcategories based on parentId.
+ * Used in the SubCategoryModal to show the "Database Registry" list.
+ */
+export const useAdminSubCategories = (params) => {
+  return useQuery({
+    queryKey: ["admin-subcategories", params?.parentId],
+    queryFn: () => fetchAdminSubCategories(params),
+    enabled: !!params?.parentId, // Only fetch if we have a parent
+    staleTime: 5 * 60 * 1000, // Keep data fresh for 5 mins
+  });
+};

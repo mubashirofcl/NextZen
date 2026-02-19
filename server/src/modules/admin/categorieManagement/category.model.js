@@ -26,6 +26,13 @@ const categorySchema = new mongoose.Schema(
             default: "",
         },
 
+        // --- NEW FIELD FOR OFFERS ---
+        offerId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Offer",
+            default: null,
+        },
+
         isActive: {
             type: Boolean,
             default: true,
@@ -34,8 +41,6 @@ const categorySchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
-
-
     },
     { timestamps: true }
 );
@@ -44,5 +49,6 @@ const categorySchema = new mongoose.Schema(
 categorySchema.index({ name: 1 });
 categorySchema.index({ level: 1 });
 categorySchema.index({ parentId: 1 });
+categorySchema.index({ offerId: 1 }); // Index added for faster lookups during price calculation
 
 export default mongoose.model("Category", categorySchema);

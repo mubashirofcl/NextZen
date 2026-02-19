@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, ChevronDown, SlidersHorizontal, Check, Heart, Loader2, X } from "lucide-react";
+import { Search, ChevronDown, SlidersHorizontal, Check, Heart, Loader2, X, Percent, Tag } from "lucide-react";
 import { useSelector } from "react-redux";
 
 import Header from "../../components/user/Header";
@@ -47,6 +47,10 @@ const ProductCard = ({ product }) => {
     const vId = product.variants?.[0]?._id || product.variants?.[0] || pId;
     const isWishlisted = isInWishlist(pId);
 
+    // Dynamic Logic: Determine if an offer is active
+    const activeDiscount = Number(product.discountValue || 0);
+    const hasOffer = activeDiscount > 0;
+
     const handleWishlistToggle = (e) => {
         e.stopPropagation();
         if (!isAuthenticated) return nxToast.security("Access Denied", "Please login to archive items.");
@@ -57,6 +61,19 @@ const ProductCard = ({ product }) => {
         <div className="group cursor-pointer" onClick={() => navigate(`/product/${pId}`)}>
             <div className="relative aspect-[3/4] mb-4 overflow-hidden rounded-[1.5rem] bg-white/[0.03] border border-white/5 transition-all duration-500 hover:border-[#7a6af6]/40">
                 <img src={product.thumbnail} alt={product.name} className="w-full h-full object-cover transition-transform duration-[1.5s] group-hover:scale-110 opacity-90 group-hover:opacity-100" />
+                
+                {/* 🟢 OFFER BADGE - HIGH VISIBILITY */}
+                {hasOffer && (
+                    <div className="absolute top-4 left-4 z-20 animate-in slide-in-from-left-2 duration-500">
+                        <div className="bg-[#7a6af6] text-white px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-[0_0_20px_rgba(122,106,246,0.5)] border border-white/20">
+                            <Percent size={10} strokeWidth={4} />
+                            <span className="text-[9px] font-black italic tracking-tighter">
+                                {activeDiscount}% DROP
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 <button
                     onClick={handleWishlistToggle}
                     disabled={isPending}
@@ -66,14 +83,31 @@ const ProductCard = ({ product }) => {
                     {isPending ? <Loader2 size={16} className="animate-spin" /> : <Heart size={16} strokeWidth={3} fill={isWishlisted ? "currentColor" : "none"} />}
                 </button>
             </div>
-            <div className="space-y-1.5 px-1">
-                <h3 className="text-[12px] font-black uppercase tracking-tight text-white group-hover:text-[#7a6af6] transition-colors italic truncate">{product.name}</h3>
+            
+            <div className="space-y-1 px-1">
+                <div className="flex justify-between items-start gap-2">
+                    <h3 className="text-[11px] font-black uppercase tracking-tight text-white group-hover:text-[#7a6af6] transition-colors italic truncate flex-1">
+                        {product.name}
+                    </h3>
+                </div>
+                
                 <div className="flex items-center gap-3">
-                    <span className="text-[15px] font-black text-white italic">₹{product.minSalePrice || product.minPrice}</span>
-                    {(product.minOriginalPrice > (product.minSalePrice || product.minPrice)) && (
-                        <span className="text-[9px] font-bold text-white/20 line-through">₹{product.minOriginalPrice}</span>
+                    <span className={`text-[14px] font-black italic ${hasOffer ? 'text-[#7a6af6]' : 'text-white'}`}>
+                        ₹{product.minSalePrice?.toLocaleString() || product.minPrice?.toLocaleString()}
+                    </span>
+                    {hasOffer && (
+                        <span className="text-[9px] font-bold text-white/20 line-through decoration-white/20 decoration-1">
+                            ₹{product.minOriginalPrice?.toLocaleString()}
+                        </span>
                     )}
                 </div>
+                
+                {/* Secondary Indicator if specific campaign is active */}
+                {hasOffer && (
+                    <p className="text-[7px] font-black uppercase tracking-[0.2em] text-[#7a6af6]/60 italic">
+                        Limited Time Manifest
+                    </p>
+                )}
             </div>
         </div>
     );
@@ -98,7 +132,7 @@ const Shop = () => {
     });
 
     const { data, isLoading } = useProducts({
-        search, page, sort, limit: 10,
+        search, page, sort, limit: 10, 
         category: filters.category,
         subcategory: filters.subcategory,
         brand: filters.brands,
@@ -183,7 +217,6 @@ const Shop = () => {
                                 )}
                             </div>
 
-                            {/* Collection / Category */}
                             <FilterDropdown label={filters.category ? categories.find(c => c._id === filters.category)?.name : "Collection"} isOpen={openDropdown === 'cat'} onClick={() => toggleDropdown('cat')}>
                                 <ul className="space-y-4">
                                     <li onClick={() => { const f = { ...filters, category: "", subcategory: "" }; setFilters(f); updateUrlParams(f); resetPage(); setOpenDropdown(null); }} className="text-[10px] font-black uppercase text-white/20 hover:text-[#7a6af6] cursor-pointer">All Collections</li>
@@ -193,7 +226,6 @@ const Shop = () => {
                                 </ul>
                             </FilterDropdown>
 
-                            {/* Type / Subcategory - Only if Category is selected */}
                             {filters.category && subcategories.length > 0 && (
                                 <FilterDropdown label={filters.subcategory ? subcategories.find(sc => sc._id === filters.subcategory)?.name : "Type"} isOpen={openDropdown === "sub"} onClick={() => toggleDropdown("sub")}>
                                     <ul className="space-y-4">
@@ -205,7 +237,6 @@ const Shop = () => {
                                 </FilterDropdown>
                             )}
 
-                            {/* Brand Filter */}
                             <FilterDropdown label={filters.brands.length > 0 ? `Brand (${filters.brands.length})` : "Brand"} isOpen={openDropdown === 'brand'} onClick={() => toggleDropdown('brand')}>
                                 <div className="space-y-3 max-h-56 overflow-y-auto pr-2 custom-scrollbar">
                                     {brands.map(b => (
@@ -220,7 +251,6 @@ const Shop = () => {
                                 </div>
                             </FilterDropdown>
 
-                            {/* Size Filter */}
                             <FilterDropdown label={filters.sizes.length > 0 ? `Size (${filters.sizes.length})` : "Size"} isOpen={openDropdown === 'size'} onClick={() => toggleDropdown('size')}>
                                 <div className="grid grid-cols-3 gap-2">
                                     {availableSizes.map(size => (
@@ -228,13 +258,9 @@ const Shop = () => {
                                     ))}
                                 </div>
                             </FilterDropdown>
-
-
                         </div>
 
                         <div className="flex items-center gap-3 w-full lg:w-auto">
-
-                            {/* Search Bar */}
                             <div className="relative w-full lg:w-64 group">
                                 <input
                                     value={search}
@@ -244,7 +270,6 @@ const Shop = () => {
                                 />
                                 <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#7a6af6]" />
                             </div>
-                            {/* Sorting Filter */}
                             <FilterDropdown label="Sort" variant="right" isOpen={openDropdown === 'sort'} onClick={() => toggleDropdown('sort')}>
                                 <ul className="space-y-4">
                                     {[
@@ -257,7 +282,6 @@ const Shop = () => {
                                     ))}
                                 </ul>
                             </FilterDropdown>
-
                         </div>
                     </div>
                 </div>

@@ -77,44 +77,55 @@ export const validateCartForCheckout = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
-
-// 🟢 FIXED: PLACE ORDER (Tax-Free Version)
 export const placeOrder = async (req, res) => {
     try {
-        const { totals, items, addressId, paymentMethod } = req.body;
+        const userId = req.user.userId;
+        const { addressId, paymentMethod } = req.body;
 
-        if (!totals || !items || !addressId) {
-            return res.status(400).json({ success: false, message: "Manifest data incomplete." });
+        const cartData = await cartRepo.getUserCart(userId);
+
+        if (!cartData || cartData.items.length === 0) {
+            return res.status(400).json({ success: false, message: "Archive empty. Order aborted." });
         }
 
-        // 🟢 Calculation Logic without Tax
-        // items should already have totalAmount = (price * quantity) from frontend
+        const conflict = cartData.items.find(item => !item.isCheckoutReady);
+        if (conflict) {
+            return res.status(400).json({ success: false, message: conflict.errorMessage });
+        }
+
+        const subtotal = cartData.subtotal;
+        const deliveryCharge = (subtotal < 1999 && subtotal > 0) ? 99 : 0;
+        const finalTotal = subtotal + deliveryCharge;
+
+        const orderItems = cartData.items.map(item => ({
+            productId: item.productId._id,
+            variantId: item.variantId._id,
+            size: item.size,
+            quantity: item.quantity,
+            price: item.currentPrice,
+            totalAmount: item.currentPrice * item.quantity 
+        }));
+
         const newOrder = new Order({
-            userId: req.user.userId,
-            // Processed items array will no longer contain item.tax fields from DB
-            items: items.map(item => ({
-                ...item,
-                tax: 0, // Explicitly zeroing out to match your decision
-                totalAmount: item.price * item.quantity 
-            })),
+            userId,
             addressId,
             paymentMethod,
-            subTotal: totals.subtotal, // Adding subtotal to match Schema
-            tax: 0, // Order level tax is now 0
-            deliveryCharge: totals.deliveryCharge,
-            totalMarketPrice: totals.totalMarketPrice,
-            totalDiscount: totals.totalDiscount,
-            // 🟢 Final amount is pure Subtotal + Delivery - Discount
-            totalAmount: totals.totalAmount, 
+            items: orderItems,
+            subTotal: subtotal,
+            totalMarketPrice: cartData.totalMarketPrice,
+            totalDiscount: cartData.totalDiscount,
+            deliveryCharge,
+            totalAmount: finalTotal, 
             status: 'pending'
         });
 
         await newOrder.save();
-        await cartRepo.clearUserCart(req.user.userId); 
+        
+        await cartRepo.clearUserCart(userId); 
         
         res.status(201).json({ success: true, orderId: newOrder._id });
     } catch (error) {
-        console.error("Deployment Error:", error);
+        console.error("Order Deployment Failed:", error);
         res.status(400).json({ success: false, message: error.message });
     }
 };

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { X, Plus, Tag, Loader2, CheckCircle2, ShieldAlert } from "lucide-react";
+import { X, Plus, Tag, Loader2, CheckCircle2, ShieldAlert, Percent } from "lucide-react";
 import { adminToast } from "../../utils/adminToast";
+import { useOffers } from "../../hooks/admin/useOffers"; // Import your offer hook
 
 const CategoryModal = ({
     isOpen,
@@ -11,24 +12,31 @@ const CategoryModal = ({
     mode = "add",
     initialData = null,
 }) => {
-    // Added 'clearErrors' to ensure old backend errors don't stick around
     const { register, handleSubmit, reset, clearErrors, formState: { isSubmitting, errors } } = useForm();
     const [backendError, setBackendError] = useState("");
+
+    // Fetch available Category-level offers
+    const { offers } = useOffers();
+    const categoryOffers = offers.filter(o => o.applyFor === "CATEGORY" && o.isActive);
 
     useEffect(() => {
         if (!isOpen) return;
 
         if (mode === "edit" && initialData) {
+            // Logic: If offerId is an object, take the _id. If it's already a string, use it.
+            const currentOfferId = initialData.offerId?._id || initialData.offerId || "";
+
             reset({
                 name: initialData.name,
                 description: initialData.description || "",
-                isActive: initialData.isActive ?? true
+                isActive: initialData.isActive ?? true,
+                offerId: currentOfferId
             });
         } else {
-            reset({ name: "", description: "", isActive: true });
+            reset({ name: "", description: "", isActive: true, offerId: "" });
         }
         setBackendError("");
-        clearErrors(); // Clear any previous validation flags
+        clearErrors();
     }, [isOpen, mode, initialData, reset, clearErrors]);
 
     if (!isOpen) return null;
@@ -44,7 +52,6 @@ const CategoryModal = ({
             adminToast.success(mode === "add" ? "Category Created" : "Category Updated");
             onClose();
         } catch (err) {
-            // Handle cases where err.response might not exist
             setBackendError(err?.response?.data?.message || err?.message || "Operation failed");
         }
     };
@@ -117,7 +124,27 @@ const CategoryModal = ({
                         {errors.description && <p className="text-[9px] font-black text-red-500 uppercase ml-2 mt-1">{errors.description.message}</p>}
                     </div>
 
-                    {/* --- STATUS TOGGLE (NEW) --- */}
+                    {/* --- OFFER SELECTION (NEW) --- */}
+                    <div>
+                        <label className={labelStyle}>Campaign / Offer Rule</label>
+                        <div className="relative">
+                            <select
+                                {...register("offerId")}
+                                className={`${inputStyle} appearance-none cursor-pointer pr-10`}
+                            >
+                                <option value="">Standard Pricing (No Offer)</option>
+                                {categoryOffers.map((offer) => (
+                                    <option key={offer._id} value={offer._id}>
+                                        {offer.title} — {offer.discountValue}% OFF
+                                    </option>
+                                ))}
+                            </select>
+                            <Percent size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        </div>
+                        <p className="text-[7px] text-slate-400 font-bold uppercase mt-1 ml-1 tracking-widest italic">Applied to all products in this category</p>
+                    </div>
+
+                    {/* --- STATUS TOGGLE --- */}
                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Active Status</span>
                         <input

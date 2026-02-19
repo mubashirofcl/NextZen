@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, XCircle, ArrowRight, Package, ShieldCheck, FileText, RefreshCw, ShoppingBag } from 'lucide-react';
+import { CheckCircle2, XCircle, ArrowRight, Package, ShieldCheck, FileText, RefreshCw, ShoppingBag, Loader2 } from 'lucide-react';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
 import userAxios from '../../api/baseAxios';
@@ -12,18 +12,47 @@ const OrderStatusPage = ({ type = 'success' }) => {
     const { orderId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    
+    // State to hold data if we have to fetch it manually
+    const [fetchedOrder, setFetchedOrder] = useState(null);
+    const [isLoading, setIsLoading] = useState(type === 'failed' && !location.state);
 
     // Data passed via navigate(..., { state: { ... } })
-    const { error, razorpayOrderId, orderPayload, totalAmount } = location.state || {};
+    const { error, orderPayload, totalAmount } = location.state || {};
 
     const isSuccess = type === 'success';
     const themeColor = isSuccess ? "#7a6af6" : "#ef4444";
     const statusLabel = isSuccess ? "Verified" : "Unsuccessful";
 
+    // 🟢 FALLBACK: If location.state is missing on a failed order, fetch it from DB
+    useEffect(() => {
+        if (!isSuccess && !totalAmount && orderId) {
+            const fetchFailedOrder = async () => {
+                try {
+                    setIsLoading(true);
+                    const { data } = await userAxios.get(`/users/orders/${orderId}`);
+                    if (data.success) {
+                        setFetchedOrder(data.order);
+                    } else {
+                        navigate('/profile/orders', { replace: true });
+                    }
+                } catch (err) {
+                    navigate('/profile/orders', { replace: true });
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            fetchFailedOrder();
+        }
+    }, [isSuccess, totalAmount, orderId, navigate]);
+
+    // Use either the state amount or the fetched amount
+    const actualTotalAmount = totalAmount || fetchedOrder?.totalAmount;
+    const actualError = error || "The bank was unable to authorize this transaction.";
+
     const handleRetry = async () => {
         try {
-            // 🟢 SECURITY CHECK: We need the amount to create a fresh session
-            if (!totalAmount) {
+            if (!actualTotalAmount) {
                 nxToast.error("Session Expired", "Please restart from your history.");
                 return navigate('/profile/orders');
             }
@@ -31,9 +60,10 @@ const OrderStatusPage = ({ type = 'success' }) => {
             const isLoaded = await loadRazorpayScript();
             if (!isLoaded) return nxToast.error("Gateway Offline");
 
-            // 🟢 FIX: Create a FRESH Razorpay Order to avoid "Something went wrong"
             const { data: sessionData } = await userAxios.post("/user/payment/create-order", {
-                amount: totalAmount
+                amount: actualTotalAmount,
+                orderId: orderId, // Pass the DB orderId so backend knows what to update
+                isRetry: true
             });
 
             if (!sessionData.success) return nxToast.error("Could not refresh session");
@@ -44,23 +74,22 @@ const OrderStatusPage = ({ type = 'success' }) => {
                 currency: "INR",
                 name: "Next Zen Store",
                 description: "Re-attempting Payment",
-                order_id: sessionData.order.id, // Using the NEW ID
+                order_id: sessionData.order.id, 
                 handler: async function (response) {
                     try {
                         const verifyRes = await userAxios.post("/user/payment/verify-payment", response);
                         if (verifyRes.data.success) {
-                            const targetId = orderPayload?._id || orderId;
-
-                            // 🟢 FIX: Pass the NEW Razorpay ID so the backend can update the manifest
-                            await userAxios.patch(`/users/orders/${targetId}/complete-retry`, {
+                            await userAxios.patch(`/users/orders/${orderId}/complete-retry`, {
                                 paymentInfo: response,
                                 newRazorpayOrderId: sessionData.order.id
                             });
 
                             nxToast.success("Success", "Manifest Synchronized.");
-                            navigate(`/checkout/success/${targetId}`, { replace: true });
+                            navigate(`/checkout/success/${orderId}`, { replace: true });
                         }
-                    } catch (err) { nxToast.error("Sync Error"); }
+                    } catch (err) { 
+                        nxToast.error("Sync Error", "Contact Support."); 
+                    }
                 },
                 theme: { color: themeColor },
                 modal: { ondismiss: () => nxToast.security("Retry Cancelled") }
@@ -73,6 +102,14 @@ const OrderStatusPage = ({ type = 'success' }) => {
     };
 
     const glassStyle = "bg-gradient-to-br from-white/[0.10] to-transparent backdrop-blur-2xl border border-white/10 shadow-2xl rounded-[2rem]";
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-black text-white flex items-center justify-center">
+                <Loader2 className="animate-spin text-red-500" size={40} />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen mt-12 text-white flex flex-col font-sans selection:bg-[#7a6af6]/30 overflow-hidden">
@@ -122,7 +159,7 @@ const OrderStatusPage = ({ type = 'success' }) => {
                                 </p>
                             </div>
                             <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest leading-relaxed max-w-[280px] mx-auto italic">
-                                {isSuccess ? 'Encryption confirmed. The logistics protocol has been initialized.' : (error || 'The bank was unable to authorize this transaction.')}
+                                {isSuccess ? 'Encryption confirmed. The logistics protocol has been initialized.' : actualError}
                             </p>
                         </div>
                     </div>

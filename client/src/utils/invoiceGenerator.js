@@ -5,13 +5,13 @@ export const generateInvoice = (order) => {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
     const theme = {
-        primary: [15, 23, 42],
-        accent: [122, 106, 246],
-        slate: [51, 65, 85],
-        text: [51, 65, 85],
-        muted: [148, 163, 184],
-        border: [226, 232, 240],
-        success: [34, 197, 94],
+        primary: [15, 23, 42],       // #0F172A
+        accent: [122, 106, 246],     // #7a6af6
+        slate: [51, 65, 85],         // text color
+        muted: [148, 163, 184],      // light text
+        border: [226, 232, 240],     // lines
+        success: [34, 197, 94],      // green
+        danger: [239, 68, 68],       // red (for refunds)
         light: [248, 250, 252]
     };
 
@@ -92,32 +92,53 @@ export const generateInvoice = (order) => {
 
     cursorY += 30;
 
-    // --- MATHEMATICAL ENGINE (THE ABSOLUTE FIX) ---
-    // 1. Force the Grand Total to be an integer (The Master Anchor)
+    // --- MATHEMATICAL ENGINE ---
     const finalTotalValue = Math.round(Number(order.totalAmount || 0)); 
     const shippingCost = Number(order.deliveryCharge || 0);
-    const discountAmount = Number(order.totalDiscount || 0);
-
-    // 2. Taxable block = Total paid minus shipping
-    const netTaxable = finalTotalValue - shippingCost;
+    const couponDiscount = Number(order.couponDiscount || 0);
     
-    // 3. Subtotal = Integer of the division
-    const subtotalExclTax = Math.floor(netTaxable / 1.18); 
-    
-    // 4. Force Tax to be the exactly difference (Ensures: Subtotal + GST = netTaxable)
-    const calculatedGST = netTaxable - subtotalExclTax;
+    // 1. Gross Subtotal
+    const tableSubtotal = order.items.reduce((acc, item) => acc + (Number(item.price) * Number(item.quantity)), 0);
 
+    // 2. Refund Calculation
+    let totalRefunded = 0;
+    let cancelledItemsCount = 0;
+    const isShippedOrBeyond = ['shipped', 'out_for_delivery', 'delivered', 'returned'].includes((order.status || '').toLowerCase());
+
+    order.items.forEach(item => {
+        if (['Cancelled', 'Returned'].includes(item.status)) {
+            let itemCouponShare = 0;
+            if (couponDiscount > 0 && tableSubtotal > 0) {
+                itemCouponShare = ((Number(item.price) * Number(item.quantity)) / tableSubtotal) * couponDiscount;
+            }
+            totalRefunded += ((Number(item.price) * Number(item.quantity)) - itemCouponShare);
+            cancelledItemsCount++;
+        }
+    });
+
+    if (cancelledItemsCount === order.items.length && !isShippedOrBeyond) {
+        totalRefunded += shippingCost;
+    }
+
+    // --- ITEM TABLE ---
     const tableBody = order.items.map((item, index) => {
         const unitPrice = Number(item.price);
         const qty = Number(item.quantity);
         const lineTotal = unitPrice * qty;
+        const isVoided = ['Cancelled', 'Returned'].includes(item.status);
+
+        // Append status if returned or cancelled
+        let description = `${item.productId?.name || "Archive Asset"}\nSIZE: ${item.size}`;
+        if (isVoided) {
+            description += `   [${item.status.toUpperCase()}]`;
+        }
 
         return [
             index + 1,
-            { content: `${item.productId?.name || "Archive Asset"}\nSIZE: ${item.size}`, styles: { fontStyle: 'bold' } },
+            { content: description, styles: { fontStyle: 'bold', textColor: isVoided ? theme.muted : theme.slate } },
             `INR ${unitPrice.toLocaleString('en-IN')}`,
             qty,
-            { content: `INR ${lineTotal.toLocaleString('en-IN')}`, styles: { halign: 'right' } }
+            { content: `INR ${lineTotal.toLocaleString('en-IN')}`, styles: { halign: 'right', textColor: isVoided ? theme.muted : theme.slate } }
         ];
     });
 
@@ -133,22 +154,41 @@ export const generateInvoice = (order) => {
 
     // --- SUMMARY SECTION ---
     let finalY = doc.lastAutoTable.finalY + 8;
-    const summaryX = 140;
+    const summaryX = 130; 
 
     const addSummaryRow = (label, value, color = theme.slate, isBold = false) => {
         doc.setFontSize(8);
         doc.setFont("helvetica", isBold ? "bold" : "normal");
-        doc.setTextColor(...theme.muted);
+        doc.setTextColor(...(isBold ? theme.primary : theme.muted));
         doc.text(label, summaryX, finalY);
         doc.setTextColor(...color);
         doc.text(value, 195, finalY, { align: "right" });
         finalY += 5;
     };
+    
+    // Logical Invoice Flow: Subtotal -> Coupon -> Shipping -> Refund -> Total
+    addSummaryRow("Order Subtotal", `INR ${tableSubtotal.toLocaleString('en-IN')}`);
+    
+    if (couponDiscount > 0) {
+        addSummaryRow(
+            `Coupon Savings (${order.couponCode || 'PROMO'})`, 
+            `- INR ${couponDiscount.toLocaleString('en-IN')}`, 
+            theme.accent, 
+            true
+        );
+    }
 
-    addSummaryRow("Subtotal (Excl. Tax)", `INR ${subtotalExclTax.toLocaleString('en-IN')}`);
-    addSummaryRow("Estimated GST (18%)", `INR ${calculatedGST.toLocaleString('en-IN')}`);
-    if (discountAmount > 0) addSummaryRow("Archive Savings", `- INR ${discountAmount.toLocaleString('en-IN')}`, theme.success, true);
-    addSummaryRow("Shipping & Handling", shippingCost === 0 ? "FREE" : `INR ${shippingCost.toLocaleString('en-IN')}`);
+    addSummaryRow("Logistics & Shipping", shippingCost === 0 ? "FREE" : `INR ${shippingCost.toLocaleString('en-IN')}`);
+    
+    // 🟢 Display Refunds if any items were cancelled or returned
+    if (totalRefunded > 0) {
+        addSummaryRow(
+            "Processed Refunds / Cancellations", 
+            `- INR ${Math.round(totalRefunded).toLocaleString('en-IN')}`, 
+            theme.danger, 
+            true
+        );
+    }
 
     finalY += 2;
     doc.setFillColor(...theme.primary);
@@ -164,8 +204,8 @@ export const generateInvoice = (order) => {
     doc.line(margin, footerY - 5, 195, footerY - 5);
     doc.setFontSize(7);
     doc.setTextColor(...theme.muted);
-    const payMethod = (order.paymentMethod === 'cashOnDelivery' ? 'CASH ON DELIVERY' : 'ONLINE / RAZORPAY');
-    doc.text(`PAYMENT: ${payMethod} // STATUS: ${(order.paymentStatus || 'PAID').toUpperCase()}`, margin, footerY);
+    const payMethod = (order.paymentMethod === 'cashOnDelivery' ? 'CASH ON DELIVERY' : order.paymentMethod === 'wallet' ? 'DIGITAL WALLET' : 'ONLINE / RAZORPAY');
+    doc.text(`PAYMENT: ${payMethod} // STATUS: ${(order.paymentStatus || 'PENDING').toUpperCase()}`, margin, footerY);
     doc.text("This is a computer-generated document. No signature required.", 195, footerY, { align: "right" });
 
     doc.save(`INVOICE_${invoiceNum}.pdf`);

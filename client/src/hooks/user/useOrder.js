@@ -11,25 +11,9 @@ export const useOrder = () => {
     const placeOrder = useMutation({
         mutationFn: placeCodOrderApi,
         onSuccess: (data, variables) => {
-
             queryClient.invalidateQueries({ queryKey: ["cart"] });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
 
-            if (variables.status === 'payment_failed') {
-  
-                navigate("/payment-failed", {
-                    state: {
-                        error: "Transaction not authorized.",
-                        razorpayOrderId: variables.razorpayOrderId,
-                        orderPayload: { ...variables, _id: data.orderId },
-                        totalAmount: variables.totals?.totalAmount
-                    },
-                    replace: true
-                });
-            } else {
-                nxToast.success("Success", "Manifest deployed.");
-                navigate(`/checkout/success/${data.orderId}`, { replace: true });
-            }
         },
         onError: (error) => {
             nxToast.security("Protocol Breach", error.response?.data?.message || "Sync Error");

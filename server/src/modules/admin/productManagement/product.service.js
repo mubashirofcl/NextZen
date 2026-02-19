@@ -22,12 +22,10 @@ const validateAndFilterVariants = (variants) => {
     }
 
     return variants.map((v, index) => {
-        // 1. Image Validation
         if (!v.images || v.images.length < 3) {
             throw new Error(`Variant ${index + 1} (${v.color || 'Unnamed'}) requires at least 3 images.`);
         }
 
-        // 2. Size Validation (Filter out empty rows)
         const validSizes = v.sizes.filter(s =>
             s.stock !== "" &&
             s.stock != null &&
@@ -47,9 +45,8 @@ const validateAndFilterVariants = (variants) => {
    CREATE PRODUCT
 --------------------------------- */
 export const createProductService = async (payload) => {
-    let { variants, categoryId, subcategoryId, brandId, ...productData } = payload;
+    let { variants, categoryId, subcategoryId, brandId, offerId, ...productData } = payload;
 
-    // Run Validations
     const validVariants = validateAndFilterVariants(variants);
 
     const [category, subCategory, brand] = await Promise.all([
@@ -62,11 +59,15 @@ export const createProductService = async (payload) => {
     if (!subCategory?.isActive) throw new Error("Sub-category is inactive.");
     if (!brand) throw new Error("Selected brand is blocked or deleted.");
 
+    // 🟢 Fix: Ensure offerId is either a valid ObjectId or explicitly null
+    const resolvedOfferId = (offerId && mongoose.Types.ObjectId.isValid(offerId)) ? offerId : null;
+
     const [product] = await createProductRepo({
         ...productData,
         categoryId,
         subcategoryId,
-        brandId: brand._id
+        brandId: brand._id,
+        offerId: resolvedOfferId
     });
 
     const processedVariants = await processVariantImages({
@@ -85,7 +86,7 @@ export const createProductService = async (payload) => {
    UPDATE PRODUCT
 --------------------------------- */
 export const updateProductService = async (productId, payload) => {
-    const { variants, categoryId, subcategoryId, brandId, ...productData } = payload;
+    const { variants, categoryId, subcategoryId, brandId, offerId, ...productData } = payload;
     const cleanProductId = new mongoose.Types.ObjectId(productId);
 
     // 1. RE-VALIDATE CATEGORY/BRAND STATUS
@@ -101,7 +102,7 @@ export const updateProductService = async (productId, payload) => {
         if (brandId && (!brand || !brand.isActive)) throw new Error("Selected brand is inactive/blocked");
     }
 
-    // 2. VALIDATE VARIANTS (Only if they are provided)
+    // 2. VALIDATE VARIANTS
     if (variants !== undefined) {
         if (!Array.isArray(variants) || variants.length === 0) throw new Error("At least one variant is required");
 
@@ -111,7 +112,6 @@ export const updateProductService = async (productId, payload) => {
                 throw new Error(`Variant ${vIdx + 1} (${v.color}) must have at least 3 images`);
             }
 
-            // Clean data: Ensure stock/price are numbers and not empty strings
             v.sizes = v.sizes.filter(s => s.stock !== "" && s.originalPrice !== "");
 
             v.sizes.forEach(size => {
@@ -121,17 +121,24 @@ export const updateProductService = async (productId, payload) => {
         }
     }
 
-    // 3. EXECUTE UPDATE
+    // 🟢 3. FIX: Explicitly resolve offerId for Update
+    // If offerId is empty string or "null" string from frontend, set it to null to clear it
+    const resolvedOfferId = (offerId && offerId !== "" && mongoose.Types.ObjectId.isValid(offerId)) 
+        ? offerId 
+        : null;
+
+    // 4. EXECUTE UPDATE
     const updatedProduct = await updateProductById(cleanProductId, {
         ...productData,
         categoryId,
         subcategoryId,
-        brandId
+        brandId,
+        offerId: resolvedOfferId // Overwrite existing offer with new ID or null
     });
 
     if (!updatedProduct) throw new Error("Product not found");
 
-    // 4. SYNC VARIANTS
+    // 5. SYNC VARIANTS
     if (variants !== undefined) {
         const activeVariantIds = [];
         for (const variant of variants) {
@@ -180,8 +187,7 @@ export const getProductDetailsService = async (id) => {
 
     const variants = await findVariantsByProductId(id);
 
-    // Determine which size labels to show based on the product's sizing mode
-    let masterSizes = ["S", "M", "L", "XL", "XXL"]; // Default
+    let masterSizes = ["S", "M", "L", "XL", "XXL"];
     if (product.sizeType === "FREE_SIZE") masterSizes = ["FREE"];
     if (product.sizeType === "NO_SIZE") masterSizes = ["ONE"];
 
@@ -189,7 +195,6 @@ export const getProductDetailsService = async (id) => {
         const variantObj = variant.toObject();
         const existingSizeMap = new Map(variantObj.sizes.map(s => [s.size, s]));
 
-        // Map the existing database data into the table template
         variantObj.sizes = masterSizes.map(sizeName => {
             const existing = existingSizeMap.get(sizeName);
             return {
@@ -198,7 +203,6 @@ export const getProductDetailsService = async (id) => {
                 originalPrice: existing ? existing.originalPrice : "",
                 salePrice: existing ? existing.salePrice : "",
                 isActive: existing ? existing.isActive : true,
-                // Critical: keep the internal size _id if it exists for updates
                 _id: existing ? existing._id : undefined
             };
         });
@@ -210,6 +214,7 @@ export const getProductDetailsService = async (id) => {
         variants: processedVariants
     };
 };
+
 export const deleteProductService = async (id) => {
     await softDeleteProduct(id);
     await Variant.updateMany(
