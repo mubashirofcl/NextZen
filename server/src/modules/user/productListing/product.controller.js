@@ -1,5 +1,7 @@
+import mongoose from "mongoose";
 import { getProductByIdRepository, getRecommendedProducts } from "./product.repository.js";
 import { getProductsService } from "./product.service.js";
+import productModel from "../../admin/productManagement/product.model.js";
 
 export const getProducts = async (req, res) => {
     try {
@@ -28,10 +30,17 @@ export const getRecommended = async (req, res) => {
     try {
         const { subcategoryId, currentProductId } = req.params;
 
-        const products = await getRecommendedProducts(subcategoryId, currentProductId);
+        let finalSubId = subcategoryId;
+        if (!mongoose.Types.ObjectId.isValid(subcategoryId)) {
+            const prod = await productModel.findById(currentProductId);
+            finalSubId = prod?.subcategoryId || prod?.categoryId;
+        }
 
-        res.status(200).json(products);
+        const products = await getRecommendedProducts(finalSubId, currentProductId);
+
+        res.status(200).json(products || []);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error("❌ Recommendation Engine Error:", error.message);
+        res.status(500).json({ message: "Internal Server Error" });
     }
 };

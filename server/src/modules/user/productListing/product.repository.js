@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import Product from "../../admin/productManagement/product.model.js";
 import productModel from "../../admin/productManagement/product.model.js";
 
 const lookupOffersHierarchy = [
@@ -41,44 +42,16 @@ const lookupOffersHierarchy = [
 ];
 
 export const getProductsRepository = async (filters) => {
-    const {
-        search = "",
-        page = 1,
-        limit = 10,
-        sort = "",
-        category,
-        subcategory,
-        brand,
-        size,
-        minPrice,
-        maxPrice,
-        isFeatured
-    } = filters;
-
+    const { search = "", page = 1, limit = 10, sort = "", minPrice, maxPrice, isFeatured } = filters;
     const skip = (Number(page) - 1) * Number(limit);
     const pipeline = [];
 
-    // 1. INITIAL MATCH (Status, Category, Search, and BRAND)
     const baseMatch = { isActive: true, isDeleted: false };
     if (isFeatured !== undefined) baseMatch.isFeatured = isFeatured;
-
-    if (category) baseMatch.categoryId = new mongoose.Types.ObjectId(category);
-    if (subcategory) baseMatch.subcategoryId = new mongoose.Types.ObjectId(subcategory);
-
-    // FIX: Convert brand string array to ObjectIds for $in operator
-    if (brand && brand.length > 0) {
-        const brandIds = Array.isArray(brand) ? brand : brand.split(",");
-        baseMatch.brandId = { $in: brandIds.map(id => new mongoose.Types.ObjectId(id)) };
-    }
-
-    if (search) baseMatch.name = { $regex: search, $options: "i" };
-
     pipeline.push({ $match: baseMatch });
 
-    // 2. Offer & Brand Lookup Hierarchy
     pipeline.push(...lookupOffersHierarchy);
 
-    // 3. Variant & Size Unwinding
     pipeline.push(
         { $lookup: { from: "variants", localField: "_id", foreignField: "productId", as: "variantDocs" } },
         { $unwind: "$variantDocs" },
@@ -86,15 +59,9 @@ export const getProductsRepository = async (filters) => {
         { $unwind: "$variantDocs.sizes" }
     );
 
-    // FIX: Size Filter (Must happen after unwinding sizes to target the specific nested field)
-    if (size && size.length > 0) {
-        const sizeList = Array.isArray(size) ? size : size.split(",");
-        pipeline.push({ $match: { "variantDocs.sizes.size": { $in: sizeList } } });
-    }
-
-    // 4. Price Calculations
     pipeline.push({
         $addFields: {
+            // STEP 1: Calculate the price if ONLY the campaign offer (e.g. 10%) was applied
             campaignPrice: {
                 $cond: [
                     { $gt: [{ $toDouble: "$winningOffer.maxDiscount" }, 0] },
@@ -107,31 +74,21 @@ export const getProductsRepository = async (filters) => {
 
     pipeline.push({
         $addFields: {
+            // STEP 2: Compare Campaign Price vs Manual Sale Price (17%) and pick the MINIMUM
             calculatedSalePrice: { $min: ["$campaignPrice", "$variantDocs.sizes.salePrice"] }
         }
     });
 
-    // 5. Price Range Filter
-    if (minPrice !== undefined || maxPrice !== undefined) {
-        const priceMatch = {};
-        if (minPrice !== undefined) priceMatch.$gte = Number(minPrice);
-        if (maxPrice !== undefined) priceMatch.$lte = Number(maxPrice);
-        pipeline.push({ $match: { calculatedSalePrice: priceMatch } });
-    }
-
-    // 6. FINAL GROUPING & CLEANUP
     pipeline.push({
         $group: {
             _id: "$_id",
             name: { $first: "$name" },
-            createdAt: { $first: "$createdAt" },
             thumbnail: { $first: { $arrayElemAt: ["$variantDocs.images", 0] } },
-            // 🟢 CRITICAL FIX: Explicitly carrying the Variant ID to prevent Protocol Mismatch
-            variantId: { $first: "$variantDocs._id" },
             subcategory: { $first: "$subDoc" },
             brand: { $first: "$brandDoc" },
             minSalePrice: { $min: "$calculatedSalePrice" },
             minOriginalPrice: { $min: "$variantDocs.sizes.originalPrice" },
+            // STEP 3: Back-calculate the discount percentage for the Badge based on final best price
             discountValue: {
                 $first: {
                     $round: [{
@@ -147,29 +104,16 @@ export const getProductsRepository = async (filters) => {
         }
     });
 
-    // 7. Sorting
-    let sortObj = { createdAt: -1 };
-    if (sort === "price_asc") sortObj = { minSalePrice: 1 };
-    else if (sort === "price_desc") sortObj = { minSalePrice: -1 };
-    else if (sort === "name_asc") sortObj = { name: 1 };
-    pipeline.push({ $sort: sortObj });
-
-    // 8. Final Pagination Facet
     pipeline.push({
         $facet: {
-            data: [{ $skip: skip }, { $limit: Number(limit) }],
+            data: [{ $sort: { createdAt: -1 } }, { $skip: skip }, { $limit: Number(limit) }],
             totalCount: [{ $count: "count" }],
         },
     });
 
     const result = await productModel.aggregate(pipeline);
-
     return {
-        products: (result[0]?.data || []).map(p => ({
-            ...p,
-            variantCount: p.variantCount?.length || 0,
-            variantId: p.variantId?.toString()
-        })),
+        products: (result[0]?.data || []).map(p => ({ ...p, variantCount: p.variantCount?.length || 0 })),
         totalCount: result[0]?.totalCount[0]?.count || 0
     };
 };
@@ -242,23 +186,32 @@ export const getProductByIdRepository = async (id) => {
 };
 
 export const getRecommendedProducts = async (subcategoryId, currentProductId) => {
+    const currentProd = await productModel.findById(currentProductId);
+    const parentCatId = currentProd?.categoryId;
+
     const pipeline = [
         {
             $match: {
-                subcategoryId: new mongoose.Types.ObjectId(subcategoryId),
                 _id: { $ne: new mongoose.Types.ObjectId(currentProductId) },
-                isActive: true, isDeleted: false
+                isActive: true,
+                isDeleted: false,
+                $or: [
+                    { subcategoryId: new mongoose.Types.ObjectId(subcategoryId) },
+                    { categoryId: parentCatId }
+                ]
             }
         },
         ...lookupOffersHierarchy,
         { $lookup: { from: "variants", localField: "_id", foreignField: "productId", as: "vDocs" } },
-        { $unwind: "$vDocs" },
+        { $unwind: { path: "$vDocs", preserveNullAndEmptyArrays: true } },
         { $match: { "vDocs.isDeleted": false } },
         {
             $project: {
                 _id: 1,
                 name: 1,
                 thumbnail: { $arrayElemAt: ["$vDocs.images", 0] },
+                hex: "$vDocs.hex",
+                color: "$vDocs.color",
                 minSalePrice: {
                     $let: {
                         vars: {
@@ -285,33 +238,11 @@ export const getRecommendedProducts = async (subcategoryId, currentProductId) =>
                         },
                         in: { $min: "$$bestPrices" }
                     }
-                },
-                discountValue: {
-                    $let: {
-                        vars: {
-                            bestP: {
-                                $min: {
-                                    $map: {
-                                        input: "$vDocs.sizes",
-                                        as: "s",
-                                        in: {
-                                            $let: {
-                                                vars: {
-                                                    cPrice: { $cond: [{ $gt: ["$winningOffer.maxDiscount", 0] }, { $round: [{ $subtract: ["$$s.originalPrice", { $multiply: ["$$s.originalPrice", { $divide: ["$winningOffer.maxDiscount", 100] }] }] }, 0] }, "$$s.originalPrice"] }
-                                                },
-                                                in: { $min: ["$$cPrice", "$$s.salePrice"] }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        in: { $round: [{ $multiply: [{ $divide: [{ $subtract: [{ $min: "$vDocs.sizes.originalPrice" }, "$$bestP"] }, { $min: "$vDocs.sizes.originalPrice" }] }, 100] }, 0] }
-                    }
                 }
             }
         },
-        { $limit: 20 }
+        { $limit: 10 }
     ];
-    return await Product.aggregate(pipeline);
+
+    return await productModel.aggregate(pipeline);
 };

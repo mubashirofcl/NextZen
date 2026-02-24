@@ -20,7 +20,7 @@ const ProductDetails = () => {
     const navigate = useNavigate();
     const imgRef = useRef(null);
     const chatEndRef = useRef(null);
-    const chatCache = useRef({}); 
+    const chatCache = useRef({});
 
     const { data: product, isLoading, error } = useProductDetails(id);
     const { addToCart, cart } = useCart();
@@ -82,7 +82,7 @@ const ProductDetails = () => {
         window.scrollTo(0, 0);
         setChatHistory([]);
         setShowNudge(false);
-        const timer = setTimeout(() => setShowNudge(true), 10000); 
+        const timer = setTimeout(() => setShowNudge(true), 10000);
         return () => clearTimeout(timer);
     }, [id]);
 
@@ -145,8 +145,8 @@ const ProductDetails = () => {
         const cacheKey = `${id}-${messageToSend.toLowerCase()}`;
         if (chatCache.current[cacheKey]) {
             setChatHistory(prev => [...prev,
-                { role: 'user', text: messageToSend },
-                { role: 'model', text: chatCache.current[cacheKey] }
+            { role: 'user', text: messageToSend },
+            { role: 'model', text: chatCache.current[cacheKey] }
             ]);
             return;
         }
@@ -271,17 +271,17 @@ const ProductDetails = () => {
                     <div className="relative group">
                         {/* Tooltip Content */}
                         <div className="bg-black/60 backdrop-blur-2xl border border-white/10 p-4 rounded-3xl shadow-2xl flex items-center gap-4 max-w-[240px] relative">
-                            <button 
+                            <button
                                 onClick={() => setShowNudge(false)}
                                 className="absolute -top-2 -right-2 w-5 h-5 bg-zinc-900 border border-white/10 rounded-full flex items-center justify-center text-white/30 hover:text-white transition-all"
                             >
                                 <X size={10} />
                             </button>
-                            
+
                             <div className="w-10 h-10 shrink-0 bg-[#7a6af6] rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(122,106,246,0.3)] animate-bounce">
                                 <Bot size={20} className="text-white" />
                             </div>
-                            
+
                             <div className="space-y-0.5">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-white/90 italic">Style Query?</p>
                                 <p className="text-[9px] font-medium text-white/40 leading-tight">I can check stock or style this piece for you.</p>
@@ -305,7 +305,7 @@ const ProductDetails = () => {
                         <span className="relative inline-flex rounded-full h-3 w-3 bg-[#7a6af6]"></span>
                     </span>
                 )}
-                
+
                 <div className="flex flex-col items-end">
                     <span className="text-[11px] font-bold uppercase text-white/90">Style Assistant</span>
                     <div className="flex items-center gap-1.5 mt-1">
@@ -473,20 +473,24 @@ const ProductDetails = () => {
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic">Related Archive</h2>
                         <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">Discovery 2026</span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {recommendedData.map((rec) => (
+
+                    {/* 🟢 Grid restricted to one row using cols count and slicing data */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 overflow-hidden">
+                        {recommendedData.slice(0, 6).map((rec) => (
                             <div key={rec._id} onClick={() => navigate(`/product/${rec._id}`)} className="group cursor-pointer space-y-2">
                                 <div className="aspect-[3/4] bg-white/[0.02] rounded-xl overflow-hidden border border-white/5 relative transition-all duration-500 group-hover:border-[#7a6af6]/40">
                                     <img src={rec.thumbnail} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-80 group-hover:opacity-100" alt={rec.name} />
                                     <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/90 to-transparent" />
-                                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: rec.hex }} />
+                                    {rec.hex && (
+                                        <div className="absolute top-2 right-2 w-2 h-2 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: rec.hex }} />
+                                    )}
                                     <div className="absolute bottom-2 left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <p className="text-[11px] font-black italic text-white">₹{rec.minSalePrice}</p>
+                                        <p className="text-[11px] font-black italic text-white">₹{rec.minSalePrice?.toLocaleString()}</p>
                                     </div>
                                 </div>
                                 <div className="text-center px-1">
                                     <h3 className="text-[9px] font-black uppercase tracking-widest text-white/40 group-hover:text-[#7a6af6] transition-colors truncate italic">{rec.name}</h3>
-                                    <p className="text-[7px] font-bold uppercase tracking-[0.2em] text-white/10 italic">{rec.color}</p>
+                                    <p className="text-[7px] font-bold uppercase tracking-[0.2em] text-white/10 italic">{rec.color || 'Standard'}</p>
                                 </div>
                             </div>
                         ))}
