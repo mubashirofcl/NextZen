@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-    getOffersApi, 
-    createOfferApi, 
-    updateOfferApi, 
-    deleteOfferApi, 
-    getOfferByIdApi 
+import {
+    getOffersApi,
+    createOfferApi,
+    updateOfferApi,
+    deleteOfferApi,
+    getOfferByIdApi,
+    toggleOfferStatusApi
 } from "../../api/admin/offer.api";
 import { adminToast } from "../../utils/adminToast";
 import { useNavigate } from "react-router-dom";
+import { nxToast } from "../../utils/userToast";
 
 export const useOffers = (id = null) => {
     const queryClient = useQueryClient();
@@ -57,17 +59,46 @@ export const useOffers = (id = null) => {
 
     return {
         // DATA - Fixed mapping
-        offers: offersData?.offers || [], 
+        offers: offersData?.offers || [],
         offerDetail: detailData?.offer,
-        
+
         // STATUS
         isLoading,
         isLoadingDetail,
         isPending: createMutation.isPending || updateMutation.isPending,
-        
+
         // ACTIONS
         createOffer: createMutation.mutateAsync,
         updateOffer: updateMutation.mutateAsync,
         deleteOffer: deleteMutation.mutateAsync
     };
+};
+
+export const useToggleOffer = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: toggleOfferStatusApi,
+        onMutate: async (offerId) => {
+            await queryClient.cancelQueries({ queryKey: ["admin-offers"] });
+            const previousOffers = queryClient.getQueryData(["admin-offers"]);
+
+            queryClient.setQueryData(["admin-offers"], (old) => {
+                if (!old || !old.offers) return old;
+                return {
+                    ...old,
+                    offers: old.offers.map((offer) =>
+                        offer._id === offerId ? { ...offer, isActive: !offer.isActive } : offer
+                    ),
+                };
+            });
+            return { previousOffers };
+        },
+        onError: (err, id, context) => {
+            queryClient.setQueryData(["admin-offers"], context.previousOffers);
+            nxToast.security("Update Failed", err.response?.data?.message || "Error toggling offer");
+        },
+        onSuccess: (data) => nxToast.success(data.message),
+        onSettled: () => queryClient.invalidateQueries({ queryKey: ["admin-offers"] }),
+    });
 };

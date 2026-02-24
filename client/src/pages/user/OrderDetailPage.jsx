@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useOrderDetail, useOrder } from '../../hooks/user/useOrder';
 import { useQueryClient } from '@tanstack/react-query';
 import {
     ArrowLeft, MapPin, Loader2, CreditCard, Box, ShieldCheck, Truck,
     XCircle, RotateCcw, AlertTriangle, CheckCircle2, FileText,
-    ArrowDownLeft, RefreshCw, Wallet, Clock, Tag, Percent
+    ArrowDownLeft, RefreshCw, Wallet, Clock, Tag, Percent, X
 } from 'lucide-react';
 import OrderActionModal from '../../components/user/OrderActionModal';
 import { generateInvoice } from '../../utils/invoiceGenerator';
@@ -51,19 +51,18 @@ const OrderDetailPage = () => {
     const { placeOrder } = useOrder();
     const [actionModal, setActionModal] = useState({ isOpen: false, type: '', itemId: '', itemName: '' });
 
+    const fixNum = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
+    const isPrepaid = ['razorpay', 'wallet'].includes(order?.paymentMethod);
+    const hasPaid = ['Paid', 'Refunded'].includes(order?.paymentStatus);
+    const isActualRefund = isPrepaid && hasPaid;
+
     const financials = useMemo(() => {
         if (!order) return { initialSubtotal: 0, delivery: 0, totalRefunded: 0, net: 0, savings: 0, couponSavings: 0 };
 
         const delivery = order.deliveryCharge || 0;
-        const originalGrossSubtotal = order.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-
-        let couponSavings = order.couponDiscount || 0;
-        if (order.couponDiscount === undefined || order.couponDiscount === null) {
-            const hasRefunds = order.items.some(i => ['Cancelled', 'Returned'].includes(i.status));
-            if (!hasRefunds) {
-                couponSavings = Math.max(0, (originalGrossSubtotal + delivery) - (order.totalAmount || 0));
-            }
-        }
+        const originalGrossSubtotal = fixNum(order.subTotal || 0);
+        const couponSavings = fixNum(order.couponDiscount || 0);
 
         const isShippedOrBeyond = ['shipped', 'out_for_delivery', 'delivered', 'returned'].includes(order.status.toLowerCase());
 
@@ -73,20 +72,18 @@ const OrderDetailPage = () => {
         order.items.forEach(item => {
             if (['Cancelled', 'Returned'].includes(item.status)) {
                 let itemCouponShare = 0;
-
                 if (couponSavings > 0 && originalGrossSubtotal > 0) {
-                    itemCouponShare = (item.totalAmount / originalGrossSubtotal) * couponSavings;
+                    itemCouponShare = fixNum((item.totalAmount / originalGrossSubtotal) * couponSavings);
                 }
-
-                calculatedRefundTotal += (item.totalAmount - itemCouponShare);
+                const individualRefund = fixNum(item.totalAmount - itemCouponShare);
+                calculatedRefundTotal = fixNum(calculatedRefundTotal + individualRefund);
                 cancelledItemsCount++;
             }
         });
 
         const allCancelled = cancelledItemsCount === order.items.length;
-
         if (allCancelled && !isShippedOrBeyond) {
-            calculatedRefundTotal += delivery;
+            calculatedRefundTotal = fixNum(calculatedRefundTotal + delivery);
         }
 
         return {
@@ -94,9 +91,8 @@ const OrderDetailPage = () => {
             delivery: delivery,
             savings: order.totalDiscount || 0,
             couponSavings: couponSavings,
-            totalRefunded: calculatedRefundTotal,
-            net: order.totalAmount || 0,
-            grossSubtotalForRatio: originalGrossSubtotal
+            totalRefunded: fixNum(calculatedRefundTotal),
+            net: fixNum(order.totalAmount || 0),
         };
     }, [order]);
 
@@ -158,7 +154,24 @@ const OrderDetailPage = () => {
         return -1;
     })();
 
-    const openModal = (type, item = null) => {
+    const openModal = async (type, item = null) => {
+        if (type === 'cancel' && item && order.couponCode) {
+            try {
+                const { data: couponRes } = await userAxios.get(`/user/coupons/check/${order.couponCode}`);
+                if (couponRes.success && couponRes.coupon) {
+                    const minAmt = couponRes.coupon.minPurchaseAmt;
+                    const activeItems = order.items.filter(i => i.status !== 'Cancelled' && i._id !== item._id);
+                    const remainingSubtotal = activeItems.reduce((acc, curr) => acc + curr.totalAmount, 0);
+
+                    if (activeItems.length > 0 && remainingSubtotal < minAmt) {
+                        return nxToast.error(`Cannot cancel. Minimum order of ₹${minAmt} is required for the applied coupon. Try cancelling the full order.`);
+                    }
+                }
+            } catch (error) {
+                console.error("Coupon validation error", error);
+            }
+        }
+
         setActionModal({
             isOpen: true, type,
             itemId: item ? item._id : 'ALL',
@@ -168,17 +181,13 @@ const OrderDetailPage = () => {
 
     const getStatusTheme = (status) => {
         const s = status?.toLowerCase();
-        if (s === 'cancelled') return 'text-red-400 border-red-400/20 bg-red-400/5';
+        if (s === 'cancelled' || s === 'returned') return 'text-red-400 border-red-400/20 bg-red-400/5';
         if (s === 'delivered') return 'text-green-400 border-green-400/20 bg-green-400/5';
         return 'text-[#7a6af6] border-[#7a6af6]/20 bg-[#7a6af6]/5';
     };
 
-    // 🟢 HELPER: Check if payment happened
-    const hasBeenPaid = ['Paid', 'Refunded'].includes(order?.paymentStatus);
-
     return (
         <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
-            {/* Header */}
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between pb-8 border-b border-white/5">
                 <div className="space-y-4">
                     <button onClick={() => navigate('/profile/orders')} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-white/30 hover:text-[#7a6af6] transition-all"><ArrowLeft size={14} /> History</button>
@@ -194,7 +203,6 @@ const OrderDetailPage = () => {
 
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
                 <div className="xl:col-span-8 space-y-8">
-                    {/* Progress Tracker */}
                     <div className={`${glassStyle} p-10`}>
                         <h2 className="text-[10px] font-black uppercase text-[#7a6af6] italic tracking-[0.3em] mb-12 flex items-center gap-2"><Truck size={14} /> Logistics</h2>
                         {order.status === 'payment_failed' ? (
@@ -213,7 +221,6 @@ const OrderDetailPage = () => {
                         )}
                     </div>
 
-                    {/* Items List */}
                     <div className="space-y-4">
                         <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.3em] px-2 flex items-center gap-2"><Box size={14} /> Manifest Items</h2>
                         {order.items?.map((item, idx) => {
@@ -222,16 +229,16 @@ const OrderDetailPage = () => {
 
                             let itemCouponShare = 0;
                             if (currentCouponDiscount > 0 && currentSubTotal > 0) {
-                                itemCouponShare = (item.totalAmount / currentSubTotal) * currentCouponDiscount;
+                                itemCouponShare = fixNum((item.totalAmount / currentSubTotal) * currentCouponDiscount);
                             }
 
-                            const netItemPrice = item.totalAmount - itemCouponShare;
+                            const netItemPrice = fixNum(item.totalAmount - itemCouponShare);
 
                             return (
                                 <div key={idx} className={`${glassStyle} p-6 flex flex-col sm:flex-row items-center gap-6 group relative overflow-hidden`}>
                                     <div className="w-16 h-20 rounded-xl overflow-hidden bg-black border border-white/10 shrink-0 relative">
-                                        <img src={item.variantId?.images?.[0] || item.productId?.thumbnail} className={`w-full h-full object-cover ${item.status === 'Cancelled' ? 'opacity-20 grayscale' : 'opacity-90'}`} alt="" />
-                                        {item.status === 'Cancelled' && <XCircle size={14} className="absolute inset-0 m-auto text-red-500/50" />}
+                                        <img src={item.variantId?.images?.[0] || item.productId?.thumbnail} className={`w-full h-full object-cover ${['Cancelled', 'Returned'].includes(item.status) ? 'opacity-20 grayscale' : 'opacity-90'}`} alt="" />
+                                        {['Cancelled', 'Returned'].includes(item.status) && <XCircle size={14} className="absolute inset-0 m-auto text-red-500/50" />}
                                     </div>
                                     <div className="flex-1 w-full space-y-2">
                                         <div className="flex justify-between items-start">
@@ -240,16 +247,20 @@ const OrderDetailPage = () => {
                                                 <p className="text-[8px] font-black text-white/30 uppercase mt-1">Size: {item.size} | Qty: {item.quantity}</p>
                                             </div>
                                             <div className="text-right">
-                                                <p className={`text-lg font-black italic ${item.status === 'Cancelled' ? 'text-white/10 line-through' : 'text-white'}`}>₹{item.totalAmount?.toLocaleString()}</p>
-
-                                                {itemCouponShare > 0 && item.status !== 'Cancelled' && (
-                                                    <p className="text-[8px] font-bold text-indigo-400 uppercase italic">- ₹{itemCouponShare.toFixed(2)} Coupon applied</p>
+                                                <p className={`text-lg font-black italic ${['Cancelled', 'Returned'].includes(item.status) ? 'text-white/10 line-through' : 'text-white'}`}>₹{item.totalAmount?.toLocaleString()}</p>
+                                                {itemCouponShare > 0 && !['Cancelled', 'Returned'].includes(item.status) && (
+                                                    <p className="text-[8px] font-bold text-indigo-400 uppercase italic">- ₹{itemCouponShare.toFixed(2)} Coupon share</p>
                                                 )}
-
-                                                {/* 🟢 ONLY SHOW REFUND BADGE IF PAYMENT HAPPENED */}
-                                                {(['Cancelled', 'Returned'].includes(item.status)) && hasBeenPaid && (
-                                                    <div className="flex items-center gap-1 text-[7px] font-black text-green-400 uppercase mt-1 bg-green-400/10 px-1.5 py-0.5 rounded border border-green-400/20">
-                                                        <Wallet size={8} /> Refunded: ₹{netItemPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                {(['Cancelled', 'Returned'].includes(item.status)) && (
+                                                    <div className={`flex items-center gap-1 text-[7px] font-black uppercase mt-1 px-1.5 py-0.5 rounded border ${isActualRefund
+                                                        ? "text-green-400 bg-green-400/10 border-green-400/20"
+                                                        : "text-white/40 bg-white/5 border-white/10"
+                                                        }`}>
+                                                        {isActualRefund ? (
+                                                            <><Wallet size={8} /> Refunded: ₹{netItemPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+                                                        ) : (
+                                                            <><XCircle size={8} /> Voided: ₹{netItemPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -289,36 +300,43 @@ const OrderDetailPage = () => {
                         <div className="space-y-4 text-[11px] font-bold uppercase tracking-tight relative z-10">
                             <div className="flex justify-between text-black/40">
                                 <span>Subtotal</span>
-                                <span className="text-black font-black">₹{financials.initialSubtotal.toLocaleString()}</span>
+                                <span className="text-black font-black">₹{financials.initialSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
 
                             {financials.couponSavings > 0 && (
                                 <div className="flex justify-between text-[11px] font-black text-indigo-600 uppercase italic">
                                     <span className="flex items-center gap-1"><Tag size={10} /> Coupon ({order.couponCode})</span>
-                                    <span>- ₹{financials.couponSavings.toLocaleString()}</span>
+                                    <span>- ₹{financials.couponSavings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                                 </div>
                             )}
 
                             <div className="flex justify-between text-black/40 border-b border-black/5 pb-6">
                                 <span>Logistics</span>
-                                <span className="text-black font-black">{financials.delivery > 0 ? `₹${financials.delivery}` : 'FREE'}</span>
+                                <span className="text-black font-black">{financials.delivery > 0 ? `₹${financials.delivery.toFixed(2)}` : 'FREE'}</span>
                             </div>
 
-                            {/* 🟢 CHANGE TEXT BASED ON IF IT WAS ACTUALLY PAID */}
                             {financials.totalRefunded > 0 && (
-                                <div className="flex justify-between text-[9px] text-red-500 font-black uppercase bg-red-50 p-3 rounded-xl border border-red-100 shadow-sm">
-                                    <span className="flex items-center gap-1.5"><ArrowDownLeft size={12} strokeWidth={3} /> {hasBeenPaid ? 'Refund Issued' : 'Cancelled Value'}</span>
-                                    <span className="tracking-tighter">- ₹{financials.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                <div className={`flex justify-between text-[9px] font-black uppercase p-3 rounded-xl border shadow-sm ${isActualRefund
+                                    ? "text-green-600 bg-green-50 border-green-100"
+                                    : "text-red-500 bg-red-50 border-red-100"
+                                    }`}>
+                                    <span className="flex items-center gap-1.5">
+                                        <ArrowDownLeft size={12} strokeWidth={3} />
+                                        {isActualRefund ? 'Refund Issued' : 'Cancelled Value'}
+                                    </span>
+                                    <span className="tracking-tighter">- ₹{financials.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             )}
 
                             <div className="pt-6 mt-4 border-t border-black/5 flex flex-col items-end">
                                 <span className="text-[10px] font-black uppercase italic text-[#7a6af6] tracking-[0.2em]">
-                                    {/* 🟢 UPDATE TEXT LOGIC */}
-                                    {financials.totalRefunded > 0 ? (hasBeenPaid ? 'Settled Value' : 'Revised Total') : 'Payable Total'}
+                                    {financials.totalRefunded > 0
+                                        ? (isActualRefund ? 'Settled Value' : 'Revised Total Payable')
+                                        : 'Payable Total'
+                                    }
                                 </span>
                                 <span className="text-6xl font-black italic tracking-tighter leading-none mt-2 text-[#0F172A]">
-                                    ₹{order.totalAmount.toLocaleString()}
+                                    ₹{financials.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                             </div>
                         </div>
@@ -331,14 +349,13 @@ const OrderDetailPage = () => {
                         )}
                     </div>
 
-                    {/* Payment Method Badge */}
                     <div className={`${glassStyle} p-8 flex justify-between items-center`}>
                         <div className="flex flex-col gap-1">
                             <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1 italic flex items-center gap-2">Protocol</p>
                             <p className="text-xs font-black uppercase italic text-white">{order.paymentMethod === 'cashOnDelivery' ? 'Cash' : order.paymentMethod === 'wallet' ? 'Wallet' : 'Razorpay'}</p>
-                            <p className={`text-[8px] font-black uppercase mt-1 ${['Paid', 'Refunded'].includes(order.paymentStatus) ? 'text-green-500' : 'text-amber-500'}`}>{order.paymentStatus}</p>
+                            <p className={`text-[8px] font-black uppercase mt-1 ${hasPaid ? 'text-green-500' : 'text-amber-500'}`}>{order.paymentStatus}</p>
                         </div>
-                        <div className={`p-2 rounded-xl bg-white/5 border border-white/10 ${['Paid', 'Refunded'].includes(order.paymentStatus) ? 'text-green-500' : 'text-amber-500'}`}>
+                        <div className={`p-2 rounded-xl bg-white/5 border border-white/10 ${hasPaid ? 'text-green-500' : 'text-amber-500'}`}>
                             {order.paymentMethod === 'wallet' ? <Wallet size={20} /> : <ShieldCheck size={20} />}
                         </div>
                     </div>

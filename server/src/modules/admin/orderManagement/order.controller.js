@@ -4,6 +4,18 @@ import * as orderRepository from './order.repository.js';
 import mongoose from 'mongoose';
 import { updateWalletBalance } from '../../user/wallet/wallet.service.js';
 
+/**
+ * 🟢 HELPER: Polymorphic Order Finder
+ * Prevents "Cast to ObjectId failed" by checking if ID is a custom string or MongoID
+ */
+const findOrder = async (id, session = null) => {
+    const query = typeof id === 'string' && id.startsWith("ORD-") 
+        ? { orderNumber: id } 
+        : { _id: id };
+    
+    return session ? Order.findOne(query).session(session) : Order.findOne(query);
+};
+
 // 1. GET ALL ORDERS
 export const getAllOrders = async (req, res) => {
     try {
@@ -20,11 +32,15 @@ export const getAllOrders = async (req, res) => {
     }
 };
 
-// 2. GET ORDER DETAILS
+// 2. GET ORDER DETAILS (Fixed polymorphic search)
 export const getOrderDetail = async (req, res) => {
     try {
         const { id } = req.params;
-        const data = await orderRepository.getOrderDetailRepository(id);
+        
+        // Pass the smart query to the repository
+        const searchCriteria = id.startsWith("ORD-") ? { orderNumber: id } : { _id: id };
+        const data = await orderRepository.getOrderDetailRepository(searchCriteria);
+        
         if (!data) return res.status(404).json({ success: false, message: "Manifest not found." });
         res.status(200).json({ success: true, data });
     } catch (error) {
@@ -37,10 +53,11 @@ export const updateAdminManifest = async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const orderId = req.params.orderId || req.params.id;
+        const idParam = req.params.orderId || req.params.id;
         const { globalStatus, itemId, itemStatus, paymentStatus } = req.body;
 
-        const order = await Order.findById(orderId).session(session);
+        // 🟢 FIX: Use polymorphic helper
+        const order = await findOrder(idParam, session);
         if (!order) return res.status(404).json({ success: false, message: "Order not found." });
 
         if (paymentStatus) order.paymentStatus = paymentStatus;
@@ -57,10 +74,8 @@ export const updateAdminManifest = async (req, res, next) => {
                 order.paymentStatus = 'Paid';
             }
 
-            // Handle Full Cancellation by Admin
             if (normalizedGlobal === 'cancelled' && oldGlobalStatus !== 'cancelled') {
                 if (order.paymentStatus === 'Paid') {
-                    // Full refund includes delivery charge automatically via totalAmount
                     await updateWalletBalance(
                         order.userId,
                         order.totalAmount, 
@@ -70,10 +85,9 @@ export const updateAdminManifest = async (req, res, next) => {
                         { session }
                     );
                     order.paymentStatus = 'Refunded';
-                    order.totalAmount = 0; // Clear balance
+                    order.totalAmount = 0;
                 }
 
-                // Return Stock
                 for (const item of order.items) {
                     if (item.status !== 'Cancelled') {
                         item.status = 'Cancelled';
@@ -85,7 +99,6 @@ export const updateAdminManifest = async (req, res, next) => {
                     }
                 }
             } else {
-                // Sync Item statuses with Global status (unless already final)
                 order.items.forEach(item => {
                     if (!["Cancelled", "Returned", "Return Approved", "Return Rejected"].includes(item.status)) {
                         if (normalizedGlobal === "confirmed") item.status = "Placed";
@@ -105,37 +118,27 @@ export const updateAdminManifest = async (req, res, next) => {
                 const oldItemStatus = item.status;
                 const targetItemStatus = itemStatus;
 
-                // Process Refund only if moving to Final State (Returned/Cancelled) AND it wasn't there before
                 if (['Returned', 'Cancelled'].includes(targetItemStatus) && oldItemStatus !== targetItemStatus) {
-                    
-                    // 1. Calculate Safe Totals & Coupon Fallback
                     const safeSubTotal = order.subTotal || 0;
                     const safeDelivery = order.deliveryCharge || 0;
                     const calculatedDiscount = Math.max(0, (safeSubTotal + safeDelivery) - order.totalAmount);
                     const actualCouponDiscount = order.couponDiscount !== undefined ? order.couponDiscount : calculatedDiscount;
 
-                    // 2. Calculate Item's Share of Coupon
                     let itemDiscountShare = 0;
                     if (actualCouponDiscount > 0 && safeSubTotal > 0) {
                         itemDiscountShare = (item.totalAmount / safeSubTotal) * actualCouponDiscount;
                     }
 
-                    // 3. Calculate Net Refund (Price - Coupon)
                     let netRefund = item.totalAmount - itemDiscountShare;
 
-                    // 4. 🟢 LOGIC FIX: Delivery Refund Check
-                    // If Admin is CANCELLING (not returning) and it's the LAST item, refund delivery too.
                     if (targetItemStatus === 'Cancelled') {
                         const isShipped = ['shipped', 'out_for_delivery', 'delivered'].includes(order.status.toLowerCase());
                         const otherActiveItems = order.items.filter(i => i._id.toString() !== itemId && i.status !== 'Cancelled');
-                        
-                        // If no other items left AND not shipped yet -> Refund Delivery
                         if (otherActiveItems.length === 0 && !isShipped && safeDelivery > 0) {
                             netRefund += safeDelivery;
                         }
                     }
 
-                    // 5. Process Wallet Transaction
                     if (order.paymentStatus === 'Paid' || order.paymentStatus === 'Refunded') {
                         await updateWalletBalance(
                             order.userId,
@@ -147,14 +150,12 @@ export const updateAdminManifest = async (req, res, next) => {
                         );
                     }
 
-                    // 6. Return Stock
                     await Variant.findOneAndUpdate(
                         { _id: item.variantId, "sizes.size": item.size },
                         { $inc: { "sizes.$.stock": item.quantity } },
                         { session }
                     );
 
-                    // 7. Update Order Totals (Only reduce Balance)
                     order.totalAmount = Math.max(0, order.totalAmount - netRefund);
                 }
 
@@ -163,7 +164,7 @@ export const updateAdminManifest = async (req, res, next) => {
             }
         }
 
-        // 🟢 C. AUTO-UPDATE GLOBAL STATUS BASED ON ITEMS
+        // 🟢 C. AUTO-UPDATE GLOBAL STATUS
         const allItems = order.items;
         const totalItems = allItems.length;
         const cancelledCount = allItems.filter(i => i.status === 'Cancelled').length;
@@ -188,17 +189,15 @@ export const updateAdminManifest = async (req, res, next) => {
     }
 };
 
-// 4. AUTHORIZE ITEM REFUND (Manual Override Endpoint)
+// 4. AUTHORIZE ITEM REFUND (Fixed polymorphic search)
 export const authorizeItemRefund = async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
         const { orderId, itemId } = req.params;
-        const order = await Order.findById(orderId).session(session);
+        const order = await findOrder(orderId, session);
         const item = order.items.id(itemId);
 
-        // Standard Manual Refund (Tax Included logic if required, else use standard)
-        // Using standard item total here for manual overrides
         const refundAmount = item.totalAmount;
 
         await updateWalletBalance(
@@ -212,8 +211,6 @@ export const authorizeItemRefund = async (req, res, next) => {
 
         item.status = 'Returned';
         item.actionDate = new Date();
-        
-        // Update Balance
         order.totalAmount = Math.max(0, order.totalAmount - refundAmount);
 
         const allSettled = order.items.every(i => ['Returned', 'Cancelled'].includes(i.status));
@@ -233,11 +230,11 @@ export const authorizeItemRefund = async (req, res, next) => {
     }
 };
 
-// 5. HANDLE RETURN APPROVAL (Status Tagging Only)
+// 5. HANDLE RETURN APPROVAL (Fixed polymorphic search)
 export const handleReturnApproval = async (req, res, next) => {
     try {
         const { orderId, itemId, action, comment } = req.body;
-        const order = await Order.findById(orderId);
+        const order = await findOrder(orderId);
 
         if (!order) return res.status(404).json({ success: false, message: "Order not found" });
 
@@ -251,7 +248,6 @@ export const handleReturnApproval = async (req, res, next) => {
             item.status = "Return Rejected";
             item.adminComment = comment || "Return policy requirements not met.";
         }
-        // Note: 'complete' action should ideally call updateAdminManifest to handle money
 
         await order.save();
         res.status(200).json({ success: true, message: `Item return request ${action}ed.` });
@@ -260,30 +256,27 @@ export const handleReturnApproval = async (req, res, next) => {
     }
 };
 
-// 6. RETURN ITEM REQUEST (For Admin Testing or On-Behalf)
+// 6. RETURN ITEM REQUEST (Fixed polymorphic search)
 export const returnOrderItem = async (req, res, next) => {
     try {
         const { orderId, itemId } = req.params;
         const { reason } = req.body;
         
-        // Admin doesn't need userId check usually, but kept for consistency
-        const order = await Order.findById(orderId);
+        const order = await findOrder(orderId);
         if (!order) return res.status(404).json({ success: false, message: "Order not found." });
 
         if (order.status.toLowerCase() !== 'delivered') {
             return res.status(400).json({ success: false, message: "Only Delivered orders can be returned." });
         }
 
-        await Order.updateOne(
-            { _id: orderId, "items._id": itemId },
-            { 
-                $set: { 
-                    "items.$.status": "Return Requested", 
-                    "items.$.returnReason": reason || "Admin Initiated", 
-                    "items.$.requestDate": new Date() 
-                } 
-            }
-        );
+        // Use findOne and save instead of updateOne to handle subdocument logic cleanly
+        const item = order.items.id(itemId);
+        if (item) {
+            item.status = "Return Requested";
+            item.returnReason = reason || "Admin Initiated";
+            item.requestDate = new Date();
+            await order.save();
+        }
 
         res.status(200).json({ success: true, message: "Return requested successfully." });
     } catch (error) {

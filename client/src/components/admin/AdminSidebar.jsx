@@ -2,15 +2,15 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { logoutAdmin } from "../../store/admin/authSlice";
-import { 
-    LayoutDashboard, 
-    Users, 
-    Settings, 
-    BarChart3, 
-    Package, 
-    ChevronDown, 
-    LogOut, 
-    TicketPercent, 
+import {
+    LayoutDashboard,
+    Users,
+    Settings,
+    BarChart3,
+    Package,
+    ChevronDown,
+    LogOut,
+    TicketPercent,
     ShoppingBag
 } from "lucide-react";
 
@@ -19,7 +19,6 @@ const AdminSidebar = () => {
     const location = useLocation();
     const dispatch = useDispatch();
 
-    // 1. Added 'promotions' to state to handle the Coupons menu toggle
     const [openMenus, setOpenMenus] = useState({
         products: location.pathname.includes("/admin/products") || location.pathname.includes("/admin/category") || location.pathname.includes("/admin/brand"),
         orders: location.pathname.includes("/admin/orders"),
@@ -43,11 +42,11 @@ const AdminSidebar = () => {
             </div>
 
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto custom-scrollbar">
-                <NavItem 
-                    icon={<LayoutDashboard size={16} />} 
-                    label="Dashboard" 
-                    active={isActive("/admin/dashboard")} 
-                    onClick={() => navigate("/admin/dashboard")} 
+                <NavItem
+                    icon={<LayoutDashboard size={16} />}
+                    label="Dashboard"
+                    active={isActive("/admin/dashboard")}
+                    onClick={() => navigate("/admin/dashboard")}
                 />
 
                 {/* --- PRODUCTS SECTION --- */}
@@ -82,7 +81,7 @@ const AdminSidebar = () => {
 
                 <NavItem icon={<Users size={16} />} label="Customers" active={isActive("/admin/customers")} onClick={() => navigate("/admin/customers")} />
 
-                {/* --- 2. UPDATED PROMOTIONS (COUPONS) SECTION --- */}
+                {/* --- PROMOTIONS SECTION --- */}
                 <DropdownItem
                     icon={<TicketPercent size={16} />}
                     label="Promotions"
@@ -96,8 +95,20 @@ const AdminSidebar = () => {
                     currentPath={location.pathname}
                 />
 
-                <NavItem icon={<BarChart3 size={16} />} label="Reports" />
-                <NavItem icon={<Settings size={16} />} label="Settings" />
+                <NavItem
+                    icon={<BarChart3 size={16} />}
+                    label="Reports"
+                    active={isActive("/admin/sales-report")}
+                    onClick={() => navigate("/admin/sales-report")}
+                />
+
+                {/* 🟢 UPDATED SETTINGS SECTION */}
+                <NavItem 
+                    icon={<Settings size={16} />} 
+                    label="Settings" 
+                    active={isActive("/admin/settings")} 
+                    onClick={() => navigate("/admin/settings")} 
+                />
             </nav>
 
             <div onClick={handleLogout} className="m-3 p-3 rounded-xl text-[11px] font-bold uppercase tracking-widest hover:text-white cursor-pointer transition-all flex items-center gap-3 hover:bg-red-500/10 text-slate-400 border border-transparent hover:border-red-500/20">
@@ -118,9 +129,9 @@ const DropdownItem = ({ icon, label, isOpen, onClick, subItems, navigate, curren
     <div className="space-y-1">
         <div onClick={onClick} className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all hover:bg-slate-800/40 hover:text-white ${isOpen ? 'text-white bg-slate-800/20' : ''}`}>
             <div className="flex items-center gap-3">{icon}<span className="text-xs font-medium">{label}</span></div>
-            <ChevronDown size={12} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown size={12} className={`transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
         </div>
-        <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={`overflow-hidden transition-all duration-300 ${isOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"}`}>
             <div className="ml-8 space-y-1 py-1">
                 {subItems.map((item, i) => (
                     <div key={i} onClick={() => navigate(item.path)} className={`py-1.5 px-3 text-[11px] cursor-pointer rounded-lg hover:bg-slate-800/30 ${currentPath === item.path ? 'text-white font-bold' : 'hover:text-white'}`}>

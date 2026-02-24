@@ -22,6 +22,7 @@ export const userLogout = () =>
 export const requestForgotPassword = (data) =>
   baseAxios.post("/users/forgot-password/request-otp", data);
 
+
 export const resendForgotPasswordOTP = (data) =>
   baseAxios.post("/users/forgot-password/resend-otp", data);
 

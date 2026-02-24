@@ -19,3 +19,11 @@ export const adminLogout = async () => {
   const res = await adminAxios.post("/admin/logout");
   return res.data;
 };
+
+export const getSalesReport = (params) =>
+  adminAxios.get("/admin/sales-report", { params });
+
+export const getDashboardStats = async () => {
+  const res = await adminAxios.get("/admin/dashboard-stats");
+  return res.data;
+};

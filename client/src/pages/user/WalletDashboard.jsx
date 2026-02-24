@@ -26,10 +26,14 @@ const WalletDashboard = () => {
     const formatDescription = (tx) => {
         const desc = tx.description;
         if (!desc || typeof desc !== 'string' || desc.toLowerCase().includes('undefined') || desc.trim() === "") {
-            if (tx.type?.toLowerCase() === 'credit') return "Consolidated Refund // Returned Item";
-            return "Order Transaction // Terminal Purchase";
+            if (tx.type?.toLowerCase() === 'credit') return "Refund Received";
+            return "Payment for Order";
         }
         let cleanText = desc.replace(/_/g, ' ');
+        
+        if (cleanText.toLowerCase().includes('referral join bonus')) return "Referral Reward Received";
+        if (cleanText.toLowerCase().includes('order placement')) return "Payment for Order";
+        
         return cleanText.charAt(0).toUpperCase() + cleanText.slice(1);
     };
 
@@ -47,24 +51,22 @@ const WalletDashboard = () => {
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
                 <Wallet className="text-[#7a6af6]/40" size={42} />
             </motion.div>
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Syncing Ledger...</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Loading Wallet Details...</p>
         </div>
     );
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             
-            {/* Header Section */}
             <div className="flex flex-col gap-2 pb-6 border-b border-white/5">
                 <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white">
-                    Digital <span className="text-white/20">Wallet</span>
+                    My <span className="text-white/20">Wallet</span>
                 </h1>
                 <p className="text-[9px] text-[#7a6af6] font-black uppercase tracking-[0.4em] italic">
-                    Terminal // Financial Ledger
+                    Balance & Transaction History
                 </p>
             </div>
 
-            {/* Balance Card Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 relative overflow-hidden group rounded-[2.5rem]">
                     <div className="absolute inset-0 bg-gradient-to-br from-[#7a6af6] to-[#4f46e5] opacity-90 transition-transform duration-700 group-hover:scale-105" />
@@ -73,7 +75,7 @@ const WalletDashboard = () => {
                     <div className="relative p-10 h-full flex flex-col justify-between min-h-[240px] text-white">
                         <div className="flex justify-between items-start">
                             <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 italic">Current Balance</p>
+                                <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 italic">Available Balance</p>
                                 <h2 className="text-6xl font-black italic tracking-tighter">
                                     ₹{wallet?.balance?.toLocaleString() || '0'}
                                 </h2>
@@ -88,10 +90,10 @@ const WalletDashboard = () => {
                         </div>
                         <div className="flex items-center gap-4 pt-6">
                             <div className="px-4 py-2 bg-white/10 rounded-xl border border-white/10">
-                                <p className="text-[10px] font-bold uppercase tracking-widest">Active Terminal</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest">Active Wallet</p>
                             </div>
                             <div className="px-4 py-2 bg-white/10 rounded-xl border border-white/10">
-                                <p className="text-[10px] font-bold uppercase tracking-widest">INR // ₹</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest">Currency: INR (₹)</p>
                             </div>
                         </div>
                     </div>
@@ -100,27 +102,26 @@ const WalletDashboard = () => {
                 <div className={`${glassStyle} p-8 flex flex-col justify-center gap-6`}>
                     <div className="space-y-2 group cursor-default">
                         <div className="flex items-center gap-2 text-green-400 group-hover:translate-x-1 transition-transform">
-                            <ArrowDownLeft size={16} /><span className="text-[10px] font-black uppercase tracking-widest">Instant Refunds</span>
+                            <ArrowDownLeft size={16} /><span className="text-[10px] font-black uppercase tracking-widest">Fast Refunds</span>
                         </div>
-                        <p className="text-[9px] text-white/30 font-bold uppercase leading-relaxed italic">Refunds for returned items are credited instantly to your ledger.</p>
+                        <p className="text-[9px] text-white/30 font-bold uppercase leading-relaxed italic">Refunds for returned items are credited instantly to your wallet.</p>
                     </div>
                     <div className="space-y-2 group cursor-default">
                         <div className="flex items-center gap-2 text-[#7a6af6] group-hover:translate-x-1 transition-transform">
-                            <Receipt size={16} /><span className="text-[10px] font-black uppercase tracking-widest">Automatic Sync</span>
+                            <Receipt size={16} /><span className="text-[10px] font-black uppercase tracking-widest">Safe Payments</span>
                         </div>
-                        <p className="text-[9px] text-white/30 font-bold uppercase leading-relaxed italic">Every transaction is logged with a unique timestamp for your audit trail.</p>
+                        <p className="text-[9px] text-white/30 font-bold uppercase leading-relaxed italic">Every transaction is securely recorded with a permanent time stamp.</p>
                     </div>
                 </div>
             </div>
 
-            {/* History Table Section */}
             <div className={`${glassStyle} overflow-hidden flex flex-col`}>
                 <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white italic flex items-center gap-2">
-                        <History size={14} className="text-[#7a6af6]" /> Transaction History
+                        <History size={14} className="text-[#7a6af6]" /> Recent Transactions
                     </h3>
                     <span className="px-3 py-1 bg-white/5 rounded-full text-[8px] font-black text-white/40 uppercase tracking-widest border border-white/5">
-                        {sortedTransactions.length} Operations Logged
+                        {sortedTransactions.length} Total Records
                     </span>
                 </div>
 
@@ -128,8 +129,8 @@ const WalletDashboard = () => {
                     <table className="w-full text-left border-collapse">
                         <thead className="sticky top-0 z-20 bg-[#0a0a0a] border-b border-white/5">
                             <tr>
-                                <th className="px-8 py-4 text-[9px] font-black uppercase tracking-widest text-white/30 italic">Details</th>
-                                <th className="px-8 py-4 text-[9px] font-black uppercase tracking-widest text-white/30 italic">Type</th>
+                                <th className="px-8 py-4 text-[9px] font-black uppercase tracking-widest text-white/30 italic">Description</th>
+                                <th className="px-8 py-4 text-[9px] font-black uppercase tracking-widest text-white/30 italic">Transaction Type</th>
                                 <th className="px-8 py-4 text-[9px] font-black uppercase tracking-widest text-white/30 italic text-right">Amount</th>
                             </tr>
                         </thead>
@@ -158,9 +159,9 @@ const WalletDashboard = () => {
                                             <span className={`px-2.5 py-1 rounded-md text-[8px] font-black uppercase border transition-colors ${
                                                 tx.type === 'credit' 
                                                 ? 'bg-green-500/10 text-green-400 border-green-500/20' 
-                                                : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                                : 'bg-red-50/5 text-white/60 border-white/10'
                                             }`}>
-                                                {tx.type}
+                                                {tx.type === 'credit' ? 'Credit (In)' : 'Debit (Out)'}
                                             </span>
                                         </td>
                                         <td className="px-8 py-5 text-right">
@@ -177,7 +178,7 @@ const WalletDashboard = () => {
                                     <td colSpan="3" className="px-8 py-24 text-center">
                                         <div className="flex flex-col items-center gap-3 opacity-20">
                                             <Receipt size={32} />
-                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] italic">No ledger activity found.</p>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] italic">No transaction history found.</p>
                                         </div>
                                     </td>
                                 </tr>

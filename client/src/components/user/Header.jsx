@@ -1,49 +1,78 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { ShoppingBag, LogOut, Settings, ChevronDown, Heart } from 'lucide-react';
+import { ShoppingBag, LogOut, Settings, ChevronDown, Heart, Ticket } from 'lucide-react';
 import { clearUser } from '../../store/user/authSlice';
 import { userLogout } from '../../api/user/user.api';
 import { nxToast } from '../../utils/userToast';
 import { useCart } from '../../hooks/user/useCart';
 import { useWishlist } from '../../hooks/user/useWishlist';
+import { useUserCategories } from '../../hooks/user/useUserCategories';
+import userAxios from '../../api/baseAxios'; // Ensure this is imported
 
 const Header = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
 
     const { user, isAuthenticated } = useSelector((state) => state.userAuth);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
+    const [liveCoupons, setLiveCoupons] = useState([]);
 
+    const { data: categories = [] } = useUserCategories();
     const { cart } = useCart();
     const { wishlist } = useWishlist();
 
     const cartCount = cart?.items?.length || 0;
     const wishlistCount = wishlist?.length || 0;
 
+    // 🟢 FETCH LIVE COUPONS FOR MARQUEE
+    useEffect(() => {
+        const fetchLiveOffers = async () => {
+            try {
+                const { data } = await userAxios.get("/users/coupons/available");
+                if (data.success) setLiveCoupons(data.coupons);
+            } catch (err) {
+                console.error("Coupon Sync Error");
+            }
+        };
+        fetchLiveOffers();
+    }, []);
+
     const handleProtectedNavigation = (path) => {
         if (!isAuthenticated) {
-            nxToast.security(
-                "Access Restricted",
-                "Please login to access your personal archive slots."
-            );
+            nxToast.security("Access Restricted", "Please login to access your personal bag.");
+            navigate('/login');
+            return;
         }
         navigate(path);
     };
 
+    const handleNavClick = (name) => {
+        const lowerName = name.toLowerCase();
+        if (lowerName === 'shop') { navigate('/shop'); return; }
+        const targetCategory = categories.find(cat => cat.name.toLowerCase() === lowerName);
+        if (targetCategory) navigate(`/shop?category=${targetCategory._id}`);
+        else navigate('/shop');
+    };
+
+    const isNavItemActive = (name) => {
+        const lowerName = name.toLowerCase();
+        const currentCategory = searchParams.get("category");
+        if (lowerName === 'shop') return location.pathname === '/shop' && !currentCategory;
+        const targetCategory = categories.find(cat => cat.name.toLowerCase() === lowerName);
+        return targetCategory && currentCategory === targetCategory._id;
+    };
+
     useEffect(() => {
-        const handleScroll = () => {
-            setIsScrolled(window.scrollY > 20);
-        };
+        const handleScroll = () => setIsScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    useEffect(() => {
-        setIsDropdownOpen(false);
-    }, [location.pathname]);
+    useEffect(() => setIsDropdownOpen(false), [location.pathname]);
 
     const handleLogout = async () => {
         try {
@@ -60,13 +89,24 @@ const Header = () => {
     return (
         <div className="w-full fixed top-0 z-50 font-sans selection:bg-[#7a6af6]/30">
 
-            <div className={`bg-black text-white overflow-hidden transition-all duration-500 ease-in-out ${isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'}`}>
-                <div className="py-1.5 whitespace-nowrap flex animate-marquee gap-20">
-                    {[...Array(4)].map((_, i) => (
-                        <div key={i} className="flex gap-20 items-center">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em]">
-                                Free Shipping Above ₹1999 <span className="ml-2 text-[#7a6af6]">ZEN25</span>
-                            </p>
+            {/* 🟢 LIVE COUPON MARQUEE BANNER */}
+            <div className={`bg-black text-white overflow-hidden transition-all duration-500 ease-in-out border-b border-white/5 ${isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'}`}>
+                <div className="py-2 whitespace-nowrap flex animate-marquee">
+                    {[...Array(6)].map((_, i) => (
+                        <div key={i} className="flex items-center">
+                            {liveCoupons.length > 0 ? liveCoupons.map((cpn) => (
+                                <div key={cpn._id} className="flex items-center gap-6 mx-10">
+                                    <Ticket size={10} className="text-[#7a6af6]" />
+                                    <p className="text-[9px] font-black uppercase tracking-[0.3em]">
+                                        USE CODE <span className="text-[#7a6af6] ml-1">{cpn.code}</span> FOR {cpn.discountValue}{cpn.discountType === 'PERCENT' ? '%' : ' OFF'}
+                                    </p>
+                                    <div className="w-1 h-1 bg-white/20 rounded-full" />
+                                </div>
+                            )) : (
+                                <div className="flex items-center gap-6 mx-10">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.3em]">Free Shipping Above ₹1999 // Nextgen Archive 2026</p>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
@@ -82,11 +122,12 @@ const Header = () => {
                         {['Shop', 'Apparel', 'Accessories'].map((name) => (
                             <button
                                 key={name}
-                                onClick={() => navigate(`/${name.toLowerCase()}`)}
+                                onClick={() => handleNavClick(name)}
                                 className="text-[9px] font-black uppercase tracking-[0.2em] text-white/60 hover:text-white transition-all relative group"
                             >
                                 {name}
-                                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#7a6af6] transition-all group-hover:w-full"></span>
+                                <span className={`absolute -bottom-1 left-0 h-0.5 bg-[#7a6af6] transition-all duration-300 ${isNavItemActive(name) ? 'w-full' : 'w-0 group-hover:w-full'
+                                    }`}></span>
                             </button>
                         ))}
                     </nav>
@@ -98,11 +139,7 @@ const Header = () => {
                     </div>
 
                     <div className="flex items-center gap-5">
-
-                        <div
-                            className="relative cursor-pointer group p-1"
-                            onClick={() => handleProtectedNavigation('/wishlist')}
-                        >
+                        <div className="relative cursor-pointer group p-1" onClick={() => handleProtectedNavigation('/wishlist')}>
                             <Heart size={18} className={`transition-colors ${wishlistCount > 0 && isAuthenticated ? 'text-[#7a6af6]' : 'text-white group-hover:text-[#7a6af6]'}`} fill={wishlistCount > 0 && isAuthenticated ? "currentColor" : "none"} />
                             {wishlistCount > 0 && isAuthenticated && (
                                 <span className="absolute -top-1 -right-1 bg-white text-black text-[7px] w-4 h-4 rounded-full flex items-center justify-center font-black">
@@ -111,10 +148,7 @@ const Header = () => {
                             )}
                         </div>
 
-                        <div
-                            className="relative cursor-pointer group p-1"
-                            onClick={() => handleProtectedNavigation('/cart')}
-                        >
+                        <div className="relative cursor-pointer group p-1" onClick={() => handleProtectedNavigation('/cart')}>
                             <ShoppingBag size={18} className="text-white group-hover:text-[#7a6af6] transition-colors" />
                             {cartCount > 0 && isAuthenticated && (
                                 <span className="absolute -top-1 -right-1 bg-[#7a6af6] text-white text-[7px] w-4 h-4 rounded-full flex items-center justify-center font-black">
@@ -165,7 +199,7 @@ const Header = () => {
             <style dangerouslySetInnerHTML={{
                 __html: `
                 @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-                .animate-marquee { animation: marquee 25s linear infinite; display: flex; width: max-content; }
+                .animate-marquee { animation: marquee 35s linear infinite; display: flex; width: max-content; }
             `}} />
         </div>
     );

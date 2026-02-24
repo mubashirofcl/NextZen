@@ -24,3 +24,7 @@ export const deleteCouponApi = async (couponId) => {
     return data;
 };
 
+export const toggleCouponStatusApi = async (id) => {
+    const { data } = await adminAxios.patch(`/admin/coupons/${id}/toggle-status`);
+    return data;
+};

@@ -114,3 +114,19 @@ export const getActiveCoupons = async (req, res, next) => {
         next(error); 
     }
 };
+
+// Add this to your existing backend/controllers/coupon.controller.js
+export const toggleCouponStatus = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const updatedCoupon = await couponService.toggleCouponStatus(id);
+
+        res.status(200).json({
+            success: true,
+            message: `Coupon successfully ${updatedCoupon.isActive ? 'Activated' : 'Blocked'}.`,
+            coupon: updatedCoupon
+        });
+    } catch (error) {
+        next(error);
+    }
+};

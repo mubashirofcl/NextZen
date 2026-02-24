@@ -72,7 +72,7 @@ const ResetPassword = () => {
                                     type={showPass ? "text" : "password"}
                                     placeholder="••••••••"
                                     {...register("password", { required: "Required", minLength: { value: 6, message: "Min 6 chars" } })}
-                                    className="w-full h-14 px-5 bg-gray-50 border-none rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
+                                    className="w-full h-14 px-5 text-black bg-gray-50 border-none rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
                                 />
                                 <button
                                     type="button"
@@ -93,7 +93,7 @@ const ResetPassword = () => {
                                     {...register("confirmPassword", {
                                         validate: v => v === watch('password') || "Passwords do not match"
                                     })}
-                                    className="w-full h-14 px-5 bg-gray-50 border-none rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
+                                    className="w-full h-14 px-5 text-black bg-gray-50 border-none rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
                                 />
                                 <button
                                     type="button"

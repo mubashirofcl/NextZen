@@ -1,5 +1,7 @@
 import authService from "./auth.service.js";
 import userRepo from "../userCore/user.repository.js";
+import User from "../userCore/user.model.js";
+import Wallet from "../wallet/wallet.model.js"; 
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -10,45 +12,30 @@ const COOKIE_OPTIONS = {
   path: "/",
 };
 
-export const googleCallback = async (req, res) => {
+export const googleCallback = async (req, res, next) => {
   try {
+
     if (!req.user) {
-      return res.redirect(
-        `${process.env.FRONTEND_URL}/login?error=google_auth_failed`
-      );
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=no_user`);
     }
 
     const user = req.user;
 
     if (user.isBlocked) {
-      res.clearCookie("userAccessToken", COOKIE_OPTIONS);
-      res.clearCookie("userRefreshToken", COOKIE_OPTIONS);
-
-      return res.redirect(
-        `${process.env.FRONTEND_URL}/login?blocked=true&reason=${encodeURIComponent(
-          user.blockReason || "Your account has been blocked"
-        )}`
-      );
+      return res.redirect(`${process.env.FRONTEND_URL}/login?blocked=true`);
     }
 
-    const { accessToken, refreshToken } =
-      authService.generateTokens(user._id);
+    const { accessToken, refreshToken } = authService.generateTokens(user._id);
 
     await userRepo.updateRefreshToken(user._id, refreshToken);
 
-    res.cookie("userAccessToken", accessToken, {
-      ...COOKIE_OPTIONS,
-      maxAge: 15 * 60 * 1000,
-    });
-
-    res.cookie("userRefreshToken", refreshToken, {
-      ...COOKIE_OPTIONS,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie("userAccessToken", accessToken, COOKIE_OPTIONS);
+    res.cookie("userRefreshToken", refreshToken, COOKIE_OPTIONS);
 
     return res.redirect(`${process.env.FRONTEND_URL}/`);
-  } catch {
-    return res.redirect(`${process.env.FRONTEND_URL}/login`);
+  } catch (error) {
+    if (typeof next === "function") return next(error);
+    res.redirect(`${process.env.FRONTEND_URL}/login?error=server_error`);
   }
 };
 

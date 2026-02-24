@@ -1,25 +1,24 @@
-import React from 'react';
-import { Star, ArrowUpRight, ShoppingBag, ArrowRight, Loader2, Heart, Percent } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Star, ArrowUpRight, ArrowRight, Loader2, Heart, Percent, CheckCircle, Sparkles, Banknote, Palette, ShieldCheck, Ticket } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
 import { useProducts } from "../../hooks/user/useProducts";
 import { useUserCategories } from '../../hooks/user/useUserCategories';
-import { useCart } from '../../hooks/user/useCart';
 import { useSelector } from 'react-redux';
 import { nxToast } from '../../utils/userToast';
 import { useWishlist } from '../../hooks/user/useWishlist';
+import userAxios from '../../api/baseAxios';
 
-
-const NewCollectionRib = ({ rotation, top, text = "NEW COLLECTION" }) => (
+const NewCollectionRib = ({ rotation, top, text = "NEW ARRIVALS" }) => (
     <div
-        className="absolute w-[180%] py-3 md:py-5 bg-[#8676ff] flex overflow-hidden whitespace-nowrap border-y border-black/20 z-20 shadow-[0_10px_40px_rgba(0,0,0,0.3)] select-none pointer-events-none"
-        style={{ transform: `rotate(${rotation}deg)`, top: top, left: '-40%' }}
+        className="absolute w-[200%] py-4 md:py-6 bg-[#8676ff] flex overflow-hidden whitespace-nowrap border-y border-black/20 z-20 shadow-[0_20px_50px_rgba(0,0,0,0.4)] select-none pointer-events-none"
+        style={{ transform: `rotate(${rotation}deg)`, top: top, left: '-50%' }}
     >
         <div className="animate-marquee-slow flex items-center">
             {[...Array(15)].map((_, i) => (
-                <span key={i} className="text-black font-black text-[14px] md:text-[22px] italic tracking-tighter mx-6 flex items-center gap-4">
-                    {text} <div className="w-1.5 h-1.5 bg-black rounded-full" />
+                <span key={i} className="text-black font-black text-[16px] md:text-[24px] italic tracking-tighter mx-8 flex items-center gap-6">
+                    {text} <div className="w-2 h-2 bg-black rounded-full" />
                 </span>
             ))}
         </div>
@@ -29,233 +28,309 @@ const NewCollectionRib = ({ rotation, top, text = "NEW COLLECTION" }) => (
 const Home = () => {
     const navigate = useNavigate();
     const { data: categories = [], isLoading: catLoading } = useUserCategories();
-    const { data: allProductsData } = useProducts({ limit: 50 });
-    const { data: featuredData } = useProducts({ limit: 4, isFeatured: true, sort: "createdAt" });
-    const { data: freshData } = useProducts({ limit: 4, sort: "createdAt" });
+    const { data: featuredData } = useProducts({ limit: 4, isFeatured: true });
+    const { data: freshData } = useProducts({ limit: 8, sort: "createdAt" });
+    const [latestCoupon, setLatestCoupon] = useState(null);
+
+    const adminHeroBanner = "https://images.unsplash.com/photo-1507680434567-5739c80be1ac?q=80&w=2000";
+    const adminOfferBanner = "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=2000";
 
     const featuredProducts = featuredData?.products || [];
     const freshArrivals = freshData?.products || [];
-    const allProducts = allProductsData?.products || [];
 
-    const getCategoryImage = (catId, index) => {
-        const product = allProducts?.find(p =>
-            String(p.categoryId?._id || p.categoryId) === String(catId)
-        );
-        if (product?.thumbnail) return product.thumbnail;
-        const menFallbacks = [
-            "https://images.unsplash.com/photo-1681091638047-4e91651c7a31?q=80&w=1000",
-            "https://images.unsplash.com/photo-1578681994506-b8f463449011?q=80&w=1000",
-            "https://plus.unsplash.com/premium_photo-1673125287363-b4e837f1215f?q=80&w=1000"
-        ];
-        return menFallbacks[index % menFallbacks.length];
+    useEffect(() => {
+        const fetchPromo = async () => {
+            try {
+                const { data } = await userAxios.get("/users/coupons/available");
+                if (data.success && data.coupons.length > 0) {
+                    setLatestCoupon(data.coupons[0]);
+                }
+            } catch (err) {
+                console.error("Coupon Sync Error");
+            }
+        };
+        fetchPromo();
+    }, []);
+
+    const copyCode = (code) => {
+        navigator.clipboard.writeText(code);
+        nxToast.success("Code Copied", "Apply it at checkout for a discount.");
     };
 
     return (
-        <div className="relative min-h-screen font-sans text-white selection:bg-[#7a6af6]/20 overflow-x-hidden pt-20">
+        <div className="relative min-h-screen font-sans text-white  selection:bg-[#7a6af6]/20 overflow-x-hidden">
             <Header />
 
-            <section className="relative h-[65vh] md:h-[85vh] flex items-center justify-center mb-28 mt-4 overflow-hidden">
+            <section className="relative h-[75vh] md:h-[95vh] mt-16 flex items-center justify-center mb-32 overflow-hidden px-4">
                 <div className="absolute inset-0 pointer-events-none z-20">
-                    <NewCollectionRib rotation={-8} top="35%" />
-                    <NewCollectionRib rotation={7} top="48%" />
+                    <NewCollectionRib rotation={-16} top="45%" text="WINTER COLLECTION 2026" />
+                    <NewCollectionRib rotation={6} top="56%" text="SHOP NEW ARRIVALS" />
                 </div>
 
-                <div className="absolute inset-x-4 md:inset-x-10 inset-y-0 rounded-[2rem] md:rounded-[3.5rem] overflow-hidden border border-white/5 shadow-2xl bg-[#414141] z-10">
+                <div className="absolute inset-x-2 md:inset-x-10 inset-y-4 md:inset-y-6 rounded-[2rem] md:rounded-[4.5rem] overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(122,106,246,0.15)] bg-[#111] z-10">
                     <img
-                        src="https://images.unsplash.com/photo-1507680434567-5739c80be1ac?q=80&w=2000"
-                        alt="Background"
-                        className="w-full h-full object-cover"
+                        src={adminHeroBanner}
+                        alt="Main Hero"
+                        className="w-full h-full object-cover object-center scale-105 animate-slow-zoom"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-[#050505]/40" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent" />
                 </div>
 
-                <div className="relative z-30 text-center select-none px-4">
-                    <h1 className="text-[clamp(3.5rem,14vw,10rem)] font-black uppercase italic leading-[0.82] tracking-tighter text-white drop-shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
-                        FOR YOUR SOUL<br />
-                        <span className="text-transparent text-outline-white opacity-50">ARCHIVE STORE</span>
+                <div className="relative z-30 text-center px-4 mt-20">
+                    <div className="flex items-center justify-center gap-3 mb-6 animate-fade-in">
+                        <CheckCircle size={14} className="text-[#7a6af6]" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.6em] text-[#7a6af6]">Quality Streetwear Heritage</span>
+                    </div>
+                    <h1 className="text-[clamp(3.5rem,14vw,10rem)] font-black uppercase italic leading-[0.8] tracking-tighter text-white drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)]">
+                        DEFINE YOUR<br />
+                        <span className="text-transparent text-outline-white opacity-40">STYLE</span>
                     </h1>
+                    <button
+                        onClick={() => navigate('/shop')}
+                        className="mt-12 group relative inline-flex items-center gap-8 bg-white text-black px-10 py-5 rounded-full font-black uppercase text-[11px] tracking-[0.2em] transition-all hover:bg-[#7a6af6] hover:text-white shadow-2xl"
+                    >
+                        Explore Collection
+                        <div className="bg-black text-white p-2 rounded-full group-hover:bg-white group-hover:text-[#7a6af6] transition-colors">
+                            <ArrowRight size={14} />
+                        </div>
+                    </button>
                 </div>
             </section>
 
             <main className="max-w-[1600px] mx-auto px-6 md:px-12 relative z-10">
-                <section className="w-full mb-32">
-                    <div className="flex flex-wrap lg:flex-nowrap gap-6">
-                        {!catLoading && categories.slice(0, 4).map((cat, index) => (
-                            <CategoryTile
+
+                <section className="w-full mb-40">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                        {!catLoading && categories.slice(0, 3).map((cat, index) => (
+                            <CategoryEditorialTile
                                 key={cat._id}
                                 title={cat.name}
-                                img={getCategoryImage(cat._id, index)}
+                                description={cat.description || "Premium seasonal pieces designed for bold identities."}
+                                modelName={"EXPLORE NOW"}
                                 onClick={() => navigate(`/shop?category=${cat._id}`)}
                             />
                         ))}
                     </div>
                 </section>
 
-                <section className="mb-32">
-                    <div className="flex justify-between items-end mb-12 border-b border-white/10 pb-8">
-                        <div className="space-y-2">
+                <section className="mb-40">
+                    <div className="flex flex-col md:flex-row justify-between items-end mb-16 border-b border-white/10 pb-10">
+                        <div className="space-y-3">
                             <div className="flex items-center gap-3">
-                                <div className="w-2 h-2 bg-[#7a6af6] rounded-full animate-pulse" />
-                                <span className="text-[#7a6af6] text-[10px] font-black uppercase tracking-[0.4em]">Segment 26 // Selection</span>
+                                <Sparkles size={16} className="text-[#7a6af6] animate-pulse" />
+                                <span className="text-[#7a6af6] text-[11px] font-black uppercase tracking-[0.5em]">Curated Picks</span>
                             </div>
-                            <h3 className="text-5xl font-black uppercase tracking-tighter italic">Featured Archive</h3>
+                            <h3 className="text-5xl md:text-7xl font-black uppercase tracking-tighter italic leading-none">Featured Styles</h3>
                         </div>
-                        <button onClick={() => navigate('/shop')} className="group flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all">
-                            View Collection <ArrowRight size={16} className="group-hover:translate-x-2 transition-transform" />
+                        <button onClick={() => navigate('/shop')} className="group flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-white/30 hover:text-white transition-all">
+                            View All Items <ArrowRight size={18} />
                         </button>
                     </div>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10">
                         {featuredProducts.map((prod) => (
-                            <StandardProductCard key={prod._id} prod={prod} tag="Curated" />
+                            <StandardProductCard key={prod._id} prod={prod} tag="Bestseller" />
                         ))}
                     </div>
                 </section>
 
-                <div className="w-[150vw] -ml-[25vw] border-y border-white/5 bg-white/[0.01] py-6 overflow-hidden flex font-black text-[12px] tracking-[0.6em] uppercase mb-32 italic">
-                    <div className="flex items-center gap-16 animate-marquee shrink-0">
-                        {[...Array(10)].map((_, i) => (
-                            <span key={i} className="flex items-center gap-16 text-white/20">
-                                NEXTZEN ARCHIVE <Star size={12} className="fill-[#7a6af6] text-[#7a6af6]" />
-                                LIMITED DROP 2026 <Star size={12} className="fill-[#7a6af6] text-[#7a6af6]" />
-                            </span>
-                        ))}
+                <section className="max-w-[1440px] mx-auto border-t border-white/10 pt-20 grid grid-cols-1 md:grid-cols-3 gap-16 mb-40">
+                    <div className="flex flex-col items-center text-center space-y-4 group">
+                        <div className="w-16 h-16 rounded-full bg-[#111] flex items-center justify-center group-hover:bg-[#7a6af6] transition-all duration-500 shadow-xl border border-white/5">
+                            <Palette className="text-white" size={28} />
+                        </div>
+                        <h3 className="text-sm font-black uppercase tracking-[0.2em] italic">Exclusive Collabs</h3>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest leading-relaxed max-w-[250px]">
+                            Collaborations with iconic artists and illustrators on premium fabrics.
+                        </p>
                     </div>
-                </div>
 
-                <section className="p-12 md:p-20 backdrop-blur-3xl bg-white/[0.01] border border-white/5 rounded-[4rem] mb-32 shadow-[0_40px_100px_rgba(0,0,0,0.5)] relative overflow-hidden">
-                    <div className="absolute -top-24 -right-24 w-96 h-96 bg-[#7a6af6]/5 blur-[120px] rounded-full" />
-                    <div className="flex justify-between items-center mb-16 relative z-10">
-                        <h3 className="text-4xl font-black uppercase tracking-tighter italic">Latest Segments</h3>
-                        <button onClick={() => navigate('/shop')} className="px-8 py-3 bg-white text-black rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[#7a6af6] hover:text-white transition-all shadow-xl">Explore Drops</button>
+                    <div className="flex flex-col items-center text-center space-y-4 group">
+                        <div className="w-16 h-16 rounded-full bg-[#111] flex items-center justify-center group-hover:bg-[#7a6af6] transition-all duration-500 shadow-xl border border-white/5">
+                            <Banknote className="text-white" size={28} />
+                        </div>
+                        <h3 className="text-sm font-black uppercase tracking-[0.2em] italic">Honest Pricing</h3>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest leading-relaxed max-w-[250px]">
+                            Direct shop access ensuring luxury quality without the traditional high markups.
+                        </p>
                     </div>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
+
+                    <div className="flex flex-col items-center text-center space-y-4 group">
+                        <div className="w-16 h-16 rounded-full bg-[#111] flex items-center justify-center group-hover:bg-[#7a6af6] transition-all duration-500 shadow-xl border border-white/5">
+                            <ShieldCheck className="text-white" size={28} />
+                        </div>
+                        <h3 className="text-sm font-black uppercase tracking-[0.2em] italic">Guaranteed Quality</h3>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest leading-relaxed max-w-[250px]">
+                            Meticulous attention to every stitch, seam, and detail in every piece we drop.
+                        </p>
+                    </div>
+                </section>
+
+                {/* 🟢 DYNAMIC OFFER BANNER */}
+                <section className="w-full mb-40 px-2">
+                    <div className="relative min-h-[400px] md:h-[550px] rounded-[2rem] md:rounded-[3.5rem] overflow-hidden group border border-white/5 shadow-2xl bg-black">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#7a6af6] via-[#4f46e5]/40 to-black opacity-90 z-10" />
+                        <img
+                            src={adminOfferBanner}
+                            className="absolute inset-0 w-full h-full object-cover grayscale mix-blend-overlay group-hover:scale-105 transition-transform duration-[3s]"
+                            alt="Promotion"
+                        />
+                        
+                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-center p-8 md:p-12">
+                            <div className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.4em] mb-8 flex items-center gap-2">
+                                <Sparkles size={12} className="text-[#7a6af6]" /> 
+                                Limited Protocol
+                            </div>
+
+                            {latestCoupon ? (
+                                <>
+                                    <h2 className="text-5xl md:text-[8rem] font-black italic uppercase tracking-tighter leading-[0.9] mb-4 drop-shadow-2xl">
+                                        GET <span className="text-transparent text-outline-white">
+                                            {latestCoupon.discountValue}{latestCoupon.discountType === 'PERCENT' ? '%' : ' OFF'}
+                                        </span>
+                                    </h2>
+                                    <p className="text-[11px] md:text-[13px] font-black uppercase tracking-[0.6em] text-white/60 mb-10 italic">
+                                        MINIMUM PURCHASE: ₹{latestCoupon.minPurchaseAmt} // WINTER 2026
+                                    </p>
+                                    
+                                    <div className="flex flex-col items-center gap-6">
+                                        <div className="bg-white/5 border border-white/10 backdrop-blur-xl p-1 rounded-2xl flex items-center gap-4 pr-6 group/code">
+                                            <div className="bg-white text-black px-6 py-3 rounded-xl font-black text-xl tracking-tighter italic">
+                                                {latestCoupon.code}
+                                            </div>
+                                            <button 
+                                                onClick={() => copyCode(latestCoupon.code)}
+                                                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-[#7a6af6] transition-colors"
+                                            >
+                                                <Ticket size={14} /> Copy Code
+                                            </button>
+                                        </div>
+                                        <button 
+                                            onClick={() => navigate('/shop')}
+                                            className="bg-[#7a6af6] text-white px-14 py-5 rounded-full font-black uppercase text-[12px] tracking-[0.2em] hover:bg-white hover:text-black transition-all shadow-xl active:scale-95"
+                                        >
+                                            Shop with Discount
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <h2 className="text-5xl md:text-[9rem] font-black italic uppercase tracking-tighter leading-none mb-6">
+                                        SEASON <span className="text-transparent text-outline-white">OFF 40%</span>
+                                    </h2>
+                                    <button onClick={() => navigate('/shop')} className="bg-white text-black px-14 py-5 rounded-full font-black uppercase text-[12px] tracking-[0.2em] hover:bg-[#7a6af6] hover:text-white transition-all">
+                                        Explore Drop
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="pb-32">
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-20 gap-8">
+                        <h3 className="text-5xl md:text-7xl font-black uppercase tracking-tighter italic">Latest Drops</h3>
+                        <button onClick={() => navigate('/shop')} className="px-12 py-4 bg-[#7a6af6] text-white rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all shadow-2xl active:scale-95">Shop All New</button>
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10 relative z-10">
                         {freshArrivals.map((prod) => (
-                            <StandardProductCard key={prod._id} prod={prod} tag="Fresh Arrival" />
+                            <StandardProductCard key={prod._id} prod={prod} tag="New" />
                         ))}
                     </div>
                 </section>
+
             </main>
 
             <Footer />
 
             <style dangerouslySetInnerHTML={{
                 __html: `
-                .text-outline-white { -webkit-text-stroke: 1px rgba(255,255,255,0.3); }
-                @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-                @keyframes marquee-slow { 0% { transform: translateX(0); } 100% { transform: translateX(-30%); } }
-                .animate-marquee { animation: marquee 25s linear infinite; }
-                .animate-marquee-slow { animation: marquee-slow 35s linear infinite; }
+                .text-outline-white { -webkit-text-stroke: 1px rgba(255,255,255,1); }
+                @media (min-width: 768px) { .text-outline-white { -webkit-text-stroke: 1.5px rgba(255,255,255,1); } }
+                @keyframes marquee-slow { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+                .animate-marquee-slow { animation: marquee-slow 45s linear infinite; }
+                @keyframes slow-zoom { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
+                .animate-slow-zoom { animation: slow-zoom 20s ease-in-out infinite alternate; }
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-fade-in { animation: fadeIn 1.5s ease-out forwards; }
             `}} />
         </div>
     );
 };
 
-const CategoryTile = ({ title, img, onClick }) => (
+const CategoryEditorialTile = ({ title, modelName, description, onClick }) => (
     <div
         onClick={onClick}
-        className="relative h-[600px] flex-1 min-w-[320px] group cursor-pointer overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#0a0a0a] transition-all duration-700 hover:shadow-2xl"
+        className="relative group cursor-pointer h-[420px] overflow-hidden rounded-[2.5rem] border border-white/5 transition-all duration-700 hover:border-[#7a6af6]/40 hover:shadow-[0_0_50px_rgba(122,106,246,0.15)]"
     >
-        <img
-            src={img}
-            alt={title}
-            className="w-full h-full object-cover transition-all duration-1000 scale-105 group-hover:scale-110 opacity-40 group-hover:opacity-100"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent flex flex-col justify-end p-10">
-            <div className="mb-6">
-                <div className="w-16 h-16 rounded-full border border-white/20 flex items-center justify-center backdrop-blur-xl bg-white/5 group-hover:bg-white group-hover:border-white transition-all duration-500">
-                    <ArrowUpRight size={32} className="text-white group-hover:text-black transition-colors" strokeWidth={2} />
+        <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#7a6af6]/10 blur-[100px] rounded-full group-hover:bg-[#7a6af6]/20 transition-colors duration-700" />
+            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#FF3D00]/5 blur-[100px] rounded-full group-hover:bg-[#FF3D00]/10 transition-colors duration-700" />
+            <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[20rem] font-black italic text-white/[0.02] select-none uppercase transition-all duration-1000 group-hover:text-white/[0.04] group-hover:scale-110">
+                {title.charAt(0)}
+            </span>
+        </div>
+
+        <div className="relative h-full p-10 flex flex-col justify-between z-10">
+            <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="h-px w-8 bg-[#7a6af6]" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-[#7a6af6]">Category // {title}</span>
                 </div>
+                <h3 className="text-5xl font-black uppercase italic leading-none tracking-tighter text-white drop-shadow-2xl">{title}</h3>
+                <p className="text-[11px] font-medium text-white/30 uppercase tracking-[0.15em] leading-relaxed max-w-[220px] transition-colors group-hover:text-white/60">{description}</p>
             </div>
-            <h3 className="text-white font-black text-6xl tracking-tighter uppercase leading-[0.85] mb-4 italic transition-transform group-hover:-translate-y-2 duration-500">{title}</h3>
-            <p className="text-[10px] leading-relaxed text-white/40 font-bold uppercase tracking-wider max-w-[260px] opacity-0 group-hover:opacity-100 transition-all duration-700 translate-y-4 group-hover:translate-y-0">
-                Synchronizing the latest archival patterns for the current season.
-            </p>
+            <div className="relative">
+                <div className="bg-white text-black p-6 rounded-[2rem] shadow-[0_20px_40px_rgba(0,0,0,0.4)] flex justify-between items-center transition-all duration-500 transform group-hover:-translate-y-2 group-hover:scale-[1.02]">
+                    <div className="space-y-1">
+                        <p className="text-[8px] font-black opacity-30 uppercase tracking-[0.2em] leading-none">Quick View</p>
+                        <h4 className="text-[15px] font-black uppercase italic leading-none tracking-tight">{modelName}</h4>
+                    </div>
+                    <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center transition-all duration-500 group-hover:bg-[#7a6af6] shadow-lg">
+                        <ArrowUpRight size={22} className="text-white transition-transform duration-500 group-hover:rotate-45" strokeWidth={2.5} />
+                    </div>
+                </div>
+                <div className="absolute inset-0 bg-[#7a6af6] rounded-[2rem] -z-10 translate-y-2 blur-xl opacity-0 group-hover:opacity-20 transition-opacity duration-700" />
+            </div>
         </div>
     </div>
 );
 
 const StandardProductCard = ({ prod, tag }) => {
     const navigate = useNavigate();
-
     const { toggleWishlist, isInWishlist, isPending } = useWishlist();
     const { isAuthenticated } = useSelector((state) => state.userAuth);
 
     const pId = prod._id?.toString();
-    const vId = (prod.variantId?._id || prod.variantId || prod.variants?.[0]?._id)?.toString();
-
+    const vId = (prod.variantId || prod.variants?.[0]?._id || pId)?.toString();
     const isWishlisted = isInWishlist(pId);
-
-    // 🟢 DYNAMIC OFFER LOGIC
-    const activeDiscount = Number(prod.discountValue || 0);
-    const hasOffer = activeDiscount > 0;
 
     const handleWishlistToggle = (e) => {
         e.stopPropagation();
-        if (!isAuthenticated) return nxToast.security("Access Denied", "Please login to archive items.");
-        if (!pId || !vId) return nxToast.security("Protocol Error", "Asset data missing.");
+        if (!isAuthenticated) return nxToast.security("Access Restricted", "Please login to save items.");
+        if (!pId || !vId) return;
         toggleWishlist(pId, vId);
     };
 
     return (
-        <div className="group cursor-pointer" onClick={() => navigate(`/product/${prod._id}`)}>
-            <div className="relative aspect-[3/4] mb-6 overflow-hidden rounded-[2rem] bg-white/[0.02] border border-white/5 transition-all duration-500 hover:border-[#7a6af6]/40">
-                <img
-                    src={prod.thumbnail}
-                    alt={prod.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90 group-hover:opacity-100"
-                />
-
-                {/* 🟢 ENHANCED OFFER BADGE */}
-                {hasOffer && (
-                    <div className="absolute top-6 left-6 z-30 animate-in slide-in-from-left-4 duration-500">
-                        <div className="bg-gradient-to-r from-[#7a6af6] to-[#9b8df9] text-white px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-[0_0_25px_rgba(122,106,246,0.4)] border border-white/20">
-                            <Percent size={10} strokeWidth={4} />
-                            <span className="text-[10px] font-black italic tracking-tighter">
-                                {activeDiscount}% DROP
-                            </span>
-                        </div>
-                    </div>
-                )}
-
-                <div className="absolute top-6 right-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 z-30">
+        <div className="group cursor-pointer" onClick={() => navigate(`/product/${pId}`)}>
+            <div className="relative aspect-[3.2/4] mb-8 overflow-hidden rounded-[2.5rem] bg-white/[0.03] border border-white/5 transition-all duration-700 hover:border-[#7a6af6]/50">
+                <img src={prod.thumbnail} alt={prod.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-all duration-500 scale-90 group-hover:scale-100">
                     <button
                         onClick={handleWishlistToggle}
                         disabled={isPending}
-                        className={`p-4 rounded-2xl shadow-2xl transition-all active:scale-90 border backdrop-blur-md ${isWishlisted
-                            ? 'bg-red-500 border-red-500 text-white'
-                            : 'bg-white border-white text-black hover:bg-[#7a6af6] hover:border-[#7a6af6] hover:text-white'
-                            }`}
+                        className={`p-4 rounded-2xl backdrop-blur-xl border shadow-2xl transition-all active:scale-90 ${isWishlisted ? 'bg-red-500 border-red-500 text-white' : 'bg-white/10 border-white/10 text-white hover:bg-white hover:text-black'}`}
                     >
-                        {isPending ? (
-                            <Loader2 size={18} className="animate-spin" />
-                        ) : (
-                            <Heart size={18} className={isWishlisted ? "fill-white" : ""} />
-                        )}
+                        {isPending ? <Loader2 size={18} className="animate-spin" /> : <Heart size={18} fill={isWishlisted ? "white" : "none"} strokeWidth={2.5} />}
                     </button>
                 </div>
-
-                <div className="absolute bottom-6 left-6 bg-black/60 backdrop-blur-md text-[#7a6af6] text-[8px] font-black px-5 py-2 rounded-full uppercase tracking-[0.2em] border border-white/10 shadow-2xl">
-                    {tag}
-                </div>
+                <div className="absolute bottom-6 left-6 bg-black/40 backdrop-blur-md text-[#7a6af6] text-[9px] font-black px-5 py-2 rounded-full uppercase tracking-widest border border-white/10">{tag}</div>
             </div>
-
-            <div className="space-y-2 px-3">
-                <div className="flex justify-between items-start">
-                    <h4 className="text-[13px] font-black text-white/60 uppercase tracking-tighter truncate italic group-hover:text-white transition-colors">
-                        {prod.name}
-                    </h4>
-                    <ArrowUpRight size={14} className="text-white/10 group-hover:text-[#7a6af6] transition-colors" />
-                </div>
-
+            <div className="space-y-3 px-4">
+                <h4 className="text-[15px] font-black text-white/70 uppercase tracking-tighter italic group-hover:text-white transition-colors truncate">{prod.name}</h4>
                 <div className="flex items-center gap-4">
-                    <p className={`text-[18px] font-black italic ${hasOffer ? 'text-[#7a6af6]' : 'text-white'}`}>
-                        ₹{(prod.minSalePrice || prod.minPrice)?.toLocaleString()}
-                    </p>
-                    {hasOffer && (
-                        <p className="text-[12px] text-white/20 line-through italic font-bold">
-                            ₹{prod.minOriginalPrice?.toLocaleString() || prod.minPrice?.toLocaleString()}
-                        </p>
-                    )}
+                    <p className="text-[22px] font-black italic tracking-tighter text-white">₹{(prod.minSalePrice || prod.minPrice)?.toLocaleString()}</p>
+                    {prod.discountValue > 0 && <span className="text-[11px] font-black text-[#7a6af6] italic">-{prod.discountValue}%</span>}
                 </div>
             </div>
         </div>

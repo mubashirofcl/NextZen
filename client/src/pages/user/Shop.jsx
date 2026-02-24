@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, ChevronDown, SlidersHorizontal, Check, Heart, Loader2, X, Percent, Tag } from "lucide-react";
+import { Search, ChevronDown, SlidersHorizontal, Check, Heart, Loader2, X, Percent } from "lucide-react";
 import { useSelector } from "react-redux";
 
 import Header from "../../components/user/Header";
@@ -47,13 +47,12 @@ const ProductCard = ({ product }) => {
     const vId = product.variants?.[0]?._id || product.variants?.[0] || pId;
     const isWishlisted = isInWishlist(pId);
 
-    // Dynamic Logic: Determine if an offer is active
     const activeDiscount = Number(product.discountValue || 0);
     const hasOffer = activeDiscount > 0;
 
     const handleWishlistToggle = (e) => {
         e.stopPropagation();
-        if (!isAuthenticated) return nxToast.security("Access Denied", "Please login to archive items.");
+        if (!isAuthenticated) return nxToast.security("Access Denied", "Please login to save items.");
         toggleWishlist(pId, vId);
     };
 
@@ -62,13 +61,12 @@ const ProductCard = ({ product }) => {
             <div className="relative aspect-[3/4] mb-4 overflow-hidden rounded-[1.5rem] bg-white/[0.03] border border-white/5 transition-all duration-500 hover:border-[#7a6af6]/40">
                 <img src={product.thumbnail} alt={product.name} className="w-full h-full object-cover transition-transform duration-[1.5s] group-hover:scale-110 opacity-90 group-hover:opacity-100" />
                 
-                {/* 🟢 OFFER BADGE - HIGH VISIBILITY */}
                 {hasOffer && (
                     <div className="absolute top-4 left-4 z-20 animate-in slide-in-from-left-2 duration-500">
                         <div className="bg-[#7a6af6] text-white px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-[0_0_20px_rgba(122,106,246,0.5)] border border-white/20">
                             <Percent size={10} strokeWidth={4} />
                             <span className="text-[9px] font-black italic tracking-tighter">
-                                {activeDiscount}% DROP
+                                {activeDiscount}% OFF
                             </span>
                         </div>
                     </div>
@@ -101,13 +99,6 @@ const ProductCard = ({ product }) => {
                         </span>
                     )}
                 </div>
-                
-                {/* Secondary Indicator if specific campaign is active */}
-                {hasOffer && (
-                    <p className="text-[7px] font-black uppercase tracking-[0.2em] text-[#7a6af6]/60 italic">
-                        Limited Time Manifest
-                    </p>
-                )}
             </div>
         </div>
     );
@@ -117,8 +108,8 @@ const Shop = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
     const [openDropdown, setOpenDropdown] = useState(null);
-    const [search, setSearch] = useState("");
-    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState(searchParams.get("search") || "");
+    const [page, setPage] = useState(Number(searchParams.get("page")) || 1);
     const [sort, setSort] = useState(searchParams.get("sort") || "createdAt_desc");
 
     const availableSizes = ["S", "M", "L", "XL", "XXL", "FREE", "ONE"];
@@ -147,17 +138,30 @@ const Shop = () => {
 
     const products = data?.products || [];
 
-    const resetPage = () => setPage(1);
     const toggleDropdown = (id) => setOpenDropdown(openDropdown === id ? null : id);
 
-    const updateUrlParams = (newFilters, newSort = sort) => {
+    const updateUrlParams = useCallback((updatedFilters, updatedSort = sort, updatedSearch = search, updatedPage = 1) => {
         const params = new URLSearchParams();
-        if (newFilters.category) params.set("category", newFilters.category);
-        if (newFilters.subcategory) params.set("subcategory", newFilters.subcategory);
-        if (newFilters.brands.length > 0) params.set("brand", newFilters.brands.join(","));
-        if (newFilters.sizes.length > 0) params.set("size", newFilters.sizes.join(","));
-        if (newSort !== "createdAt_desc") params.set("sort", newSort);
+        if (updatedFilters.category) params.set("category", updatedFilters.category);
+        if (updatedFilters.subcategory) params.set("subcategory", updatedFilters.subcategory);
+        if (updatedFilters.brands.length > 0) params.set("brand", updatedFilters.brands.join(","));
+        if (updatedFilters.sizes.length > 0) params.set("size", updatedFilters.sizes.join(","));
+        if (updatedSort !== "createdAt_desc") params.set("sort", updatedSort);
+        if (updatedSearch) params.set("search", updatedSearch);
+        if (updatedPage > 1) params.set("page", updatedPage);
+        
         setSearchParams(params);
+        setPage(updatedPage);
+    }, [sort, search, setSearchParams]);
+
+    const handleBrandToggle = (brandId) => {
+        const newBrands = filters.brands.includes(brandId)
+            ? filters.brands.filter(id => id !== brandId)
+            : [...filters.brands, brandId];
+
+        const updated = { ...filters, brands: newBrands };
+        setFilters(updated);
+        updateUrlParams(updated);
     };
 
     const handleSizeToggle = (size) => {
@@ -165,21 +169,9 @@ const Shop = () => {
             ? filters.sizes.filter(s => s !== size)
             : [...filters.sizes, size];
 
-        const updatedFilters = { ...filters, sizes: newSizes };
-        setFilters(updatedFilters);
-        updateUrlParams(updatedFilters);
-        resetPage();
-    };
-
-    const handleBrandToggle = (brandId) => {
-        const newBrands = filters.brands.includes(brandId)
-            ? filters.brands.filter(id => id !== brandId)
-            : [...filters.brands, brandId];
-
-        const updatedFilters = { ...filters, brands: newBrands };
-        setFilters(updatedFilters);
-        updateUrlParams(updatedFilters);
-        resetPage();
+        const updated = { ...filters, sizes: newSizes };
+        setFilters(updated);
+        updateUrlParams(updated);
     };
 
     const handleResetAll = () => {
@@ -188,25 +180,24 @@ const Shop = () => {
         const resetFilters = { category: "", subcategory: "", brands: [], sizes: [], price: { min: 0, max: 20000 } };
         setFilters(resetFilters);
         setSearchParams({});
-        resetPage();
+        setPage(1);
     };
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, [page]);
+    }, [page, filters, sort]);
 
     return (
-        <div className="min-h-screen mt-20 selection:bg-[#7a6af6]/30 overflow-x-hidden">
+        <div className="min-h-screen mt-20 selection:bg-[#7a6af6]/30 overflow-x-hidden text-white">
             <Header />
 
             <main className="max-w-[1440px] mx-auto px-6 md:px-10 pt-10 relative z-10 pb-32">
                 <header className="mb-10 text-left">
-                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#7a6af6] mb-3">Archive // Registry</p>
-                    <h1 className="text-[clamp(2.5rem,8vw,5rem)] font-black uppercase tracking-tighter italic text-white leading-tight">The Archive</h1>
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#7a6af6] mb-3">NextZen // Online Shop</p>
+                    <h1 className="text-[clamp(2.5rem,8vw,5rem)] font-black uppercase tracking-tighter italic text-white leading-tight">Explore Shop</h1>
                 </header>
 
-                {/* Filter Bar */}
-                <div className="sticky top-20 z-[50] mb-16">
+                <div className="sticky top-24 z-[50] mb-16">
                     <div className="flex flex-col lg:flex-row items-center justify-between gap-6 border border-white/10 py-3 px-6 backdrop-blur-2xl bg-white/[0.03] rounded-[3rem] shadow-2xl">
                         <div className="flex flex-wrap items-center gap-3">
                             <div className="hidden sm:flex items-center gap-2 px-4 border-r border-white/10 mr-2">
@@ -217,27 +208,39 @@ const Shop = () => {
                                 )}
                             </div>
 
-                            <FilterDropdown label={filters.category ? categories.find(c => c._id === filters.category)?.name : "Collection"} isOpen={openDropdown === 'cat'} onClick={() => toggleDropdown('cat')}>
+                            <FilterDropdown label={filters.category ? categories.find(c => c._id === filters.category)?.name : "Categories"} isOpen={openDropdown === 'cat'} onClick={() => toggleDropdown('cat')}>
                                 <ul className="space-y-4">
-                                    <li onClick={() => { const f = { ...filters, category: "", subcategory: "" }; setFilters(f); updateUrlParams(f); resetPage(); setOpenDropdown(null); }} className="text-[10px] font-black uppercase text-white/20 hover:text-[#7a6af6] cursor-pointer">All Collections</li>
+                                    <li onClick={() => { 
+                                        const f = { ...filters, category: "", subcategory: "" }; 
+                                        setFilters(f); updateUrlParams(f); setOpenDropdown(null); 
+                                    }} className="text-[10px] font-black uppercase text-white/20 hover:text-[#7a6af6] cursor-pointer">All Categories</li>
                                     {categories.map(c => (
-                                        <li key={c._id} onClick={() => { const f = { ...filters, category: c._id, subcategory: "" }; setFilters(f); updateUrlParams(f); resetPage(); setOpenDropdown(null); }} className={`text-[11px] font-bold uppercase cursor-pointer transition-all ${filters.category === c._id ? "text-[#7a6af6]" : "text-white/60 hover:text-white"}`}>{c.name}</li>
+                                        <li key={c._id} onClick={() => { 
+                                            const f = { ...filters, category: c._id, subcategory: "" }; 
+                                            setFilters(f); updateUrlParams(f); setOpenDropdown(null); 
+                                        }} className={`text-[11px] font-bold uppercase cursor-pointer transition-all ${filters.category === c._id ? "text-[#7a6af6]" : "text-white/60 hover:text-white"}`}>{c.name}</li>
                                     ))}
                                 </ul>
                             </FilterDropdown>
 
                             {filters.category && subcategories.length > 0 && (
-                                <FilterDropdown label={filters.subcategory ? subcategories.find(sc => sc._id === filters.subcategory)?.name : "Type"} isOpen={openDropdown === "sub"} onClick={() => toggleDropdown("sub")}>
+                                <FilterDropdown label={filters.subcategory ? subcategories.find(sc => sc._id === filters.subcategory)?.name : "Types"} isOpen={openDropdown === "sub"} onClick={() => toggleDropdown("sub")}>
                                     <ul className="space-y-4">
-                                        <li onClick={() => { const f = { ...filters, subcategory: "" }; setFilters(f); updateUrlParams(f); resetPage(); setOpenDropdown(null); }} className="text-[10px] font-black uppercase text-white/20 hover:text-[#7a6af6] cursor-pointer">All Types</li>
+                                        <li onClick={() => { 
+                                            const f = { ...filters, subcategory: "" }; 
+                                            setFilters(f); updateUrlParams(f); setOpenDropdown(null); 
+                                        }} className="text-[10px] font-black uppercase text-white/20 hover:text-[#7a6af6] cursor-pointer">All Types</li>
                                         {subcategories.map(sc => (
-                                            <li key={sc._id} onClick={() => { const f = { ...filters, subcategory: sc._id }; setFilters(f); updateUrlParams(f); resetPage(); setOpenDropdown(null); }} className={`text-[11px] font-bold uppercase cursor-pointer transition-all ${filters.subcategory === sc._id ? "text-[#7a6af6]" : "text-white/60 hover:text-white"}`}>{sc.name}</li>
+                                            <li key={sc._id} onClick={() => { 
+                                                const f = { ...filters, subcategory: sc._id }; 
+                                                setFilters(f); updateUrlParams(f); setOpenDropdown(null); 
+                                            }} className={`text-[11px] font-bold uppercase cursor-pointer transition-all ${filters.subcategory === sc._id ? "text-[#7a6af6]" : "text-white/60 hover:text-white"}`}>{sc.name}</li>
                                         ))}
                                     </ul>
                                 </FilterDropdown>
                             )}
 
-                            <FilterDropdown label={filters.brands.length > 0 ? `Brand (${filters.brands.length})` : "Brand"} isOpen={openDropdown === 'brand'} onClick={() => toggleDropdown('brand')}>
+                            <FilterDropdown label={filters.brands.length > 0 ? `Brands (${filters.brands.length})` : "Brands"} isOpen={openDropdown === 'brand'} onClick={() => toggleDropdown('brand')}>
                                 <div className="space-y-3 max-h-56 overflow-y-auto pr-2 custom-scrollbar">
                                     {brands.map(b => (
                                         <label key={b._id} className="flex items-center gap-3 cursor-pointer group py-1">
@@ -251,7 +254,7 @@ const Shop = () => {
                                 </div>
                             </FilterDropdown>
 
-                            <FilterDropdown label={filters.sizes.length > 0 ? `Size (${filters.sizes.length})` : "Size"} isOpen={openDropdown === 'size'} onClick={() => toggleDropdown('size')}>
+                            <FilterDropdown label={filters.sizes.length > 0 ? `Sizes (${filters.sizes.length})` : "Sizes"} isOpen={openDropdown === 'size'} onClick={() => toggleDropdown('size')}>
                                 <div className="grid grid-cols-3 gap-2">
                                     {availableSizes.map(size => (
                                         <button key={size} onClick={() => handleSizeToggle(size)} className={`py-2 text-[10px] font-black border rounded-lg transition-all ${filters.sizes.includes(size) ? "bg-[#7a6af6] border-[#7a6af6] text-white" : "border-white/10 text-white/40 hover:border-white/30"}`}>{size}</button>
@@ -264,19 +267,22 @@ const Shop = () => {
                             <div className="relative w-full lg:w-64 group">
                                 <input
                                     value={search}
-                                    onChange={(e) => { setSearch(e.target.value); resetPage(); }}
-                                    placeholder="Search Registry..."
+                                    onChange={(e) => { 
+                                        setSearch(e.target.value); 
+                                        updateUrlParams(filters, sort, e.target.value); 
+                                    }}
+                                    placeholder="Search Products..."
                                     className="w-full bg-white/5 py-2.5 pl-10 pr-10 rounded-full text-[10px] font-bold uppercase tracking-widest outline-none border border-white/5 focus:border-[#7a6af6]/50 transition-all text-white"
                                 />
                                 <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#7a6af6]" />
                             </div>
-                            <FilterDropdown label="Sort" variant="right" isOpen={openDropdown === 'sort'} onClick={() => toggleDropdown('sort')}>
+                            <FilterDropdown label="Sort By" variant="right" isOpen={openDropdown === 'sort'} onClick={() => toggleDropdown('sort')}>
                                 <ul className="space-y-4">
                                     {[
-                                        { label: "Newest", val: "createdAt_desc" },
-                                        { label: "Price: Low-High", val: "price_asc" },
-                                        { label: "Price: High-Low", val: "price_desc" },
-                                        { label: "Name: A-Z", val: "name_asc" }
+                                        { label: "Newest Arrivals", val: "createdAt_desc" },
+                                        { label: "Price: Low to High", val: "price_asc" },
+                                        { label: "Price: High to Low", val: "price_desc" },
+                                        { label: "Name: A to Z", val: "name_asc" }
                                     ].map((s) => (
                                         <li key={s.val} onClick={() => { setSort(s.val); updateUrlParams(filters, s.val); setOpenDropdown(null); }} className={`text-[11px] font-bold uppercase cursor-pointer transition-all ${sort === s.val ? "text-[#7a6af6]" : "text-white/60 hover:text-white"}`}>{s.label}</li>
                                     ))}
@@ -286,12 +292,13 @@ const Shop = () => {
                     </div>
                 </div>
 
-                {/* Product Grid */}
                 <section className="relative z-10 min-h-[400px]">
                     {isLoading ? (
                         <div className="py-40 flex justify-center"><Loader2 size={40} className="text-[#7a6af6] animate-spin" /></div>
                     ) : products.length === 0 ? (
-                        <div className="text-center py-40 border border-dashed border-white/10 rounded-3xl"><p className="text-sm font-black uppercase text-white/20 tracking-[0.2em]">Segment Registry Empty</p></div>
+                        <div className="text-center py-40 border border-dashed border-white/10 rounded-3xl">
+                            <p className="text-sm font-black uppercase text-white/20 tracking-[0.2em]">No items found</p>
+                        </div>
                     ) : (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-5 gap-y-12">
                             {products.map((p) => (
@@ -301,16 +308,23 @@ const Shop = () => {
                     )}
                 </section>
 
-                {/* Pagination */}
                 {data?.pagination?.totalPages > 1 && (
                     <div className="flex justify-center items-center gap-8 mt-24 border-t border-white/5 pt-10">
-                        <button disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="px-8 py-3 border border-white/10 rounded-full text-[10px] font-black uppercase text-white/30 hover:text-[#7a6af6] transition-all disabled:opacity-0">Prev</button>
+                        <button 
+                            disabled={page === 1} 
+                            onClick={() => { const p = Math.max(1, page - 1); updateUrlParams(filters, sort, search, p); }} 
+                            className="px-8 py-3 border border-white/10 rounded-full text-[10px] font-black uppercase text-white/30 hover:text-[#7a6af6] transition-all disabled:opacity-0"
+                        >Previous</button>
                         <div className="flex gap-2">
                             {[...Array(data.pagination.totalPages)].map((_, i) => (
-                                <button key={i} onClick={() => setPage(i + 1)} className={`w-8 h-8 rounded-full text-[10px] font-black transition-all ${page === i + 1 ? "bg-[#7a6af6] text-white" : "text-white/20 hover:text-white"}`}>{i + 1}</button>
+                                <button key={i} onClick={() => updateUrlParams(filters, sort, search, i + 1)} className={`w-8 h-8 rounded-full text-[10px] font-black transition-all ${page === i + 1 ? "bg-[#7a6af6] text-white" : "text-white/20 hover:text-white"}`}>{i + 1}</button>
                             ))}
                         </div>
-                        <button disabled={page === data.pagination.totalPages} onClick={() => setPage(p => p + 1)} className="px-8 py-3 border border-white/10 rounded-full text-[10px] font-black uppercase text-white hover:text-[#7a6af6] transition-all disabled:opacity-0">Next</button>
+                        <button 
+                            disabled={page === data.pagination.totalPages} 
+                            onClick={() => { const p = page + 1; updateUrlParams(filters, sort, search, p); }} 
+                            className="px-8 py-3 border border-white/10 rounded-full text-[10px] font-black uppercase text-white hover:text-[#7a6af6] transition-all disabled:opacity-0"
+                        >Next</button>
                     </div>
                 )}
             </main>

@@ -10,9 +10,10 @@ router.post('/validate', userAuth, couponController.validateUserCoupon);
 
 // Admin Facing Routes (Assuming these are protected by adminAuth higher up in app.js)
 router.get('/', couponController.getAllCoupons);
-router.post('/', couponController.createCoupon); 
+router.post('/', couponController.createCoupon);
 router.get('/:id', couponController.getCouponById);
 router.delete('/:id', couponController.deleteCoupon);
 router.patch('/:id', couponController.updateCoupon);
+router.patch('/:id/toggle-status', couponController.toggleCouponStatus);
 
 export default router;

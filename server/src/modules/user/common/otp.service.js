@@ -3,33 +3,34 @@ import { generateOTP, sendOTPEmail } from "../../../utils/otp.util.js";
 
 // ==================== REQUEST OTP ====================
 export const requestOTP = async (email, purpose) => {
-  const recentOTP = await userRepo.findRecentOTP(email.toLowerCase(), purpose);
+  const normalizedEmail = email.toLowerCase();
+  const recentOTP = await userRepo.findRecentOTP(normalizedEmail, purpose);
 
   if (recentOTP) {
     const timeSinceCreation = Date.now() - new Date(recentOTP.createdAt).getTime();
     const waitTime = 10_000;
 
     if (timeSinceCreation < waitTime) {
-      const remainingSeconds = Math.ceil(
-        (waitTime - timeSinceCreation) / 1000
-      );
-      throw new Error(
-        `Please wait ${remainingSeconds} seconds before requesting a new OTP`
-      );
+      const remainingSeconds = Math.ceil((waitTime - timeSinceCreation) / 1000);
+      throw new Error(`Please wait ${remainingSeconds} seconds before requesting a new OTP`);
     }
   }
 
   const otp = generateOTP();
-  await userRepo.createOTP(email.toLowerCase(), otp, purpose);
-  await sendOTPEmail({
-    email: email.toLowerCase(),
-    otp,
-    purpose
-  });
+  await userRepo.createOTP(normalizedEmail, otp, purpose);
 
+  try {
+    await sendOTPEmail({
+        to: normalizedEmail, 
+        otp,
+        purpose
+    });
+} catch (error) {
+    if (process.env.NODE_ENV === 'production') throw error;
+}
 
   return {
-    email: email.toLowerCase(),
+    email: normalizedEmail,
     message: "OTP sent successfully",
   };
 };

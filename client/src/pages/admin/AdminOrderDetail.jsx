@@ -25,6 +25,9 @@ const AdminOrderDetail = () => {
     const order = response?.data;
     const { mutate: updateOrderStatus, isPending: isUpdating } = useUpdateOrderStatus();
 
+    // 🟢 PRECISION HELPER: Fixes 0.1 + 0.2 floating point bugs
+    const fixNum = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
     const isPrepaid = ['razorpay', 'wallet'].includes(order?.paymentMethod);
     const itemStatusRank = { "Placed": 1, "Shipped": 2, "Delivered": 3, "Cancelled": 4, "Return Requested": 5, "Return Approved": 6, "Returned": 7 };
     const globalStatusRank = { "pending": 1, "confirmed": 2, "shipped": 3, "out_for_delivery": 4, "delivered": 5, "cancelled": 6, "payment_failed": 0 };
@@ -44,14 +47,14 @@ const AdminOrderDetail = () => {
         if (!order) return { initialSubtotal: 0, delivery: 0, totalRefunded: 0, net: 0, savings: 0, couponDiscount: 0, isFullyCancelled: false };
 
         const delivery = order.deliveryCharge || 0;
-        const couponDiscount = order.couponDiscount || 0;
+        const couponDiscount = fixNum(order.couponDiscount || 0);
         
-        const originalGrossSubtotal = order.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        const originalGrossSubtotal = fixNum(order.items.reduce((acc, item) => acc + (item.price * item.quantity), 0));
         
-        const totalProductSavings = order.items?.reduce((acc, item) => {
+        const totalProductSavings = fixNum(order.items?.reduce((acc, item) => {
             const savingsPerUnit = (item.originalPrice || item.price) - item.price;
             return acc + (savingsPerUnit * item.quantity);
-        }, 0) || 0;
+        }, 0) || 0);
 
         const isShippedOrBeyond = ['shipped', 'out_for_delivery', 'delivered', 'returned'].includes(order.status.toLowerCase());
         
@@ -61,10 +64,11 @@ const AdminOrderDetail = () => {
         order.items.forEach(item => {
             if (['Cancelled', 'Returned'].includes(item.status)) {
                 let itemCouponShare = 0;
+                // Pro-rata coupon share calculation matched with Backend
                 if (couponDiscount > 0 && originalGrossSubtotal > 0) {
-                    itemCouponShare = (item.totalAmount / originalGrossSubtotal) * couponDiscount;
+                    itemCouponShare = fixNum((item.totalAmount / originalGrossSubtotal) * couponDiscount);
                 }
-                calculatedRefundTotal += (item.totalAmount - itemCouponShare);
+                calculatedRefundTotal = fixNum(calculatedRefundTotal + (item.totalAmount - itemCouponShare));
                 cancelledItemsCount++;
             }
         });
@@ -72,17 +76,17 @@ const AdminOrderDetail = () => {
         const isFullyVoided = cancelledItemsCount === order.items.length;
 
         if (isFullyVoided && !isShippedOrBeyond) {
-            calculatedRefundTotal += delivery;
+            calculatedRefundTotal = fixNum(calculatedRefundTotal + delivery);
         }
 
-        const netInvoiceValue = Math.max(0, (originalGrossSubtotal + delivery) - couponDiscount);
+        const netInvoiceValue = Math.max(0, fixNum((originalGrossSubtotal + delivery) - couponDiscount));
 
         return {
             initialSubtotal: originalGrossSubtotal,
             delivery: delivery,
             totalProductSavings: totalProductSavings,
             couponDiscount: couponDiscount,
-            totalRefunded: calculatedRefundTotal,
+            totalRefunded: fixNum(calculatedRefundTotal),
             net: netInvoiceValue, 
             isFullyCancelled: isFullyVoided,
             grossSubtotalForRatio: originalGrossSubtotal 
@@ -121,7 +125,6 @@ const AdminOrderDetail = () => {
         return { label: 'PENDING', color: 'text-amber-600 bg-amber-50 border-amber-100' };
     };
 
-    // 🟢 HELPERS: Check if actual payment happened
     const hasBeenPaid = ['Paid', 'Refunded'].includes(order?.paymentStatus);
 
     return (
@@ -193,12 +196,14 @@ const AdminOrderDetail = () => {
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 bg-white">
                                         {order?.items?.map((item, idx) => {
-                                            const itemSavings = (item.originalPrice || item.price) - item.price;
+                                            const itemSavings = fixNum((item.originalPrice || item.price) - item.price);
                                             
-                                            const itemCouponShare = (financials.couponDiscount > 0 && financials.grossSubtotalForRatio > 0)
-                                                ? (item.totalAmount / financials.grossSubtotalForRatio) * financials.couponDiscount
-                                                : 0;
-                                            const netRefundable = item.totalAmount - itemCouponShare;
+                                            // 🟢 FIX: Precise pro-rata share
+                                            let itemCouponShare = 0;
+                                            if (financials.couponDiscount > 0 && financials.grossSubtotalForRatio > 0) {
+                                                itemCouponShare = fixNum((item.totalAmount / financials.grossSubtotalForRatio) * financials.couponDiscount);
+                                            }
+                                            const netRefundable = fixNum(item.totalAmount - itemCouponShare);
 
                                             return (
                                                 <tr key={idx} className="hover:bg-slate-50/30 transition-all">
@@ -248,12 +253,12 @@ const AdminOrderDetail = () => {
                                                     </td>
                                                     <td className="px-6 py-4 text-center text-[10px] font-black text-slate-500">{item.quantity} Units</td>
                                                     <td className="px-6 py-4 text-right">
-                                                        <p className="text-[11px] font-black text-slate-800">₹{item.totalAmount?.toLocaleString()}</p>
-                                                        {itemSavings > 0 && <p className="text-[8px] font-bold text-slate-300 line-through">MRP: ₹{(item.originalPrice * item.quantity).toLocaleString()}</p>}
+                                                        <p className="text-[11px] font-black text-slate-800">₹{fixNum(item.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                                                        {itemSavings > 0 && <p className="text-[8px] font-bold text-slate-300 line-through">MRP: ₹{fixNum(item.originalPrice * item.quantity).toLocaleString()}</p>}
                                                         
-                                                        {/* 🟢 ONLY SHOW REFUND AMOUNT IF THE ORDER WAS ACTUALLY PAID */}
+                                                        {/* 🟢 FIX: Precision-rounded refund preview */}
                                                         {['Cancelled', 'Returned'].includes(item.status) && hasBeenPaid && (
-                                                            <p className="text-[8px] font-bold text-red-400 mt-1 uppercase">Refund: ₹{netRefundable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                                            <p className="text-[8px] font-bold text-red-400 mt-1 uppercase">Refunded: ₹{netRefundable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                                         )}
                                                         
                                                         <span className={`text-[7px] font-black px-1.5 py-0.5 rounded border uppercase mt-1 inline-block shadow-sm ${getItemFinancialStatus(item).color}`}>{getItemFinancialStatus(item).label}</span>
@@ -321,44 +326,42 @@ const AdminOrderDetail = () => {
                                     </div>
                                     <div className="pt-2 space-y-3">
                                         <div className="flex justify-between">
-                                            <span>Subtotal</span>
-                                            <span className="text-black">₹{financials.initialSubtotal.toLocaleString()}</span>
+                                            <span>Gross Subtotal</span>
+                                            <span className="text-black">₹{financials.initialSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                                         </div>
 
                                         {financials.totalProductSavings > 0 && (
                                             <div className="flex justify-between text-green-600 italic">
-                                                <span className="flex items-center gap-1"><Percent size={10} strokeWidth={3} /> Product Offer Savings</span>
-                                                <span className="font-black">- ₹{financials.totalProductSavings.toLocaleString()}</span>
+                                                <span className="flex items-center gap-1"><Percent size={10} strokeWidth={3} /> Offer Savings</span>
+                                                <span className="font-black">- ₹{financials.totalProductSavings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                                             </div>
                                         )}
 
                                         {financials.couponDiscount > 0 && (
                                             <div className="flex justify-between text-indigo-600 italic animate-in slide-in-from-right duration-500">
                                                 <span className="flex items-center gap-1"><Tag size={10} /> Coupon ({order?.couponCode})</span>
-                                                <span className="font-black">- ₹{financials.couponDiscount.toLocaleString()}</span>
+                                                <span className="font-black">- ₹{financials.couponDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                                             </div>
                                         )}
 
                                         <div className="flex justify-between border-b border-slate-50 pb-3">
                                             <span>Delivery Fee</span>
-                                            <span className="text-black">{financials.delivery > 0 ? `₹${financials.delivery}` : 'FREE'}</span>
+                                            <span className="text-black">{financials.delivery > 0 ? `₹${financials.delivery.toFixed(2)}` : 'FREE'}</span>
                                         </div>
 
-                                        {/* 🟢 CHANGE TEXT BASED ON IF IT WAS ACTUALLY PAID */}
                                         {financials.totalRefunded > 0 && (
                                             <div className="flex justify-between text-[9px] text-red-500 font-black uppercase bg-red-50 p-3 rounded-xl border border-red-100 shadow-sm">
-                                                <span className="flex items-center gap-1.5"><ArrowDownLeft size={12} strokeWidth={3} /> {hasBeenPaid ? 'Refund Issued' : 'Cancelled Value'}</span>
-                                                <span className="tracking-tighter">- ₹{financials.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                                <span className="flex items-center gap-1.5"><ArrowDownLeft size={12} strokeWidth={3} /> {hasBeenPaid ? 'Total Refunded' : 'Voided Value'}</span>
+                                                <span className="tracking-tighter">- ₹{financials.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             </div>
                                         )}
 
                                         <div className="pt-4 border-t border-dashed flex flex-col items-end">
                                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">
-                                                {/* 🟢 UPDATE TEXT LOGIC */}
-                                                {financials.totalRefunded > 0 ? (hasBeenPaid ? 'Settled Total' : 'Revised Payable') : 'Net Payable'}
+                                                {financials.totalRefunded > 0 ? (hasBeenPaid ? 'Settled Invoice' : 'Revised Total') : 'Total Invoice'}
                                             </span>
                                             <span className="text-3xl font-black text-[#7a6af6] tracking-tighter italic leading-none">
-                                                ₹{order.totalAmount.toLocaleString()}
+                                                ₹{fixNum(order.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>
                                     </div>

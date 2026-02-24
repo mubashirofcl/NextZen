@@ -24,3 +24,8 @@ export const deleteOfferApi = async (id) => {
     const { data } = await adminAxios.delete(`/admin/offers/${id}`);
     return data;
 };
+
+export const toggleOfferStatusApi = async (id) => {
+    const { data } = await adminAxios.patch(`/admin/offers/${id}/toggle-status`);
+    return data;
+};

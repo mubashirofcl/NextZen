@@ -1,5 +1,5 @@
 import * as couponRepo from './coupon.repository.js';
-import Order from '../../user/order/order.model.js'; 
+import Order from '../../user/order/order.model.js';
 
 // Basic Repo Wrappers
 export const saveCoupon = async (data) => { return await couponRepo.saveCoupon(data); };
@@ -15,11 +15,11 @@ export const findActiveCoupons = async () => { return await couponRepo.findActiv
 export const createCoupon = async (couponData) => {
     const existingCoupon = await couponRepo.findByCode(couponData.code);
     if (existingCoupon) throw new Error("Coupon code already exists.");
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (new Date(couponData.endDate) < today) throw new Error("Expiry date cannot be in the past.");
-    
+
     return await couponRepo.saveCoupon({ ...couponData, code: couponData.code.toUpperCase() });
 };
 
@@ -54,7 +54,7 @@ export const validateCouponForUser = async (code, subtotal, userId) => {
         const userUsageCount = await Order.countDocuments({
             userId: userId,
             couponCode: coupon.code,
-            status: { $nin: ['payment_failed', 'cancelled', 'returned'] } 
+            status: { $nin: ['payment_failed', 'cancelled', 'returned'] }
         });
 
         if (userUsageCount >= coupon.usagePerUser) {
@@ -63,4 +63,13 @@ export const validateCouponForUser = async (code, subtotal, userId) => {
     }
 
     return coupon;
+};
+
+export const toggleCouponStatus = async (id) => {
+    const coupon = await couponRepo.findById(id);
+    if (!coupon) {
+        throw new Error("Coupon not found.");
+    }
+    // Flip the current boolean value
+    return await couponRepo.updateById(id, { isActive: !coupon.isActive });
 };
