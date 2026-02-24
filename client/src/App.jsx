@@ -52,6 +52,7 @@ import CouponManagement from "./pages/admin/CouponManagement.jsx";
 import CouponForm from "./pages/admin/CouponForm.jsx";
 import OfferManagement from "./pages/admin/OfferManagement.jsx";
 import OfferForm from "./pages/admin/OfferForm.jsx";
+import SalesReportPage from "./pages/admin/SalesReportPage.jsx";
 
 
 
@@ -77,6 +78,7 @@ export const App = () => {
       dispatch(fetchAdmin());
     }
   }, [dispatch, isAdminPath]); // Minimal dependencies to prevent re-fetch loops
+  
 
   // 2. GLOBAL AUTH EVENT LISTENERS
   useEffect(() => {
@@ -127,6 +129,7 @@ export const App = () => {
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
 
             <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="sales-report" element={<SalesReportPage />} />
             <Route path="customers" element={<UserManagement />} />
             <Route path="category" element={<CategoryManagement />} />
             <Route path="brand" element={<BrandManagement />} />

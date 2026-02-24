@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import Product from "../../admin/productManagement/product.model.js";
 import productModel from "../../admin/productManagement/product.model.js";
 
 const lookupOffersHierarchy = [
@@ -42,16 +41,44 @@ const lookupOffersHierarchy = [
 ];
 
 export const getProductsRepository = async (filters) => {
-    const { search = "", page = 1, limit = 10, sort = "", minPrice, maxPrice, isFeatured } = filters;
+    const {
+        search = "",
+        page = 1,
+        limit = 10,
+        sort = "",
+        category,
+        subcategory,
+        brand,
+        size,
+        minPrice,
+        maxPrice,
+        isFeatured
+    } = filters;
+
     const skip = (Number(page) - 1) * Number(limit);
     const pipeline = [];
 
+    // 1. INITIAL MATCH (Status, Category, Search, and BRAND)
     const baseMatch = { isActive: true, isDeleted: false };
     if (isFeatured !== undefined) baseMatch.isFeatured = isFeatured;
+
+    if (category) baseMatch.categoryId = new mongoose.Types.ObjectId(category);
+    if (subcategory) baseMatch.subcategoryId = new mongoose.Types.ObjectId(subcategory);
+
+    // FIX: Convert brand string array to ObjectIds for $in operator
+    if (brand && brand.length > 0) {
+        const brandIds = Array.isArray(brand) ? brand : brand.split(",");
+        baseMatch.brandId = { $in: brandIds.map(id => new mongoose.Types.ObjectId(id)) };
+    }
+
+    if (search) baseMatch.name = { $regex: search, $options: "i" };
+
     pipeline.push({ $match: baseMatch });
 
+    // 2. Offer & Brand Lookup Hierarchy
     pipeline.push(...lookupOffersHierarchy);
 
+    // 3. Variant & Size Unwinding
     pipeline.push(
         { $lookup: { from: "variants", localField: "_id", foreignField: "productId", as: "variantDocs" } },
         { $unwind: "$variantDocs" },
@@ -59,9 +86,15 @@ export const getProductsRepository = async (filters) => {
         { $unwind: "$variantDocs.sizes" }
     );
 
+    // FIX: Size Filter (Must happen after unwinding sizes to target the specific nested field)
+    if (size && size.length > 0) {
+        const sizeList = Array.isArray(size) ? size : size.split(",");
+        pipeline.push({ $match: { "variantDocs.sizes.size": { $in: sizeList } } });
+    }
+
+    // 4. Price Calculations
     pipeline.push({
         $addFields: {
-            // STEP 1: Calculate the price if ONLY the campaign offer (e.g. 10%) was applied
             campaignPrice: {
                 $cond: [
                     { $gt: [{ $toDouble: "$winningOffer.maxDiscount" }, 0] },
@@ -74,28 +107,38 @@ export const getProductsRepository = async (filters) => {
 
     pipeline.push({
         $addFields: {
-            // STEP 2: Compare Campaign Price vs Manual Sale Price (17%) and pick the MINIMUM
             calculatedSalePrice: { $min: ["$campaignPrice", "$variantDocs.sizes.salePrice"] }
         }
     });
 
+    // 5. Price Range Filter
+    if (minPrice !== undefined || maxPrice !== undefined) {
+        const priceMatch = {};
+        if (minPrice !== undefined) priceMatch.$gte = Number(minPrice);
+        if (maxPrice !== undefined) priceMatch.$lte = Number(maxPrice);
+        pipeline.push({ $match: { calculatedSalePrice: priceMatch } });
+    }
+
+    // 6. FINAL GROUPING & CLEANUP
     pipeline.push({
         $group: {
             _id: "$_id",
             name: { $first: "$name" },
+            createdAt: { $first: "$createdAt" },
             thumbnail: { $first: { $arrayElemAt: ["$variantDocs.images", 0] } },
-            subcategory: { $first: "$subDoc" }, 
+            // 🟢 CRITICAL FIX: Explicitly carrying the Variant ID to prevent Protocol Mismatch
+            variantId: { $first: "$variantDocs._id" },
+            subcategory: { $first: "$subDoc" },
             brand: { $first: "$brandDoc" },
             minSalePrice: { $min: "$calculatedSalePrice" },
             minOriginalPrice: { $min: "$variantDocs.sizes.originalPrice" },
-            // STEP 3: Back-calculate the discount percentage for the Badge based on final best price
-            discountValue: { 
+            discountValue: {
                 $first: {
-                    $round: [{ 
+                    $round: [{
                         $multiply: [
-                            { $divide: [{ $subtract: ["$variantDocs.sizes.originalPrice", "$calculatedSalePrice"] }, "$variantDocs.sizes.originalPrice"] }, 
+                            { $divide: [{ $subtract: ["$variantDocs.sizes.originalPrice", "$calculatedSalePrice"] }, "$variantDocs.sizes.originalPrice"] },
                             100
-                        ] 
+                        ]
                     }, 0]
                 }
             },
@@ -104,16 +147,29 @@ export const getProductsRepository = async (filters) => {
         }
     });
 
+    // 7. Sorting
+    let sortObj = { createdAt: -1 };
+    if (sort === "price_asc") sortObj = { minSalePrice: 1 };
+    else if (sort === "price_desc") sortObj = { minSalePrice: -1 };
+    else if (sort === "name_asc") sortObj = { name: 1 };
+    pipeline.push({ $sort: sortObj });
+
+    // 8. Final Pagination Facet
     pipeline.push({
         $facet: {
-            data: [{ $sort: { createdAt: -1 } }, { $skip: skip }, { $limit: Number(limit) }],
+            data: [{ $skip: skip }, { $limit: Number(limit) }],
             totalCount: [{ $count: "count" }],
         },
     });
 
     const result = await productModel.aggregate(pipeline);
+
     return {
-        products: (result[0]?.data || []).map(p => ({ ...p, variantCount: p.variantCount?.length || 0 })),
+        products: (result[0]?.data || []).map(p => ({
+            ...p,
+            variantCount: p.variantCount?.length || 0,
+            variantId: p.variantId?.toString()
+        })),
         totalCount: result[0]?.totalCount[0]?.count || 0
     };
 };
@@ -158,11 +214,11 @@ export const getProductByIdRepository = async (id) => {
                                                             {
                                                                 salePrice: { $min: ["$$cPrice", "$$s.salePrice"] },
                                                                 appliedDiscount: {
-                                                                    $round: [{ 
+                                                                    $round: [{
                                                                         $multiply: [
-                                                                            { $divide: [{ $subtract: ["$$s.originalPrice", { $min: ["$$cPrice", "$$s.salePrice"] }] }, "$$s.originalPrice"] }, 
+                                                                            { $divide: [{ $subtract: ["$$s.originalPrice", { $min: ["$$cPrice", "$$s.salePrice"] }] }, "$$s.originalPrice"] },
                                                                             100
-                                                                        ] 
+                                                                        ]
                                                                     }, 0]
                                                                 }
                                                             }

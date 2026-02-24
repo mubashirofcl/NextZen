@@ -69,10 +69,10 @@ export const verifySignupOTP = async (req, res) => {
   }
 
   try {
-    const { email, otp, name, password } = req.body;
+    const { email, otp, name, password, referralCode } = req.body;
 
     const { accessToken, refreshToken, user } =
-      await userService.verifySignupOTP(email, otp, name, password);
+      await userService.verifySignupOTP(email, otp, name, password, referralCode);
 
     res.cookie("userAccessToken", accessToken, {
       ...COOKIE_OPTIONS,
@@ -91,6 +91,7 @@ export const verifySignupOTP = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        referralCode: user.referralCode,
       },
     });
   } catch (err) {
@@ -245,4 +246,9 @@ export const logoutUser = async (req, res) => {
   } catch {
     return res.status(200).json({ success: true });
   }
+};
+
+export const googleCallback = async (req, res) => {
+  const referralCode = req.query.state;
+
 };

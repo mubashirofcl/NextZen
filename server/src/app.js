@@ -16,16 +16,17 @@ import brandRoutes from "./modules/admin/brandManagement/brand.routes.js";
 import adminOrderRoutes from "./modules/admin/orderManagement/order.routes.js";
 import couponRoutes from './modules/admin/couponManagemen/coupon.routes.js';
 import offerRoutes from './modules/admin/offerManagement/offer.routes.js';
+import dashboardRoutes from "./modules/admin/dashboard/dashboard.routes.js";
 
 import productListRoutes from "./modules/user/productListing/product.routes.js"
 import userCategoryRoutes from "./modules/user/category/category.routes.js";
 import userBrandRoutes from "./modules/user/brand/brand.routes.js";
-
 import cartRoutes from "./modules/user/cart/cart.routes.js";
 import wishlistRoutes from "./modules/user/wishlist/wishlist.routes.js";
 import orderRoutes from "./modules/user/order/order.routes.js";
 import paymentRoutes from "./modules/user/payment/payment.routes.js";
 import walletRoutes from './modules/user/wallet/wallet.routes.js';
+import chatbotRoutes from "./modules/user/chatbot/chatbot.routes.js";
 
 const app = express();
 
@@ -46,16 +47,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// 2. ROUTES (Define all routes before error handlers)
+//  ADMIN ROUTES 
 app.use("/api/admin", adminRoutes);
+
 app.use("/api/admin/categories", categoryRoutes);
 app.use("/api/admin", productRoutes);
 app.use("/api/admin/brands", brandRoutes);
 app.use('/api/admin/orders', adminOrderRoutes);
 app.use('/api/admin/coupons', couponRoutes);
 app.use('/api/admin/offers', offerRoutes)
+app.use("/api/admin", dashboardRoutes);
 
+
+//  USER ROUTES 
 app.use("/api/users", userRoutes);
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users/profile", profileRoutes);
 app.use("/api/users/addresses", addressRoutes);
@@ -70,6 +76,7 @@ app.use("/api/users/orders", (req, res, next) => {
 app.use("/api/user/payment", paymentRoutes);
 app.use('/api/users/wallet', walletRoutes);
 app.use('/api/users/coupons', couponRoutes);
+app.use("/api/user/chatbot", chatbotRoutes);
 
 
 app.use((err, req, res, next) => {

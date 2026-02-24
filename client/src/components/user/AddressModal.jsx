@@ -68,14 +68,14 @@ const AddressModal = ({
             await onSubmit(payload);
 
             nxToast.success(
-                mode === "add" ? "New Address details Added successfully" : "Coordinate Updated",
-                mode === "add" ? "New delivery destination saved." : "Address details refined successfully."
+                mode === "add" ? "Address Saved" : "Address Updated",
+                mode === "add" ? "New delivery address added successfully." : "Your address details have been updated."
             );
             onClose();
         } catch (err) {
             const msg = err.response?.data?.message || "System error. Try again.";
             setBackendError(msg);
-            nxToast.security("Shield Alert", msg);
+            nxToast.security("Security Alert", msg);
         }
     };
 
@@ -99,21 +99,21 @@ const AddressModal = ({
                 {/* Header Section */}
                 <div className="mb-4 md:mb-6 text-center md:text-left shrink-0">
                     <h3 className="text-xl font-black text-[#0F172A] uppercase tracking-tight">
-                        {mode === "add" ? "Deployment Point" : "Refine Point"}
+                        {mode === "add" ? "Add New Address" : "Edit Address"}
                     </h3>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-                        {mode === "add" ? "Define a new NEXTZEN destination" : "Modify your delivery coordinates"}
+                        {mode === "add" ? "Save a new delivery destination" : "Modify your existing shipping details"}
                     </p>
                 </div>
 
-                {/* Icon Badge - Hidden on very small screens to save space if needed, or kept compact */}
+                {/* Icon Badge */}
                 <div className="flex justify-center mb-6 shrink-0">
                     <div className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-xl text-white ${mode === 'add' ? 'bg-[#0F172A] shadow-[#0F172A]/10' : 'bg-[#7a6af6] shadow-[#7a6af6]/20'}`}>
                         {mode === "add" ? <MapPin size={24} md:size={28} strokeWidth={2.5} /> : <Edit3 size={24} md:size={28} strokeWidth={2.5} />}
                     </div>
                 </div>
 
-                {/* Backend Error Alert */}
+                {/* Error Alert */}
                 {backendError && (
                     <div className="mb-6 p-3 bg-red-50 border-l-4 border-red-500 flex items-center gap-3 shrink-0">
                         <ShieldAlert size={16} className="text-red-500 shrink-0" />
@@ -126,10 +126,10 @@ const AddressModal = ({
 
                     {/* Full Name */}
                     <div>
-                        <label className={labelStyle}>Recipient Name</label>
+                        <label className={labelStyle}>Receiver's Name</label>
                         <input
                             {...register("fullName", {
-                                required: "Required",
+                                required: "Name is required",
                                 minLength: { value: 2, message: "Min 2 characters" },
                                 pattern: { value: /^[A-Za-z\s]+$/, message: "Letters only" }
                             })}
@@ -141,25 +141,25 @@ const AddressModal = ({
 
                     {/* Phone */}
                     <div>
-                        <label className={labelStyle}>Security Phone</label>
+                        <label className={labelStyle}>Contact Number</label>
                         <input
                             {...register("phone", {
-                                required: "Required",
+                                required: "Phone number is required",
                                 pattern: { value: /^[6-9]\d{9}$/, message: "Invalid 10-digit number" }
                             })}
                             className={inputStyle(errors.phone)}
-                            placeholder="91XXXXXXXX"
+                            placeholder="Phone Number"
                             type="tel"
                         />
                         {errors.phone && <p className={errorText}>{errors.phone.message}</p>}
                     </div>
 
-                    {/* City & State Grid - Stacks on extra small screens */}
+                    {/* City & State Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className={labelStyle}>City</label>
                             <input
-                                {...register("city", { required: "Required" })}
+                                {...register("city", { required: "City is required" })}
                                 className={inputStyle(errors.city)}
                                 placeholder="City"
                             />
@@ -168,7 +168,7 @@ const AddressModal = ({
                         <div>
                             <label className={labelStyle}>State</label>
                             <input
-                                {...register("state", { required: "Required" })}
+                                {...register("state", { required: "State is required" })}
                                 className={inputStyle(errors.state)}
                                 placeholder="State"
                             />
@@ -182,12 +182,12 @@ const AddressModal = ({
                             <label className={labelStyle}>Pincode</label>
                             <input
                                 {...register("pincode", {
-                                    required: "Required",
+                                    required: "Pincode is required",
                                     pattern: { value: /^\d{6}$/, message: "6 digits only" }
                                 })}
                                 className={inputStyle(errors.pincode)}
-                                placeholder="000000"
-                                type="tel" // Opens numeric keypad on mobile
+                                placeholder="Pincode"
+                                type="tel"
                             />
                             {errors.pincode && <p className={errorText}>{errors.pincode.message}</p>}
                         </div>
@@ -203,14 +203,14 @@ const AddressModal = ({
 
                     {/* Detailed Address */}
                     <div>
-                        <label className={labelStyle}>Detailed Address</label>
+                        <label className={labelStyle}>Street Address</label>
                         <textarea
                             {...register("addressLine", {
-                                required: "Required",
+                                required: "Address details are required",
                                 minLength: { value: 10, message: "Min 10 characters" }
                             })}
                             className={`${inputStyle(errors.addressLine)} h-20 py-3 resize-none`}
-                            placeholder="Building/Street/Locality"
+                            placeholder="Building Name, Street, Locality"
                         />
                         {errors.addressLine && <p className={errorText}>{errors.addressLine.message}</p>}
                     </div>
@@ -225,7 +225,7 @@ const AddressModal = ({
                                 className={`h-12 rounded-xl flex items-center justify-center gap-2 font-black text-[9px] uppercase tracking-widest transition-all border-2 ${addressType === type
                                     ? "bg-[#7a6af6]/5 border-[#7a6af6] text-[#7a6af6]"
                                     : "bg-white border-slate-100 text-slate-400"
-                                }`}
+                                    }`}
                             >
                                 {type === "Home" ? <Home size={14} /> : <Briefcase size={14} />}
                                 {type}
@@ -243,7 +243,7 @@ const AddressModal = ({
                             <Loader2 className="animate-spin mx-auto" size={16} />
                         ) : (
                             <span className="flex items-center justify-center gap-2">
-                                <CheckCircle2 size={16} /> {mode === "add" ? "Save Coordinate" : "Commit Updates"}
+                                <CheckCircle2 size={16} /> {mode === "add" ? "Save Address" : "Update Address"}
                             </span>
                         )}
                     </button>

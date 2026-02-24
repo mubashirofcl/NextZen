@@ -6,18 +6,24 @@ const router = express.Router();
 
 router.get(
   "/google",
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-    session: false,
-  })
+  (req, res, next) => {
+    const referralCode = req.query.ref ? req.query.ref.toString() : "";
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
+      session: false,
+      state: referralCode,
+    })(req, res, next);
+  }
 );
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", {
-    session: false,
-    failureRedirect: "/api/auth/google/failure",
-  }),
+  (req, res, next) => {
+    passport.authenticate("google", {
+      session: false,
+      failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_auth_failed`,
+    })(req, res, next);
+  },
   googleCallback
 );
 

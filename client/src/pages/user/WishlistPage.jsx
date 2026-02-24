@@ -19,13 +19,12 @@ const WishlistPage = () => {
         const variant = item.variantId;
 
         if (!variant || !variant.sizes || variant.sizes.length === 0) {
-            return nxToast.error("Protocol Error", "Asset data incomplete.");
+            return nxToast.error("Error", "Product information is missing.");
         }
 
         const targetSize = variant.sizes.find(s => s.stock > 0);
-        if (!targetSize) return nxToast.error("Out of Stock", "Item unavailable.");
+        if (!targetSize) return nxToast.error("Out of Stock", "This item is currently unavailable.");
 
-        // 🟢 1. Add to Cart first
         addToCart.mutate({
             productId: product._id,
             variantId: variant._id,
@@ -40,10 +39,10 @@ const WishlistPage = () => {
                     variantId: variant._id 
                 });
 
-                nxToast.success("Secured", "Item moved to your bag.");
+                nxToast.success("Success", "Item moved to your shopping bag.");
             },
             onError: (err) => {
-                nxToast.error("Transfer Error", err.response?.data?.message || "Could not move item.");
+                nxToast.error("Error", err.response?.data?.message || "Could not move item to cart.");
             }
         });
     };
@@ -55,21 +54,21 @@ const WishlistPage = () => {
                 
                 <div className="flex justify-between items-end mb-12 border-b border-white/5 pb-8">
                     <div className="space-y-2">
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#7a6af6]">Archive // Saved</p>
-                        <h1 className="text-5xl font-black uppercase tracking-tighter italic text-white">The Wishlist</h1>
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#7a6af6]">My Favorites // Saved</p>
+                        <h1 className="text-5xl font-black uppercase tracking-tighter italic text-white">My Wishlist</h1>
                     </div>
                     <div className="flex items-center gap-6">
                         {archiveItems.length > 0 && (
                             <button 
                                 onClick={() => {
-                                    nxToast.confirm("Purge Archive?", "This will remove all items.", () => clearWishlist.mutate());
+                                    nxToast.confirm("Clear Wishlist?", "This will remove all saved items.", () => clearWishlist.mutate());
                                 }} 
                                 className="text-[9px] font-black uppercase px-4 py-2 rounded-full border border-red-500/20 text-red-500/60 hover:bg-red-500 hover:text-white transition-all"
                             >
-                                Clear Archive
+                                Remove All
                             </button>
                         )}
-                        <span className="text-[10px] font-black text-white/20 uppercase italic tracking-widest">Count: {archiveItems.length}</span>
+                        <span className="text-[10px] font-black text-white/20 uppercase italic tracking-widest">Items: {archiveItems.length}</span>
                     </div>
                 </div>
 
@@ -78,8 +77,8 @@ const WishlistPage = () => {
                 ) : archiveItems.length === 0 ? (
                     <div className="py-40 text-center border-2 border-dashed border-white/5 rounded-[3rem] space-y-6">
                         <Heart className="mx-auto text-white/5" size={48} />
-                        <p className="text-[10px] font-black uppercase text-white/20">Archive Empty</p>
-                        <button onClick={() => navigate('/shop')} className="bg-white text-black px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-widest">Explore</button>
+                        <p className="text-[10px] font-black uppercase text-white/20">Your wishlist is empty</p>
+                        <button onClick={() => navigate('/shop')} className="bg-white text-black px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[#7a6af6] hover:text-white transition-all">Start Shopping</button>
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
@@ -99,7 +98,7 @@ const WishlistPage = () => {
                                         <img src={imageUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={product.name} />
                                         <button 
                                             onClick={() => toggleWishlist(product._id, variant._id)} 
-                                            className="absolute top-4 right-4 p-2.5 bg-black/60 rounded-full text-white/40 hover:text-red-500 z-10"
+                                            className="absolute top-4 right-4 p-2.5 bg-black/60 rounded-full text-white/40 hover:text-red-500 z-10 transition-all"
                                         >
                                             <Trash2 size={16} />
                                         </button>
@@ -107,7 +106,7 @@ const WishlistPage = () => {
 
                                     <div className="space-y-1 px-1">
                                         <h3 className="text-[11px] font-black uppercase text-white italic truncate">{product.name}</h3>
-                                        <p className="text-[10px] text-white/40 uppercase">Color: {variant.color || 'Default'}</p>
+                                        <p className="text-[10px] text-white/40 uppercase">Color: {variant.color || 'Standard'}</p>
                                         <div className="flex justify-between items-end pt-4">
                                             <p className="text-sm font-black italic text-[#7a6af6]">₹{displayPrice.toLocaleString()}</p>
                                             <div className="flex gap-2">
@@ -117,7 +116,7 @@ const WishlistPage = () => {
                                                 <button 
                                                     onClick={() => handleMoveToCart(item)} 
                                                     disabled={addToCart.isPending}
-                                                    className="p-2 bg-[#7a6af6] rounded-xl text-white hover:bg-white hover:text-[#7a6af6] transition-all"
+                                                    className="p-2 bg-[#7a6af6] rounded-xl text-white hover:bg-white hover:text-[#7a6af6] transition-all disabled:opacity-50"
                                                 >
                                                     {addToCart.isPending ? <Loader2 size={16} className="animate-spin" /> : <ShoppingBag size={16} />}
                                                 </button>

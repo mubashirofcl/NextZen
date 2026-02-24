@@ -45,3 +45,16 @@ export const getAvailableRules = async (req, res, next) => {
         res.status(200).json({ success: true, offers });
     } catch (error) { next(error); }
 };
+
+export const toggleOfferStatus = async (req, res, next) => {
+    try {
+        const updatedOffer = await offerService.toggleOfferStatus(req.params.id);
+        res.status(200).json({
+            success: true,
+            message: `Offer ${updatedOffer.isActive ? 'Activated' : 'Blocked'} successfully.`,
+            offer: updatedOffer
+        });
+    } catch (error) {
+        next(error);
+    }
+};

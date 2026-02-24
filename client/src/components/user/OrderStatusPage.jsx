@@ -12,19 +12,16 @@ const OrderStatusPage = ({ type = 'success' }) => {
     const { orderId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    
-    // State to hold data if we have to fetch it manually
+
     const [fetchedOrder, setFetchedOrder] = useState(null);
     const [isLoading, setIsLoading] = useState(type === 'failed' && !location.state);
 
-    // Data passed via navigate(..., { state: { ... } })
     const { error, orderPayload, totalAmount } = location.state || {};
 
     const isSuccess = type === 'success';
     const themeColor = isSuccess ? "#7a6af6" : "#ef4444";
-    const statusLabel = isSuccess ? "Verified" : "Unsuccessful";
+    const statusLabel = isSuccess ? "Confirmed" : "Failed";
 
-    // 🟢 FALLBACK: If location.state is missing on a failed order, fetch it from DB
     useEffect(() => {
         if (!isSuccess && !totalAmount && orderId) {
             const fetchFailedOrder = async () => {
@@ -46,14 +43,13 @@ const OrderStatusPage = ({ type = 'success' }) => {
         }
     }, [isSuccess, totalAmount, orderId, navigate]);
 
-    // Use either the state amount or the fetched amount
     const actualTotalAmount = totalAmount || fetchedOrder?.totalAmount;
     const actualError = error || "The bank was unable to authorize this transaction.";
 
     const handleRetry = async () => {
         try {
             if (!actualTotalAmount) {
-                nxToast.error("Session Expired", "Please restart from your history.");
+                nxToast.error("Session Expired", "Please restart from your order history.");
                 return navigate('/profile/orders');
             }
 
@@ -62,7 +58,7 @@ const OrderStatusPage = ({ type = 'success' }) => {
 
             const { data: sessionData } = await userAxios.post("/user/payment/create-order", {
                 amount: actualTotalAmount,
-                orderId: orderId, // Pass the DB orderId so backend knows what to update
+                orderId: orderId,
                 isRetry: true
             });
 
@@ -74,7 +70,7 @@ const OrderStatusPage = ({ type = 'success' }) => {
                 currency: "INR",
                 name: "Next Zen Store",
                 description: "Re-attempting Payment",
-                order_id: sessionData.order.id, 
+                order_id: sessionData.order.id,
                 handler: async function (response) {
                     try {
                         const verifyRes = await userAxios.post("/user/payment/verify-payment", response);
@@ -84,11 +80,11 @@ const OrderStatusPage = ({ type = 'success' }) => {
                                 newRazorpayOrderId: sessionData.order.id
                             });
 
-                            nxToast.success("Success", "Manifest Synchronized.");
+                            nxToast.success("Success", "Payment confirmed successfully.");
                             navigate(`/checkout/success/${orderId}`, { replace: true });
                         }
-                    } catch (err) { 
-                        nxToast.error("Sync Error", "Contact Support."); 
+                    } catch (err) {
+                        nxToast.error("Sync Error", "Contact Support.");
                     }
                 },
                 theme: { color: themeColor },
@@ -146,7 +142,7 @@ const OrderStatusPage = ({ type = 'success' }) => {
 
                     <div className="space-y-3 relative z-10">
                         <p className="text-[9px] font-black uppercase tracking-[0.6em] italic" style={{ color: isSuccess ? themeColor : '#f87171' }}>
-                            Transaction // {statusLabel}
+                            Order // {statusLabel}
                         </p>
                         <h1 className="text-4xl font-black uppercase tracking-tighter italic leading-none">
                             {isSuccess ? 'Success' : 'Failed'}
@@ -155,11 +151,11 @@ const OrderStatusPage = ({ type = 'success' }) => {
                         <div className="space-y-4 pt-2">
                             <div className="inline-block px-4 py-1.5 bg-white/5 border border-white/10 rounded-xl">
                                 <p className="text-[10px] text-white/50 font-black uppercase tracking-widest">
-                                    Manifest: <span className="text-white">#{orderId?.slice(-8).toUpperCase() || 'X-MANIFEST'}</span>
+                                    Order ID: <span className="text-white">#{orderId?.slice(-8).toUpperCase() || 'ORDER-ID'}</span>
                                 </p>
                             </div>
                             <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest leading-relaxed max-w-[280px] mx-auto italic">
-                                {isSuccess ? 'Encryption confirmed. The logistics protocol has been initialized.' : actualError}
+                                {isSuccess ? 'Payment confirmed. We are now preparing your items for shipping.' : actualError}
                             </p>
                         </div>
                     </div>
@@ -167,26 +163,26 @@ const OrderStatusPage = ({ type = 'success' }) => {
                     <div className="grid grid-cols-1 gap-2 pt-4 relative z-10">
                         {isSuccess ? (
                             <button onClick={() => navigate(`/profile/orders/${orderId}`)} className="w-full py-4 bg-[#7a6af6] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.4em] flex items-center justify-center gap-2 hover:bg-white hover:text-black transition-all group shadow-xl">
-                                <FileText size={14} className="group-hover:rotate-12 transition-transform" /> View Manifest
+                                <FileText size={14} className="group-hover:rotate-12 transition-transform" /> View Order Details
                             </button>
                         ) : (
                             <button onClick={handleRetry} className="w-full py-4 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2 hover:bg-white hover:text-red-600 transition-all group shadow-xl">
-                                <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-700" /> Try Paying Again
+                                <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-700" /> Try Payment Again
                             </button>
                         )}
 
                         <div className="grid grid-cols-2 gap-2">
                             <button onClick={() => navigate('/profile/orders')} className="py-3.5 bg-white/5 border border-white/10 text-white rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:bg-white/10 transition-all group">
-                                {isSuccess ? <Package size={14} /> : <ShoppingBag size={14} />} {isSuccess ? 'Archive' : 'Bag'}
+                                {isSuccess ? <Package size={14} /> : <ShoppingBag size={14} />} {isSuccess ? 'My Orders' : 'My Cart'}
                             </button>
                             <button onClick={() => navigate('/shop')} className="py-3.5 bg-white/5 border border-white/10 text-white rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:bg-white/10 transition-all">
-                                Shop <ArrowRight size={14} />
+                                Shop More <ArrowRight size={14} />
                             </button>
                         </div>
                     </div>
 
                     <div className="pt-2 flex justify-center items-center gap-2 opacity-30 text-[8px] font-black uppercase tracking-[0.5em] italic">
-                        <ShieldCheck size={12} className={isSuccess ? "text-[#02faa7]" : "text-red-500"} /> Terminal Secured
+                        <ShieldCheck size={12} className={isSuccess ? "text-[#02faa7]" : "text-red-500"} /> Secure Checkout
                     </div>
                 </motion.div>
             </main>

@@ -1,34 +1,63 @@
-import React, { useState } from "react";
-import { Eye, EyeOff, Star, Twitter, Instagram, Facebook, Shield } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Eye, EyeOff, Star, Twitter, Instagram, Facebook, Tag, AlertCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+// 🟢 Import useSearchParams
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { requestSignupOTP } from "../../api/user/user.api";
 import { nxToast } from "../../utils/userToast";
 
 const UserSignup = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [showPass, setShowPass] = useState(false);
     const [showConfirmPass, setShowConfirmPass] = useState(false);
     const [serverError, setServerError] = useState("");
+
+    const urlReferralCode = searchParams.get("ref") || "";
 
     const {
         register,
         handleSubmit,
         watch,
+        setValue,
         formState: { errors, isSubmitting }
-    } = useForm();
+    } = useForm({
+        defaultValues: {
+            referralCode: urlReferralCode
+        }
+    });
+
+    // 1. Update the useEffect to save the ref to localStorage
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const ref = params.get("ref");
+        if (ref) {
+            localStorage.setItem("pending_referral", ref);
+            console.log("📍 Referral saved to storage:", ref);
+        }
+    }, [location.search]);
 
     const handleGoogleSignIn = () => {
-        window.location.href = "http://localhost:5000/api/auth/google";
+        const params = new URLSearchParams(window.location.search);
+        let ref = params.get("ref");
+
+        if (!ref) {
+            ref = localStorage.getItem("pending_referral");
+        }
+
+        const backendBaseUrl = "http://localhost:5000/api/auth/google";
+        const finalUrl = ref
+            ? `${backendBaseUrl}?ref=${ref}`
+            : backendBaseUrl;
+
+        window.location.href = finalUrl;
     };
 
     const onSubmit = async (data) => {
         setServerError("");
         try {
             await requestSignupOTP({
-                name: data.name,
                 email: data.email,
-                password: data.password,
                 purpose: "SIGNUP"
             });
 
@@ -37,14 +66,13 @@ const UserSignup = () => {
                     flow: "signup",
                     name: data.name,
                     email: data.email,
-                    password: data.password
+                    password: data.password,
+                    referralCode: data.referralCode || localStorage.getItem("pending_referral")
                 }
             });
             nxToast.success("Verification code sent to your Email");
-
         } catch (err) {
-            setServerError(err.response?.data?.message || "Signup failed. Please try again.");
-            nxToast.security("Signup failed. Please try again.");
+            setServerError(err.response?.data?.message || "Signup failed.");
         }
     };
 
@@ -53,6 +81,7 @@ const UserSignup = () => {
             <main className="flex-grow flex items-center justify-center py-8 px-4 text-black">
                 <div className="max-w-[900px] w-full flex bg-white/60 shadow-2xl rounded-2xl overflow-hidden min-h-[580px]">
 
+                    {/* LEFT SIDE - IMAGE */}
                     <div className="hidden lg:block lg:w-[42%] relative">
                         <img
                             src="https://images.unsplash.com/photo-1675079506207-668db5bb2e80?q=80&w=2070&auto=format&fit=crop"
@@ -81,6 +110,7 @@ const UserSignup = () => {
                         </div>
                     </div>
 
+                    {/* RIGHT SIDE - FORM */}
                     <div className="w-full lg:w-[58%] p-8 lg:px-10 flex flex-col justify-center">
                         <div className="max-w-xs mx-auto w-full">
                             <div className="text-center mb-6">
@@ -94,9 +124,10 @@ const UserSignup = () => {
                                 </div>
                             )}
 
-                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
+                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+                                {/* NAME */}
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Full Name</label>
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Full Name</label>
                                     <input
                                         type="text"
                                         placeholder="Enter your name"
@@ -106,8 +137,9 @@ const UserSignup = () => {
                                     {errors.name && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase">{errors.name.message}</p>}
                                 </div>
 
+                                {/* EMAIL */}
                                 <div className="space-y-1">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Email Address</label>
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Email Address</label>
                                     <input
                                         type="email"
                                         placeholder="john@example.com"
@@ -117,14 +149,14 @@ const UserSignup = () => {
                                     {errors.email && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase">Valid email required</p>}
                                 </div>
 
+                                {/* PASSWORDS GRID */}
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1 relative">
-                                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Password</label>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Password</label>
                                         <input
                                             type={showPass ? "text" : "password"}
                                             placeholder="••••••••"
                                             {...register("password", { required: "Required", minLength: { value: 6, message: "Min 6 chars" } })}
-
                                             className="w-full px-3.5 py-2.5 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
                                         />
                                         <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-8 text-gray-400 hover:text-gray-600">
@@ -134,7 +166,7 @@ const UserSignup = () => {
                                     </div>
 
                                     <div className="space-y-1 relative">
-                                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Confirm</label>
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Confirm</label>
                                         <input
                                             type={showConfirmPass ? "text" : "password"}
                                             placeholder="••••••••"
@@ -150,6 +182,29 @@ const UserSignup = () => {
                                     </div>
                                 </div>
 
+                                {/* 🟢 REFERRAL CODE INPUT (Approaches 1 & 2) */}
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Referral Code (Optional)</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                            <Tag size={12} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="GIFT-100"
+                                            {...register("referralCode")}
+                                            className={`w-full pl-9 pr-3.5 py-2.5 border-none rounded-xl text-xs outline-none focus:ring-1 transition-all ${urlReferralCode ? 'bg-indigo-50/50 ring-1 ring-indigo-200' : 'bg-gray-50 focus:ring-gray-300'
+                                                }`}
+                                        />
+                                        {urlReferralCode && (
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-indigo-500 uppercase tracking-tighter animate-pulse">
+                                                Link Applied
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-[8px] text-gray-400 font-medium uppercase italic">Earn rewards on your first deployment.</p>
+                                </div>
+
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
@@ -162,7 +217,7 @@ const UserSignup = () => {
                             <div className="relative my-5">
                                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-100"></span></div>
                                 <div className="relative flex justify-center text-[9px] uppercase tracking-widest font-bold">
-                                    <span className="bg-white px-3 text-gray">Or continue with</span>
+                                    <span className="bg-white px-3 text-gray-500">Or continue with</span>
                                 </div>
                             </div>
 

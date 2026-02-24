@@ -6,11 +6,12 @@ import { useOrder } from '../../hooks/user/useOrder';
 import { useWallet } from '../../hooks/user/useWallet';
 import { updateAddress } from '../../api/user/address.api';
 import userAxios from '../../api/baseAxios';
-import { useQueryClient } from '@tanstack/react-query';
+
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
     CheckCircle2, ArrowRight, Loader2, MapPin,
-    CreditCard, Plus, ShieldCheck, ShoppingCart,
-    Edit2, Wallet, Box, AlertCircle, Tag, X, ChevronDown, Ticket
+    CreditCard, ShieldCheck,
+    Edit2, Wallet, Box, AlertCircle, Tag, X, Ticket, RefreshCw
 } from 'lucide-react';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
@@ -37,7 +38,6 @@ const CheckoutPage = () => {
 
     const [couponInput, setCouponInput] = useState("");
     const [appliedCoupon, setAppliedCoupon] = useState(null);
-    const [availableCoupons, setAvailableCoupons] = useState([]);
     const [showCouponList, setShowCouponList] = useState(false);
     const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
     const [couponError, setCouponError] = useState("");
@@ -47,19 +47,43 @@ const CheckoutPage = () => {
     const activeItems = allItems.filter(i => i.isCheckoutReady !== false);
     const hasInventoryConflict = brokenItems.length > 0;
 
+    const { data: availableCoupons = [], isFetching: isSyncingCoupons } = useQuery({
+        queryKey: ["available-coupons"],
+        queryFn: async () => {
+            const { data } = await userAxios.get("/users/coupons/available");
+            return data.coupons || [];
+        },
+        refetchOnWindowFocus: true,
+        staleTime: 1000 * 30,
+    });
+
     useEffect(() => {
-        const loadCoupons = async () => {
-            try {
-                const { data } = await userAxios.get("/users/coupons/available");
-                if (data.success) setAvailableCoupons(data.coupons);
-            } catch (err) { console.error("Coupon fetch failed"); }
-        };
-        loadCoupons();
-    }, []);
+        const addresses = Array.isArray(addressData) ? addressData : [];
+
+        if (addresses.length > 0) {
+            if (!selectedAddress) {
+                setSelectedAddress(addresses.find(a => a.isDefault) || addresses[0]);
+            } else {
+                const updatedVersion = addresses.find(a => a._id === selectedAddress._id);
+                if (updatedVersion) {
+                    setSelectedAddress(updatedVersion);
+                }
+            }
+        }
+    }, [addressData]);
+
+    useEffect(() => {
+        if (appliedCoupon && availableCoupons.length > 0) {
+            const isStillValid = availableCoupons.some(c => c.code === appliedCoupon.code);
+            if (!isStillValid) {
+                setAppliedCoupon(null);
+                nxToast.error("Coupon Expired", "The applied coupon is no longer available.");
+            }
+        }
+    }, [availableCoupons, appliedCoupon]);
 
     const financials = useMemo(() => {
         if (!cart?.items) return { subtotal: 0, totalMRP: 0, deliveryCharge: 0, finalTotal: 0, totalDiscount: 0, couponDiscount: 0 };
-
         const subtotal = cart?.subtotal || 0;
         const totalMRP = cart?.totalMarketPrice || 0;
         const deliveryCharge = (subtotal > 0 && subtotal < 1999) ? 99 : 0;
@@ -85,15 +109,8 @@ const CheckoutPage = () => {
     const handleApplyCoupon = async (codeFromList = null) => {
         const targetCode = codeFromList || couponInput;
         setCouponError("");
-
-        if (!targetCode.trim()) {
-            setCouponError("Please enter a coupon code.");
-            return;
-        }
-        if (appliedCoupon) {
-            setCouponError("Please remove the current coupon first.");
-            return;
-        }
+        if (!targetCode.trim()) return setCouponError("Please enter a coupon code.");
+        if (appliedCoupon) return setCouponError("Please remove the current coupon first.");
 
         try {
             setIsApplyingCoupon(true);
@@ -101,16 +118,14 @@ const CheckoutPage = () => {
                 code: targetCode.toUpperCase(),
                 subtotal: financials.subtotal
             });
-
             if (data.success) {
                 setAppliedCoupon(data.coupon);
                 setCouponInput("");
                 setShowCouponList(false);
-                nxToast.success("Coupon Applied", `${data.coupon.code} activated successfully!`);
+                nxToast.success("Coupon Applied", `${data.coupon.code} applied successfully!`);
             }
         } catch (err) {
-            const errorMsg = err.response?.data?.message || "Invalid or expired coupon code.";
-            setCouponError(errorMsg);
+            setCouponError(err.response?.data?.message || "Invalid or expired coupon code.");
         } finally {
             setIsApplyingCoupon(false);
         }
@@ -129,13 +144,6 @@ const CheckoutPage = () => {
         }
     }, [cart, isCartLoading, navigate, isProcessing]);
 
-    useEffect(() => {
-        const addresses = Array.isArray(addressData) ? addressData : [];
-        if (addresses.length > 0 && !selectedAddress) {
-            setSelectedAddress(addresses.find(a => a.isDefault) || addresses[0]);
-        }
-    }, [addressData, selectedAddress]);
-
     const clearCartUI = () => {
         queryClient.setQueryData(["cart"], { items: [], subtotal: 0, totalMarketPrice: 0 });
         queryClient.invalidateQueries({ queryKey: ["cart"] });
@@ -145,16 +153,14 @@ const CheckoutPage = () => {
     const handleOnlinePayment = async (orderPayload) => {
         try {
             const isLoaded = await loadRazorpayScript();
-            if (!isLoaded) return nxToast.security("Gateway offline");
-
+            if (!isLoaded) return nxToast.security("Payment gateway offline");
             const { data } = await userAxios.post("/user/payment/create-order", {
                 amount: financials.finalTotal,
                 items: cart.items,
                 totals: financials,
                 orderId: `TMP_${Date.now()}`
             });
-
-            if (!data.success) return nxToast.security("Init failed");
+            if (!data.success) return nxToast.security("Payment initialization failed");
 
             const options = {
                 key: import.meta.env.VITE_RAZORPAY_KEY_ID,
@@ -177,7 +183,7 @@ const CheckoutPage = () => {
                             navigate(`/checkout/success/${finalRes.orderId}`, { replace: true });
                         }
                     } catch (err) {
-                        nxToast.security("Sync error");
+                        nxToast.security("Payment synchronization error");
                         setIsProcessing(false);
                     }
                 },
@@ -185,28 +191,15 @@ const CheckoutPage = () => {
                     ondismiss: async function () {
                         try {
                             setIsProcessing(true);
-
                             const failRes = await placeOrder.mutateAsync({
                                 ...orderPayload,
                                 razorpayOrderId: data.order.id,
-                                status: 'payment_failed'
+                                status: "payment_failed"
                             });
-
                             clearCartUI();
-
-                            navigate(`/payment-failed/${failRes.orderId}`, {
-                                replace: true,
-                                state: {
-                                    type: 'error',
-                                    totalAmount: financials.finalTotal,
-                                    orderPayload: orderPayload,
-                                    error: "Transaction cancelled by user."
-                                }
-                            });
-
+                            navigate(`/payment-failed/${failRes.orderId}`, { replace: true });
                         } catch (err) {
                             setIsProcessing(false);
-                            nxToast.error("Order Creation Failed", "Could not process the cancellation.");
                         }
                     }
                 },
@@ -214,16 +207,16 @@ const CheckoutPage = () => {
             };
             new window.Razorpay(options).open();
         } catch (error) {
-            nxToast.security("System error.");
+            nxToast.security("Something went wrong. Please try again.");
             setIsProcessing(false);
         }
     };
 
     const handleConfirmRequest = () => {
-        if (hasInventoryConflict) return nxToast.security("Conflict detected");
-        if (!selectedAddress) return nxToast.security("Select address");
+        if (hasInventoryConflict) return nxToast.security("Item availability conflict detected");
+        if (!selectedAddress) return nxToast.security("Please select a delivery address");
         if (paymentMethod === 'wallet' && (wallet?.balance || 0) < financials.finalTotal) {
-            return nxToast.security("Insufficient balance");
+            return nxToast.security("Insufficient wallet balance");
         }
         setFrozenTotals({ ...financials, totalAmount: financials.finalTotal });
         setIsConfirmModalOpen(true);
@@ -266,10 +259,21 @@ const CheckoutPage = () => {
     };
 
     const handleAddressMutation = async (data) => {
-        await updateAddress(addressToEdit._id, data);
-        await refetchAddresses();
-        setIsAddressModalOpen(false);
-        setAddressToEdit(null);
+        try {
+            setIsProcessing(true);
+            await updateAddress(addressToEdit._id, data);
+
+            await queryClient.invalidateQueries({ queryKey: ["addresses"] });
+            await refetchAddresses();
+
+            setIsAddressModalOpen(false);
+            setAddressToEdit(null);
+            nxToast.success("Address updated successfully");
+        } catch (err) {
+            nxToast.error("Failed to update address");
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     const glassStyle = "bg-white/[0.03] backdrop-blur-3xl border border-white/10 shadow-2xl rounded-[2rem]";
@@ -282,7 +286,7 @@ const CheckoutPage = () => {
             <main className="max-w-[1440px] mx-auto px-6 md:px-10 pt-32 pb-32 w-full">
                 <div className="flex justify-between items-end mb-12 border-b border-white/5 pb-8">
                     <div className="space-y-2">
-                        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#7a6af6] italic">Phase 03 // Deployment</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#7a6af6] italic">Checkout // Stage 03</p>
                         <h1 className="text-5xl font-black uppercase tracking-tighter italic text-white">Review <span className="text-white/20">Order</span></h1>
                     </div>
                 </div>
@@ -294,22 +298,26 @@ const CheckoutPage = () => {
                                 <div className="flex items-center gap-4">
                                     <AlertCircle className="text-red-500" size={24} />
                                     <div>
-                                        <p className="text-xs font-black uppercase text-red-500 tracking-widest">Integrity Alert</p>
-                                        <p className="text-[10px] text-white/40 font-bold uppercase italic">Unavailable items in archive.</p>
+                                        <p className="text-xs font-black uppercase text-red-500 tracking-widest">Stock Issue</p>
+                                        <p className="text-[10px] text-white/40 font-bold uppercase italic">Some items in your cart are no longer available.</p>
                                     </div>
                                 </div>
-                                <button onClick={() => navigate('/cart')} className="px-6 py-2 bg-red-500/20 text-red-500 rounded-xl text-[10px] font-black uppercase">Sync Cart</button>
+                                <button onClick={() => navigate('/cart')} className="px-6 py-2 bg-red-500/20 text-red-500 rounded-xl text-[10px] font-black uppercase">Fix Cart</button>
                             </section>
                         )}
 
                         <section className={`${glassStyle} p-10 ${hasInventoryConflict ? 'opacity-30 pointer-events-none' : ''}`}>
                             <div className="flex justify-between items-center mb-8">
-                                <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.4em] flex items-center gap-2"><MapPin size={14} /> 01 // Shipping Info</h2>
-                                <button onClick={() => navigate('/profile/address')} className="text-[8px] font-black uppercase px-5 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-[#7a6af6] transition-all">Add New</button>
+                                <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.4em] flex items-center gap-2"><MapPin size={14} /> 01 // Shipping Address</h2>
+                                <button onClick={() => navigate('/profile/address')} className="text-[8px] font-black uppercase px-5 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-[#7a6af6] transition-all">Manage Addresses</button>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {addressData?.map((addr) => (
-                                    <div key={addr._id} onClick={() => setSelectedAddress(addr)} className={`group relative p-6 rounded-3xl border transition-all duration-500 cursor-pointer ${selectedAddress?._id === addr._id ? 'bg-white/[0.08] border-[#7a6af6]' : 'bg-white/[0.02] border-white/5'}`}>
+                                    <div
+                                        key={`${addr._id}-${addr.updatedAt}`}
+                                        onClick={() => setSelectedAddress(addr)}
+                                        className={`group relative p-6 rounded-3xl border transition-all duration-500 cursor-pointer ${selectedAddress?._id === addr._id ? 'bg-white/[0.08] border-[#7a6af6]' : 'bg-white/[0.02] border-white/5'}`}
+                                    >
                                         <div className="flex justify-between items-start mb-4">
                                             <span className={`px-2.5 py-0.5 rounded-lg text-[7px] font-black uppercase ${selectedAddress?._id === addr._id ? 'bg-[#7a6af6]' : 'bg-white/5 text-white/40'}`}>{addr.addressType}</span>
                                             <div className="flex items-center gap-2">
@@ -325,11 +333,13 @@ const CheckoutPage = () => {
                         </section>
 
                         <section className="space-y-4">
-                            <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.4em] px-2 flex items-center gap-2"><Box size={14} /> 02 // Selection</h2>
+                            <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.4em] px-2 flex items-center gap-2"><Box size={14} /> 02 // Order Summary</h2>
                             <div className="space-y-3">
                                 {allItems.map((item) => (
                                     <div key={item._id} className={`${glassStyle} p-5 flex items-center gap-6 relative overflow-hidden ${item.isCheckoutReady === false ? 'border-red-500/20' : ''}`}>
-                                        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-black border border-white/5"><img src={item.variantId?.images?.[0]} className="w-full h-full object-cover" alt="" /></div>
+                                        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-black border border-white/5">
+                                            <img src={item.variantId?.images?.[0]} className="w-full h-full object-cover" alt="" />
+                                        </div>
                                         <div className="flex-1">
                                             <h3 className="text-xs font-black italic uppercase text-white">{item.productId?.name}</h3>
                                             <p className="text-[9px] text-white/20 font-bold mt-1 uppercase">Size: {item.size} // Qty: {item.quantity}</p>
@@ -346,11 +356,11 @@ const CheckoutPage = () => {
                             <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.4em] mb-10 flex items-center gap-2"><CreditCard size={14} /> 03 // Payment Method</h2>
                             <div className="space-y-4">
                                 <div onClick={() => setPaymentMethod('razorpay')} className={`p-6 rounded-[2rem] border cursor-pointer flex items-center gap-5 transition-all ${paymentMethod === 'razorpay' ? 'border-[#3395FF] bg-[#3395FF]/[0.08]' : 'bg-white/[0.02] border-white/5'}`}>
-                                    <div className="flex-1 flex items-center gap-4"><p className="text-sm font-black uppercase italic text-white">Razorpay Online</p><span className="bg-[#3395FF]/20 text-[#3395FF] text-[7px] font-black px-2 py-0.5 rounded border border-[#3395FF]/20">SECURE</span></div>
+                                    <div className="flex-1 flex items-center gap-4"><p className="text-sm font-black uppercase italic text-white">Online Payment</p><span className="bg-[#3395FF]/20 text-[#3395FF] text-[7px] font-black px-2 py-0.5 rounded border border-[#3395FF]/20">SECURE</span></div>
                                     <img src="/Razorpay_logo.png" className="h-4" alt="" />
                                 </div>
                                 <div onClick={() => setPaymentMethod('wallet')} className={`p-6 rounded-[2rem] border cursor-pointer flex items-center gap-5 transition-all ${paymentMethod === 'wallet' ? 'border-[#7a6af6] bg-[#7a6af6]/[0.08]' : 'bg-white/[0.02] border-white/5'}`}>
-                                    <div className="flex-1"><p className="text-sm font-black uppercase italic text-white">Wallet Credits</p><p className="text-[9px] text-white/30 font-bold mt-1 uppercase tracking-widest">Balance: <span className={(wallet?.balance || 0) >= financials.finalTotal ? 'text-green-400' : 'text-red-500/50'}>₹{wallet?.balance?.toLocaleString()}</span></p></div>
+                                    <div className="flex-1"><p className="text-sm font-black uppercase italic text-white">My Wallet</p><p className="text-[9px] text-white/30 font-bold mt-1 uppercase tracking-widest">Available Balance: <span className={(wallet?.balance || 0) >= financials.finalTotal ? 'text-green-400' : 'text-red-500/50'}>₹{wallet?.balance?.toLocaleString()}</span></p></div>
                                     <Wallet className={paymentMethod === 'wallet' ? 'text-[#7a6af6]' : 'text-white/10'} />
                                 </div>
                                 <div onClick={() => setPaymentMethod('cashOnDelivery')} className={`p-6 rounded-[2rem] border cursor-pointer flex items-center gap-5 transition-all ${paymentMethod === 'cashOnDelivery' ? 'border-white/40 bg-white/[0.08]' : 'bg-white/[0.02] border-white/5'}`}>
@@ -367,96 +377,58 @@ const CheckoutPage = () => {
                             <h3 className="text-[10px] font-black uppercase text-black/30 mb-8 border-b border-black/5 pb-4 italic text-center tracking-[0.5em]">Payment Summary</h3>
 
                             <div className="space-y-4 mb-8 relative z-10">
-                                <div className="flex justify-between text-[11px] font-black text-black/40 uppercase"><span>Subtotal</span><span className="text-black">₹{financials.subtotal.toLocaleString()}</span></div>
-
+                                <div className="flex justify-between text-[11px] font-black text-black/40 uppercase"><span>Items Subtotal</span><span className="text-black">₹{financials.subtotal.toLocaleString()}</span></div>
                                 {appliedCoupon && (
                                     <div className="flex justify-between text-[11px] font-black text-indigo-600 uppercase italic">
                                         <span className="flex items-center gap-1"><Tag size={10} /> {appliedCoupon.code}</span>
                                         <span>- ₹{financials.couponDiscount.toLocaleString()}</span>
                                     </div>
                                 )}
-
-                                <div className="flex justify-between text-[11px] font-black text-black/40 border-b border-black/5 pb-6 uppercase"><span>Shipping</span><span>{financials.deliveryCharge > 0 ? `₹${financials.deliveryCharge}` : 'FREE'}</span></div>
-
+                                <div className="flex justify-between text-[11px] font-black text-black/40 border-b border-black/5 pb-6 uppercase"><span>Delivery Fee</span><span>{financials.deliveryCharge > 0 ? `₹${financials.deliveryCharge}` : 'FREE'}</span></div>
                                 <div className="pt-2 flex justify-between items-center text-lg font-black italic">
-                                    <span className="text-black/30 text-[9px] font-black uppercase">Payable Total</span>
+                                    <span className="text-black/30 text-[9px] font-black uppercase">Grand Total</span>
                                     <span className="text-4xl tracking-tighter text-[#000] leading-none font-black">₹{financials.finalTotal.toLocaleString()}</span>
                                 </div>
                             </div>
 
-                            {/* 🟢 DYNAMIC COUPON INPUT UI */}
-                            <div className="mb-8 p-4 bg-zinc-50 rounded-2xl border border-dashed border-zinc-200">
+                            <div className="mb-8 p-4 bg-zinc-50 rounded-2xl border border-dashed border-zinc-200 relative">
+                                {isSyncingCoupons && <RefreshCw size={8} className="absolute top-2 right-2 animate-spin text-zinc-300" />}
                                 <div className="flex justify-between items-center mb-3">
-                                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-1"><Ticket size={12} /> Offers</p>
-                                    <button
-                                        onClick={() => setShowCouponList(!showCouponList)}
-                                        className="text-[8px] font-black text-[#7a6af6] underline uppercase"
-                                    >
-                                        {showCouponList ? "Hide" : "View All"}
-                                    </button>
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 flex items-center gap-1"><Ticket size={12} /> Available Offers</p>
+                                    <button onClick={() => setShowCouponList(!showCouponList)} className="text-[8px] font-black text-[#7a6af6] underline uppercase">{showCouponList ? "Close" : "View All"}</button>
                                 </div>
 
-                                {/* Available Coupons List */}
                                 {showCouponList && (
                                     <div className="mb-4 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                                        {availableCoupons.map(cpn => (
-                                            <div
-                                                key={cpn.code}
-                                                onClick={() => handleApplyCoupon(cpn.code)}
-                                                className="p-2 bg-white border border-zinc-100 rounded-xl cursor-pointer hover:border-[#7a6af6] transition-all"
-                                            >
+                                        {availableCoupons.length > 0 ? availableCoupons.map(cpn => (
+                                            <div key={cpn.code} onClick={() => handleApplyCoupon(cpn.code)} className="p-2 bg-white border border-zinc-100 rounded-xl cursor-pointer hover:border-[#7a6af6] transition-all">
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-[10px] font-black text-[#7a6af6]">{cpn.code}</span>
-                                                    <span className="text-[8px] font-bold text-green-600">
-                                                        {cpn.discountValue}{cpn.discountType === 'PERCENT' ? '%' : ' OFF'}
-                                                    </span>
+                                                    <span className="text-[8px] font-bold text-green-600">{cpn.discountValue}{cpn.discountType === 'PERCENT' ? '%' : ' OFF'}</span>
                                                 </div>
-                                                <p className="text-[7px] text-zinc-400 uppercase mt-1">Min: ₹{cpn.minPurchaseAmt}</p>
+                                                <p className="text-[7px] text-zinc-400 uppercase mt-1">Min Order: ₹{cpn.minPurchaseAmt}</p>
                                             </div>
-                                        ))}
+                                        )) : <p className="text-[8px] text-center text-zinc-400 uppercase italic">No active coupons available</p>}
                                     </div>
                                 )}
 
                                 <div className="flex gap-2">
-                                    <input
-                                        value={couponInput}
-                                        onChange={(e) => {
-                                            setCouponInput(e.target.value.toUpperCase());
-                                            setCouponError(""); // 🟢 Clear error on typing
-                                        }}
-                                        placeholder="CODE"
-                                        className="flex-1 bg-white border border-zinc-200 rounded-xl px-3 py-2 text-[10px] font-bold outline-none focus:border-[#7a6af6] transition-all"
-                                    />
-                                    <button
-                                        onClick={() => handleApplyCoupon()}
-                                        disabled={isApplyingCoupon || appliedCoupon}
-                                        className="bg-black text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase hover:bg-[#7a6af6] disabled:opacity-30 transition-all shadow-md active:scale-95"
-                                    >
+                                    <input value={couponInput} onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(""); }} placeholder="COUPON CODE" className="flex-1 bg-white border border-zinc-200 rounded-xl px-3 py-2 text-[10px] font-bold outline-none focus:border-[#7a6af6] transition-all" />
+                                    <button onClick={() => handleApplyCoupon()} disabled={isApplyingCoupon || appliedCoupon} className="bg-black text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase hover:bg-[#7a6af6] disabled:opacity-30 transition-all shadow-md active:scale-95">
                                         {isApplyingCoupon ? <Loader2 className="animate-spin" size={12} /> : 'Apply'}
                                     </button>
                                 </div>
-
-                                {/* 🟢 INLINE ERROR DISPLAY */}
-                                {couponError && (
-                                    <p className="text-[9px] font-bold text-red-500 mt-2 flex items-start gap-1 leading-tight animate-in fade-in">
-                                        <AlertCircle size={12} className="shrink-0" /> {couponError}
-                                    </p>
-                                )}
-
+                                {couponError && <p className="text-[9px] font-bold text-red-500 mt-2 flex items-start gap-1 leading-tight animate-in fade-in"><AlertCircle size={12} className="shrink-0" /> {couponError}</p>}
                                 {appliedCoupon && (
                                     <div className="mt-3 flex justify-between items-center bg-indigo-50 p-2.5 rounded-lg border border-indigo-100 animate-in fade-in slide-in-from-top-1">
-                                        <span className="text-[8px] font-black text-indigo-600 uppercase italic tracking-tighter">Verified: {appliedCoupon.code}</span>
+                                        <span className="text-[8px] font-black text-indigo-600 uppercase italic tracking-tighter">Applied: {appliedCoupon.code}</span>
                                         <button onClick={handleRemoveCoupon} className="text-indigo-600 hover:text-red-500 transition-colors"><X size={14} /></button>
                                     </div>
                                 )}
                             </div>
 
-                            <button
-                                onClick={handleConfirmRequest}
-                                disabled={isProcessing}
-                                className="w-full py-6 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.5em] flex items-center justify-center gap-3 transition-all bg-[#0F172A] text-white hover:bg-[#7a6af6] disabled:opacity-30 active:scale-95 shadow-xl"
-                            >
-                                {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <>Place Order <ArrowRight size={18} /></>}
+                            <button onClick={handleConfirmRequest} disabled={isProcessing} className="w-full py-6 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.5em] flex items-center justify-center gap-3 transition-all bg-[#0F172A] text-white hover:bg-[#7a6af6] disabled:opacity-30 active:scale-95 shadow-xl">
+                                {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <>Place Your Order <ArrowRight size={18} /></>}
                             </button>
                         </div>
                     </aside>

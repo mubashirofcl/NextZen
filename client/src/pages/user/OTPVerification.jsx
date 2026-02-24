@@ -15,7 +15,7 @@ const OTPVerification = () => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
 
-    const { email, flow, name, password } = location.state || {};
+    const { email, flow, name, password, referralCode } = location.state || {};
 
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [isVerifying, setIsVerifying] = useState(false);
@@ -77,24 +77,34 @@ const OTPVerification = () => {
         try {
             let response;
             if (flow === 'signup') {
-                response = await verifySignupOTP({
+                const finalReferralCode = referralCode || localStorage.getItem("pending_referral");
+
+                await verifySignupOTP({
                     email,
                     otp: otpString,
                     name,
                     password,
+                    referralCode: finalReferralCode,
                     purpose: "SIGNUP"
                 });
+
+                localStorage.removeItem("pending_referral");
                 nxToast.success('Account verified successfully!');
                 navigate('/login');
+
             } else if (flow === 'forgot_password') {
-                response = await verifyForgotPasswordOTP({
+                // 🟢 ADD THIS BACK: This was missing in your last version
+                await verifyForgotPasswordOTP({
                     email,
                     otp: otpString,
                     purpose: "FORGOT_PASSWORD"
                 });
+
+                nxToast.success('Email verified! Set your new password.');
                 navigate('/reset-password', { state: { email, otp: otpString } });
-                nxToast.success('Account verified successfully!');
+
             } else if (flow === 'email_change') {
+                // 🟢 ADD THIS BACK: For profile email updates
                 response = await verifyEmailChange({
                     email,
                     otp: otpString,
@@ -104,7 +114,9 @@ const OTPVerification = () => {
                 nxToast.success('Email updated successfully');
                 navigate('/profile/info');
             }
+
         } catch (error) {
+            console.error("Verification Error:", error);
             nxToast.security(error.response?.data?.message || 'Invalid verification code');
             setOtp(['', '', '', '', '', '']);
             document.getElementById('otp-0')?.focus();
@@ -112,6 +124,7 @@ const OTPVerification = () => {
             setIsVerifying(false);
         }
     };
+
 
     const handleResend = async () => {
         if (!canResend) return;

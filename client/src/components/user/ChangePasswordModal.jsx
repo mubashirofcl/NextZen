@@ -82,7 +82,7 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 t">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 ">
 
                     <div>
                         <label className={labelClasses}>Current Credentials</label>

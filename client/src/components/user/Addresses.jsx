@@ -48,12 +48,12 @@ const Addresses = () => {
     const handleDelete = (id) => {
         nxToast.confirm(
             "Delete Address?",
-            "This protocol will remove the shipping coordinates permanently.",
+            "Are you sure you want to remove this shipping address permanently?",
             async () => {
                 try {
                     await deleteAddress(id);
                     setAddresses((prev) => prev.filter((addr) => addr._id !== id));
-                    nxToast.success("Terminal Removed");
+                    nxToast.success("Address Removed");
                 } catch {
                     nxToast.security("Action Failed");
                 }
@@ -70,7 +70,7 @@ const Addresses = () => {
                     isDefault: addr._id === data._id,
                 }))
             );
-            nxToast.success("Primary terminal updated");
+            nxToast.success("Default address updated");
         } catch {
             nxToast.error("Protocol error");
         }
@@ -83,10 +83,10 @@ const Addresses = () => {
             <div className={`${glassStyle} p-8 mb-8 flex items-center justify-between`}>
                 <div className="space-y-1">
                     <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">
-                        Terminals
+                        Addresses
                     </h2>
                     <p className="text-[9px] text-[#7a6af6] font-black uppercase tracking-[0.4em]">
-                        Shipping Coordinates // Archive
+                        Shipping Locations // Archive
                     </p>
                 </div>
 
@@ -94,7 +94,7 @@ const Addresses = () => {
                     onClick={() => setIsAddModalOpen(true)}
                     className="flex items-center gap-3 px-6 py-3 bg-white text-black rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#7a6af6] hover:text-white transition-all active:scale-95"
                 >
-                    <Plus size={14} /> Add Terminal
+                    <Plus size={14} /> Add Address
                 </button>
             </div>
 
@@ -130,7 +130,7 @@ const Addresses = () => {
                                         </h4>
                                         {addr.isDefault && (
                                             <span className="text-[8px] font-black bg-[#7a6af6] text-white px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">
-                                                Primary
+                                                Default
                                             </span>
                                         )}
                                     </div>
@@ -153,7 +153,7 @@ const Addresses = () => {
                                         onClick={() => handleSetDefault(addr._id)}
                                         className="px-4 py-2 text-[9px] font-black uppercase tracking-widest text-white/30 hover:text-[#7a6af6] transition-all"
                                     >
-                                        Set Primary
+                                        Set Default
                                     </button>
                                 )}
 
@@ -184,7 +184,7 @@ const Addresses = () => {
                 <div className="py-32 text-center bg-white/[0.02] backdrop-blur-md rounded-[2.5rem] border border-white/5 border-dashed">
                     <MapPin size={40} className="mx-auto text-white/5 mb-4" />
                     <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/20 italic">
-                        No deployment terminals found
+                        No saved addresses found
                     </p>
                 </div>
             )}

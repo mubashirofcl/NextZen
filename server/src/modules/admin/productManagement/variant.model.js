@@ -17,7 +17,6 @@ const variantSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "Product",
             required: true,
-            // ❌ REMOVE unique:true if present
         },
         color: String,
         hex: String,

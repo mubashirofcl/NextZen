@@ -7,6 +7,9 @@ import mongoose from "mongoose";
 import { getWalletByUserId, updateWalletBalance } from "../wallet/wallet.service.js";
 import couponModel from "../../admin/couponManagemen/coupon.model.js";
 
+// 🟢 GLOBAL HELPER: Fixes JS floating point precision issues
+const fixNum = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
 export const placeOrder = async (req, res, next) => {
     try {
         const userId = req.user.userId;
@@ -15,8 +18,10 @@ export const placeOrder = async (req, res, next) => {
         } = req.body;
 
         const orderStatus = status || 'pending';
-        const subTotal = items.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
-        const deliveryCharge = totals.deliveryCharge || 0;
+
+        // 🟢 FIX: Sanitize subtotal
+        const subTotal = fixNum(items.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0));
+        const deliveryCharge = fixNum(totals.deliveryCharge || 0);
 
         let discountAmount = 0;
         if (couponCode && orderStatus !== 'payment_failed') {
@@ -25,16 +30,18 @@ export const placeOrder = async (req, res, next) => {
                 const now = new Date();
                 if (coupon.endDate >= now && subTotal >= coupon.minPurchaseAmt) {
                     if (coupon.discountType === 'PERCENT') {
-                        discountAmount = (subTotal * coupon.discountValue) / 100;
+                        // 🟢 FIX: Sanitize percentage discount
+                        discountAmount = fixNum((subTotal * coupon.discountValue) / 100);
                         if (coupon.maxDiscount) discountAmount = Math.min(discountAmount, coupon.maxDiscount);
                     } else {
-                        discountAmount = coupon.discountValue;
+                        discountAmount = fixNum(coupon.discountValue);
                     }
                 }
             }
         }
 
-        const finalTotalValue = Math.max(0, (subTotal + deliveryCharge) - discountAmount);
+        // 🟢 FIX: Sanitize final total
+        const finalTotalValue = Math.max(0, fixNum((subTotal + deliveryCharge) - discountAmount));
 
         let initialPaymentStatus = (orderStatus === 'payment_failed') ? 'Failed' : 'Pending';
         if (paymentMethod === 'razorpay' && paymentInfo?.status === 'Paid') initialPaymentStatus = 'Paid';
@@ -51,7 +58,7 @@ export const placeOrder = async (req, res, next) => {
         const processedItems = items.map(item => ({
             ...item,
             price: item.price,
-            totalAmount: item.price * item.quantity,
+            totalAmount: fixNum(item.price * item.quantity), // 🟢 FIX: Item total
             status: "Placed"
         }));
 
@@ -69,7 +76,7 @@ export const placeOrder = async (req, res, next) => {
             paymentMethod,
             paymentStatus: initialPaymentStatus,
             subTotal,
-            totalDiscount: totals.totalDiscount || 0,
+            totalDiscount: fixNum(totals.totalDiscount || 0),
             couponCode: couponCode || null,
             couponDiscount: discountAmount,
             totalAmount: finalTotalValue,
@@ -150,6 +157,7 @@ export const cancelOrderItem = async (req, res, next) => {
     try {
         const { orderId, itemId } = req.params;
         const order = await orderModel.findOne({ _id: orderId, userId: req.user.userId }).session(session);
+
         if (!order || ['shipped', 'delivered', 'cancelled'].includes(order.status)) {
             return res.status(400).json({ success: false, message: "Action not allowed in current state." });
         }
@@ -157,22 +165,41 @@ export const cancelOrderItem = async (req, res, next) => {
         const item = order.items.id(itemId);
         if (!item || item.status === 'Cancelled') return res.status(400).json({ success: false, message: "Item already cancelled." });
 
-        const safeSubTotal = order.subTotal || 0;
-        const safeDelivery = order.deliveryCharge || 0;
-        const calculatedDiscount = Math.max(0, (safeSubTotal + safeDelivery) - order.totalAmount);
-        const actualCouponDiscount = order.couponDiscount || calculatedDiscount;
+        // 🛡️ BLOCK LOGIC: Check Coupon Threshold
+        if (order.couponCode) {
+            const coupon = await couponModel.findOne({ code: order.couponCode });
+            if (coupon && coupon.minPurchaseAmt) {
+                // Calculate what the subtotal would be after this specific cancellation
+                const activeItems = order.items.filter(i => i.status !== 'Cancelled' && i._id.toString() !== itemId);
+                const potentialSubTotal = fixNum(activeItems.reduce((acc, curr) => acc + curr.totalAmount, 0));
 
-        let itemDiscountShare = 0;
-        if (actualCouponDiscount > 0 && safeSubTotal > 0) {
-            itemDiscountShare = (item.totalAmount / safeSubTotal) * actualCouponDiscount;
+                // If items remain but don't meet the minimum, block the cancellation
+                if (activeItems.length > 0 && potentialSubTotal < coupon.minPurchaseAmt) {
+                    await session.abortTransaction();
+                    return res.status(400).json({
+                        success: false,
+                        message: `Cannot cancel. Remaining order total (₹${potentialSubTotal}) would fall below the ₹${coupon.minPurchaseAmt} minimum required for coupon "${order.couponCode}".`
+                    });
+                }
+            }
         }
 
-        let refundAmount = item.totalAmount - itemDiscountShare;
+        const safeSubTotal = fixNum(order.subTotal || 0);
+        const actualCouponDiscount = fixNum(order.couponDiscount || 0);
+
+        // 🟢 PROPORTIONAL REFUND LOGIC (Existing code preserved)
+        let itemDiscountShare = 0;
+        if (actualCouponDiscount > 0 && safeSubTotal > 0) {
+            itemDiscountShare = fixNum((item.totalAmount / safeSubTotal) * actualCouponDiscount);
+        }
+
+        let refundAmount = fixNum(item.totalAmount - itemDiscountShare);
 
         const otherActiveItems = order.items.filter(i => i.status !== 'Cancelled' && i._id.toString() !== itemId);
         const isLastItem = otherActiveItems.length === 0;
-        if (isLastItem && safeDelivery > 0) {
-            refundAmount += safeDelivery;
+
+        if (isLastItem && order.deliveryCharge > 0) {
+            refundAmount = fixNum(refundAmount + order.deliveryCharge);
         }
 
         if (order.paymentStatus === 'Paid') {
@@ -188,9 +215,9 @@ export const cancelOrderItem = async (req, res, next) => {
             { session }
         );
 
-        order.totalAmount = Math.max(0, order.totalAmount - refundAmount);
-        order.subTotal = Math.max(0, order.subTotal - item.totalAmount);
-        if (order.couponDiscount) order.couponDiscount = Math.max(0, order.couponDiscount - itemDiscountShare);
+        order.totalAmount = fixNum(Math.max(0, order.totalAmount - refundAmount));
+        order.subTotal = fixNum(Math.max(0, order.subTotal - item.totalAmount));
+        if (order.couponDiscount) order.couponDiscount = fixNum(Math.max(0, order.couponDiscount - itemDiscountShare));
 
         if (isLastItem) {
             order.status = 'cancelled';
@@ -200,7 +227,12 @@ export const cancelOrderItem = async (req, res, next) => {
         await order.save({ session });
         await session.commitTransaction();
         res.status(200).json({ success: true, message: `₹${refundAmount.toFixed(2)} refunded.` });
-    } catch (error) { await session.abortTransaction(); next(error); } finally { session.endSession(); }
+    } catch (error) {
+        await session.abortTransaction();
+        next(error);
+    } finally {
+        session.endSession();
+    }
 };
 
 export const finalizeReturnRefund = async (req, res, next) => {
@@ -213,27 +245,26 @@ export const finalizeReturnRefund = async (req, res, next) => {
 
         if (item.status !== 'Return Approved') return res.status(400).json({ success: false, message: "Return not approved." });
 
-        const safeSubTotal = order.subTotal || 0;
-        const safeDelivery = order.deliveryCharge || 0;
+        const safeSubTotal = fixNum(order.subTotal || 0);
+        const actualCouponDiscount = fixNum(order.couponDiscount || 0);
 
-        const calculatedDiscount = Math.max(0, (safeSubTotal + safeDelivery) - order.totalAmount);
-        const actualCouponDiscount = order.couponDiscount || calculatedDiscount;
-
+        // 🟢 PROPORTIONAL RETURN LOGIC
         let itemDiscountShare = 0;
         if (actualCouponDiscount > 0 && safeSubTotal > 0) {
-            itemDiscountShare = (item.totalAmount / safeSubTotal) * actualCouponDiscount;
+            itemDiscountShare = fixNum((item.totalAmount / safeSubTotal) * actualCouponDiscount);
         }
 
-        const netRefund = item.totalAmount - itemDiscountShare;
+        const netRefund = fixNum(item.totalAmount - itemDiscountShare);
 
         await updateWalletBalance(order.userId, netRefund, 'credit', `Return Refund: ${item.productId?.name}`, order._id, { session });
 
         item.status = 'Returned';
         item.actionDate = new Date();
 
-        order.totalAmount = Math.max(0, order.totalAmount - netRefund);
-        order.subTotal = Math.max(0, order.subTotal - item.totalAmount);
-        if (order.couponDiscount) order.couponDiscount = Math.max(0, order.couponDiscount - itemDiscountShare);
+        // 🟢 SYNC TOTALS
+        order.totalAmount = fixNum(Math.max(0, order.totalAmount - netRefund));
+        order.subTotal = fixNum(Math.max(0, order.subTotal - item.totalAmount));
+        if (order.couponDiscount) order.couponDiscount = fixNum(Math.max(0, order.couponDiscount - itemDiscountShare));
 
         if (order.items.every(i => ['Returned', 'Cancelled'].includes(i.status))) {
             order.status = 'returned';
@@ -256,9 +287,10 @@ export const cancelFullOrder = async (req, res, next) => {
 
         const isShipped = ['shipped', 'out_for_delivery'].includes(order.status.toLowerCase());
 
-        let refundTotal = order.totalAmount;
+        let refundTotal = fixNum(order.totalAmount);
+        // Do not refund delivery if already shipped
         if (isShipped && order.deliveryCharge > 0) {
-            refundTotal = Math.max(0, refundTotal - order.deliveryCharge);
+            refundTotal = fixNum(Math.max(0, refundTotal - order.deliveryCharge));
         }
 
         if (order.paymentStatus === 'Paid') {

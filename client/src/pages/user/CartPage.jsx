@@ -11,18 +11,14 @@ const CartPage = () => {
     const { cart } = useCart();
     const itemCount = cart?.items?.length || 0;
 
-    // 🟢 UPDATED FINANCIALS: Removed all Tax logic to ensure 100% accuracy
     const financials = useMemo(() => {
         if (!cart?.items) return { subtotal: 0, totalDiscount: 0, deliveryCharge: 0, finalTotal: 0 };
 
-        // Subtotal is already calculated by the hook based on (currentPrice * quantity)
         const subtotal = cart?.subtotal || 0;
         const totalMRP = cart?.totalMarketPrice || 0;
 
-        // Shipping Logic: Free above ₹1999
         const deliveryCharge = (subtotal > 0 && subtotal < 1999) ? 99 : 0;
 
-        // 🟢 Pure Addition Logic: No more 1.18 multiplier or rounding gaps
         const finalTotal = subtotal + deliveryCharge;
         const totalDiscount = totalMRP - subtotal;
 
@@ -37,14 +33,14 @@ const CartPage = () => {
                 <div className="flex justify-between items-end mb-12 border-b border-white/10 pb-8">
                     <div className="space-y-2">
                         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#7a6af6] italic">
-                            User Assets // Cart
+                            Shopping Bag // Review
                         </p>
                         <h1 className="text-5xl font-black uppercase tracking-tighter italic">
-                            Your Archive <span className="text-white/20">({itemCount})</span>
+                            Your Bag <span className="text-white/20">({itemCount})</span>
                         </h1>
                     </div>
                     <p className="hidden md:block text-[10px] font-bold text-white/40 uppercase tracking-widest max-w-[200px] text-right">
-                        Review your selected pieces before initiating the final deployment.
+                        Review your items before proceeding to checkout.
                     </p>
                 </div>
 
@@ -60,11 +56,11 @@ const CartPage = () => {
                                     <ShieldCheck size={160} />
                                 </div>
 
-                                <h3 className="text-[10px] font-black uppercase text-black/30 mb-8 border-b border-black/5 pb-4 italic text-center tracking-[0.5em]">Payment Summary</h3>
+                                <h3 className="text-[10px] font-black uppercase text-black/30 mb-8 border-b border-black/5 pb-4 italic text-center tracking-[0.5em]">Order Summary</h3>
 
                                 <div className="space-y-4 text-[11px] font-bold uppercase tracking-tight relative z-10">
                                     <div className="flex justify-between text-black/40">
-                                        <span>Subtotal</span>
+                                        <span>Items Total</span>
                                         <span className="text-black font-black">₹{financials.subtotal.toLocaleString()}</span>
                                     </div>
 
@@ -75,17 +71,15 @@ const CartPage = () => {
                                         </div>
                                     )}
 
-                                    {/* 🔴 TAX ROW REMOVED COMPLETELY */}
-
                                     <div className="flex justify-between text-black/40 border-b border-black/5 pb-6">
-                                        <span>Shipping Fee</span>
+                                        <span>Delivery Fee</span>
                                         <span className="text-black font-black">
                                             {financials.deliveryCharge > 0 ? `₹${financials.deliveryCharge}` : 'FREE'}
                                         </span>
                                     </div>
 
                                     <div className="pt-2 flex justify-between items-center text-lg font-black italic">
-                                        <span className="text-black/30 text-[9px] font-black uppercase tracking-[0.3em]">Total Amount</span>
+                                        <span className="text-black/30 text-[9px] font-black uppercase tracking-[0.3em]">Grand Total</span>
                                         <span className="text-4xl tracking-tighter text-[#000] leading-none font-black">
                                             ₹{financials.finalTotal.toLocaleString()}
                                         </span>
@@ -101,7 +95,7 @@ const CartPage = () => {
                             </div>
 
                             <p className="mt-6 text-[9px] text-white/20 font-bold uppercase text-center tracking-widest italic">
-                                Secure checkout encrypted via Razorpay
+                                Safe & Secure Checkout via Razorpay
                             </p>
                         </aside>
                     )}

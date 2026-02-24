@@ -10,7 +10,6 @@ const productSchema = new mongoose.Schema(
     sizeType: { type: String, enum: ["STANDARD", "FREE_SIZE", "NO_SIZE"], default: "STANDARD" },
     highlights: { type: [String], default: [] },
 
-    // RENAMED & TYPED correctly for population
     offerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Offer",

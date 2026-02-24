@@ -27,6 +27,9 @@ const updateRefreshToken = async (userId, token) => {
   return await User.findByIdAndUpdate(userId, { refreshToken: token });
 };
 
+const findByReferralCode = async (code) => {
+  return await User.findOne({ referralCode: code });
+};
 // ==================== OTP OPERATIONS ====================
 
 const createOTP = async (email, otp, purpose) => {
@@ -58,16 +61,16 @@ const findRecentOTP = async (email, purpose) => {
   return await OTP.findOne({
     email,
     purpose,
-  }).sort({ createdAt: -1 }); 
+  }).sort({ createdAt: -1 });
 };
 
 
 const updatePassword = async (email, newPassword) => {
-    const user = await User.findOne({ email });
-    if (!user) throw new Error("User not found");
+  const user = await User.findOne({ email });
+  if (!user) throw new Error("User not found");
 
-    user.password = newPassword;
-    return await user.save();
+  user.password = newPassword;
+  return await user.save();
 };
 
 export default {
@@ -80,5 +83,6 @@ export default {
   findValidOTP,
   markOTPAsUsed,
   findRecentOTP,
-  updatePassword
+  updatePassword,
+  findByReferralCode
 };

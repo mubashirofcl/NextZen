@@ -26,15 +26,18 @@ const OrderHistory = () => {
             case 'pending': return 'text-amber-400 border-amber-400/20 bg-amber-400/5';
             case 'shipped': return 'text-[#7a6af6] border-[#7a6af6]/20 bg-[#7a6af6]/5';
             case 'cancelled': return 'text-white/20 border-white/10 bg-white/5';
-            case 'payment_failed': return 'text-red-400 border-red-400/20 bg-red-400/5 animate-pulse'; // 🟢 Added Failed Style
+            case 'payment_failed': return 'text-red-400 border-red-400/20 bg-red-400/5 animate-pulse';
             default: return 'text-white/40 border-white/10 bg-white/5';
         }
     };
 
     const getFriendlyStatus = (status) => {
         const s = status?.toLowerCase();
-        if (s === 'payment_failed') return 'Payment Incomplete'; // 🟢 User friendly term
+        if (s === 'payment_failed') return 'Payment Failed';
         if (s === 'pending') return 'Processing';
+        if (s === 'shipped') return 'Out for Delivery';
+        if (s === 'cancelled') return 'Order Cancelled';
+        if (s === 'delivered') return 'Delivered';
         return status;
     };
 
@@ -47,13 +50,12 @@ const OrderHistory = () => {
     return (
         <div className="flex flex-col h-[calc(100vh-200px)] animate-in fade-in slide-in-from-bottom-4 duration-700">
 
-            {/* --- HEADER & FILTERS --- */}
             <div className="bg-gradient-to-br from-white/[0.12] to-transparent backdrop-blur-2xl border border-white/10 rounded-[3rem] p-8 shadow-2xl mb-8 shrink-0">
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-8">
                     <div>
-                        <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">Your Orders</h3>
+                        <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">My Orders</h3>
                         <p className="text-[10px] text-[#7a6af6] font-black uppercase tracking-[0.4em] mt-1">
-                            Purchase History // Real-time Sync
+                            Purchase History // Live Updates
                         </p>
                     </div>
 
@@ -62,7 +64,7 @@ const OrderHistory = () => {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#7a6af6] transition-colors" size={16} />
                             <input
                                 type="text"
-                                placeholder="SEARCH YOUR ITEMS..."
+                                placeholder="FIND AN ORDER..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full bg-black/40 border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-[10px] font-black uppercase tracking-widest text-white placeholder:text-white/10 focus:outline-none focus:border-[#7a6af6]/50 transition-all"
@@ -75,11 +77,11 @@ const OrderHistory = () => {
                                     key={status}
                                     onClick={() => setStatusFilter(status)}
                                     className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${statusFilter === status
-                                            ? 'bg-[#7a6af6] text-white shadow-[0_0_20px_rgba(122,106,246,0.3)]'
-                                            : 'text-white/30 hover:text-white hover:bg-white/5'
+                                        ? 'bg-[#7a6af6] text-white shadow-[0_0_20px_rgba(122,106,246,0.3)]'
+                                        : 'text-white/30 hover:text-white hover:bg-white/5'
                                         }`}
                                 >
-                                    {status === 'payment_failed' ? 'Unsuccessful' : status}
+                                    {status === 'all' ? 'All Orders' : status === 'payment_failed' ? 'Failed' : status}
                                 </button>
                             ))}
                         </div>
@@ -87,13 +89,12 @@ const OrderHistory = () => {
                 </div>
             </div>
 
-            {/* --- ORDER LIST --- */}
             <div className="flex-1 overflow-y-auto pr-4 space-y-5 custom-scrollbar">
                 {filteredOrders.length === 0 ? (
                     <div className="bg-white/[0.02] backdrop-blur-md rounded-[3rem] p-24 text-center border border-white/5 border-dashed">
                         <Package className="mx-auto text-white/5 mb-6" size={64} />
                         <h2 className="text-[11px] font-black uppercase text-white/20 tracking-[0.6em]">
-                            {searchTerm || statusFilter !== 'all' ? "No Matching Orders Found" : "Your History is Empty"}
+                            {searchTerm || statusFilter !== 'all' ? "No Matching Results" : "No Orders Found Yet"}
                         </h2>
                     </div>
                 ) : (
@@ -109,7 +110,6 @@ const OrderHistory = () => {
                                 className={`group bg-gradient-to-br from-white/[0.07] to-transparent backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/5 hover:border-[#7a6af6]/40 transition-all duration-500 cursor-pointer flex flex-col md:flex-row md:items-center justify-between shadow-2xl gap-6 ${isFailed ? 'border-red-500/20 shadow-red-500/5' : ''}`}
                             >
                                 <div className="flex items-center gap-6">
-                                    {/* Image Stack */}
                                     <div className="hidden lg:flex -space-x-4">
                                         {order.items?.slice(0, 3).map((item, i) => (
                                             <div
@@ -120,7 +120,7 @@ const OrderHistory = () => {
                                                 <img
                                                     src={item.variantId?.images?.[0] || item.productId?.thumbnail}
                                                     className={`w-full h-full object-cover ${item.status === 'cancelled' || isFailed ? 'opacity-20 grayscale' : ''}`}
-                                                    alt="Item"
+                                                    alt="Product"
                                                 />
                                             </div>
                                         ))}
@@ -137,31 +137,31 @@ const OrderHistory = () => {
                                                 </span>
                                             )}
                                             <span className="text-[9px] font-black text-white/10 uppercase tracking-widest">
-                                                ORDER ID: {order._id.slice(-8).toUpperCase()}
+                                                ID: {order._id.slice(-8).toUpperCase()}
                                             </span>
                                         </div>
 
                                         <h4 className="text-sm font-black uppercase tracking-tight italic text-white flex items-center gap-2">
                                             {isFailed ? <AlertOctagon size={14} className="text-red-500" /> : <Box size={14} className="text-[#7a6af6]" />}
-                                            {order.items?.length - cancelledItemsCount} Items Ordered
+                                            {order.items?.length - cancelledItemsCount} Items in Order
                                         </h4>
 
                                         <p className="text-[9px] text-white/30 font-bold uppercase flex items-center gap-2 tracking-widest">
                                             <Clock size={12} className="text-[#7a6af6]/40" />
-                                            {new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            Ordered on {new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                         </p>
                                     </div>
                                 </div>
 
                                 <div className="flex md:flex-col items-end justify-between md:justify-center gap-1 border-t md:border-t-0 border-white/5 pt-4 md:pt-0">
                                     <div className="text-left md:text-right">
-                                        <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Total Value</p>
+                                        <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Total Price</p>
                                         <p className={`text-2xl font-black italic tracking-tighter ${isFailed ? 'text-red-400' : 'text-[#7a6af6]'}`}>
                                             ₹{order.totalAmount?.toLocaleString()}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-1 text-[9px] font-black text-white/40 uppercase group-hover:text-white transition-all duration-300">
-                                        {isFailed ? "Retry Payment" : "View Details"} <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                        {isFailed ? "Complete Payment" : "View Order Details"} <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
                                     </div>
                                 </div>
                             </div>

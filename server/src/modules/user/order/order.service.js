@@ -3,6 +3,9 @@ import * as orderRepo from "./order.repository.js";
 import cartModel from "../cart/cart.model.js";
 import couponModel from "../../admin/couponManagemen/coupon.model.js";
 
+// Helper function to handle JS floating point precision
+const sanitizeAmount = (amount) => Math.round((amount + Number.EPSILON) * 100) / 100;
+
 export const processCODOrder = async (userId, orderPayload) => {
     
     const { addressId, items, totals, paymentMethod, couponCode } = orderPayload;
@@ -21,7 +24,8 @@ export const processCODOrder = async (userId, orderPayload) => {
     }
 
     const processedItems = items.map(i => {
-        const productBaseTotal = i.price * i.quantity;
+        // 🟢 FIX: Sanitize item total
+        const productBaseTotal = sanitizeAmount(i.price * i.quantity);
         return {
             productId: i.productId,
             variantId: i.variantId,
@@ -34,7 +38,10 @@ export const processCODOrder = async (userId, orderPayload) => {
         };
     });
 
-    const subTotal = items.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
+    // 🟢 FIX: Sanitize subtotal
+    const rawSubTotal = items.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
+    const subTotal = sanitizeAmount(rawSubTotal);
+    
     const deliveryCharge = totals.deliveryCharge || 0;
 
     let discountAmount = 0;
@@ -44,7 +51,7 @@ export const processCODOrder = async (userId, orderPayload) => {
             const now = new Date();
             if (coupon.endDate >= now && subTotal >= coupon.minPurchaseAmt) {
                 if (coupon.discountType === 'PERCENT') {
-                    discountAmount = (subTotal * coupon.discountValue) / 100;
+                    discountAmount = sanitizeAmount((subTotal * coupon.discountValue) / 100);
                     if (coupon.maxDiscount) discountAmount = Math.min(discountAmount, coupon.maxDiscount);
                 } else {
                     discountAmount = coupon.discountValue;
@@ -55,7 +62,8 @@ export const processCODOrder = async (userId, orderPayload) => {
         }
     }
 
-    const totalAmount = Math.max(0, (subTotal + deliveryCharge) - discountAmount);
+    // 🟢 FIX: Sanitize final total
+    const totalAmount = Math.max(0, sanitizeAmount((subTotal + deliveryCharge) - discountAmount));
 
     const orderData = {
         userId,

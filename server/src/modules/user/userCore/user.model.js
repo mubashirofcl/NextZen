@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import crypto from "crypto";
 
 const userSchema = new mongoose.Schema(
     {
@@ -39,27 +40,31 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
-        pendingEmailUpdate: {
-            type: String,
-            default: null
-        },
-        pendingProfileData: {
-            type: Object,
-            default: null
-        },
         isBlocked: {
             type: Boolean,
             default: false
         },
-        blockReason: {
-            type: String
+        referralCode: {
+            type: String,
+            unique: true,
+            sparse: true
         },
-        blockedAt: {
-            type: Date
+        referredBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            default: null
         },
+        referralCount: {
+            type: Number,
+            default: 0
+        },
+        pendingEmailUpdate: { type: String, default: null },
+        pendingProfileData: { type: Object, default: null },
+        blockReason: { type: String },
+        blockedAt: { type: Date },
         refreshToken: {
             type: String,
-            select: false
+            select: false 
         },
     },
     {
@@ -68,16 +73,19 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.virtual('walletData', {
-    ref: 'Wallet',           // The name of your Wallet model
-    localField: '_id',       // The user ID stored in User model
-    foreignField: 'userId',  // The field in Wallet model that stores the User ID
-    justOne: true            // A user only has one wallet
+    ref: 'Wallet',
+    localField: '_id',
+    foreignField: 'userId',
+    justOne: true
 });
 
-// Ensure virtuals are included when converting to JSON
+userSchema.pre('save', function () {
+    if (!this.referralCode) {
+        this.referralCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+    }
+});
 userSchema.set('toJSON', { virtuals: true });
 userSchema.set('toObject', { virtuals: true });
 
 const User = mongoose.model("User", userSchema);
-
 export default User;

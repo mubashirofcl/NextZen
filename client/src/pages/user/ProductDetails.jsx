@@ -1,60 +1,72 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ShoppingBag, Heart, ChevronRight, Minus, Plus,
-    ShieldCheck, Truck, List, AlertCircle, Loader2
+    ShieldCheck, Truck, List, AlertCircle, Loader2,
+    Sparkles, X, Send, MessageSquare, RefreshCw, Bot
 } from 'lucide-react';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
 import { useProductDetails } from '../../hooks/user/useProductDetails';
 import { useRecommended } from '../../hooks/user/useRecommended';
-
 import { useCart } from '../../hooks/user/useCart';
 import { useWishlist } from '../../hooks/user/useWishlist';
 import { nxToast } from '../../utils/userToast';
 import { useSelector } from 'react-redux';
+import { askStyleAssistant } from '../../api/user/chatbotApi';
 
 const ProductDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const imgRef = useRef(null);
+    const chatEndRef = useRef(null);
+    const chatCache = useRef({}); 
 
     const { data: product, isLoading, error } = useProductDetails(id);
     const { addToCart, cart } = useCart();
-
-    // 🟢 FIXED: Destructured as toggleWishlist and isInWishlist to match your Shop.jsx logic
     const { toggleWishlist, isInWishlist, isPending: wishlistPending } = useWishlist();
+    const { isAuthenticated } = useSelector((state) => state.userAuth);
 
     const activeVariants = product?.variants?.filter(v => v.isDeleted === false) || [];
+    const { data: recommendedData = [] } = useRecommended(product?.subcategory?._id || product?.subcategoryId, id);
 
-    const { data: recommendedData = [] } = useRecommended(
-        product?.subcategory?._id || product?.subcategoryId,
-        id
-    );
-
+    // --- BASE UI STATES ---
     const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
     const [selectedSize, setSelectedSize] = useState(null);
     const [activeImg, setActiveImg] = useState(null);
     const [zoomPos, setZoomPos] = useState({ x: 0, y: 0, show: false });
     const [qty, setQty] = useState(1);
 
+    // --- 🤖 CHATBOT STATES ---
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatInput, setChatInput] = useState("");
+    const [chatHistory, setChatHistory] = useState([]);
+    const [isAITyping, setIsAITyping] = useState(false);
+    const [showNudge, setShowNudge] = useState(false);
+
     const currentVariant = activeVariants[selectedVariantIdx];
     const isOutOfStock = !selectedSize || selectedSize.stock === 0;
 
-    // --- PROTOCOL: DUPLICATE CHECK ---
     const isAlreadyInCart = cart?.items?.some(item =>
         (item.productId?._id === id || item.productId === id) &&
         (item.variantId?._id === currentVariant?._id || item.variantId === currentVariant?._id) &&
         item.size === selectedSize?.size
     );
 
-    // 🟢 FIXED: Uses helper from hook
     const isWishlisted = isInWishlist(id);
 
-    useEffect(() => {
-        if (error || (product && product.isActive === false)) {
-            navigate('/shop', { replace: true });
+    const quickSuggestions = useMemo(() => {
+        if (!product) return [];
+        const base = ["Is this in stock?", "Any active offers?"];
+        const category = product.categoryId?.name?.toLowerCase() || "";
+        if (category.includes('hoodie') || category.includes('shirt') || category.includes('top')) {
+            return [...base, "What's the fit like?", "Styling tips?"];
         }
+        return [...base, "How do I style this?"];
+    }, [product]);
+
+    useEffect(() => {
+        if (error || (product && product.isActive === false)) navigate('/shop', { replace: true });
     }, [product, error, navigate]);
 
     useEffect(() => {
@@ -66,8 +78,24 @@ const ProductDetails = () => {
         }
     }, [selectedVariantIdx, product]);
 
-    useEffect(() => { window.scrollTo(0, 0); }, [id]);
+    useEffect(() => {
+        window.scrollTo(0, 0);
+        setChatHistory([]);
+        setShowNudge(false);
+        const timer = setTimeout(() => setShowNudge(true), 10000); 
+        return () => clearTimeout(timer);
+    }, [id]);
 
+    useEffect(() => {
+        if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }, [chatHistory, isAITyping]);
+
+    // Auto-hide nudge when chat opens
+    useEffect(() => {
+        if (isChatOpen) setShowNudge(false);
+    }, [isChatOpen]);
+
+    // --- HANDLERS ---
     const handleMouseMove = (e) => {
         if (!imgRef.current) return;
         const { left, top, width, height } = imgRef.current.getBoundingClientRect();
@@ -76,24 +104,11 @@ const ProductDetails = () => {
         setZoomPos({ x, y, show: true });
     };
 
-    const { isAuthenticated } = useSelector((state) => state.userAuth);
-
     const handleAddToCart = async () => {
-        if (!isAuthenticated) {
-            return nxToast.security("Access Denied", "Please login to sync this item to your cart.");
-        }
-
-        if (!selectedSize) {
-            return nxToast.security("Selection Required", "Please choose a dimension before archiving.");
-        }
-
-        if (isAlreadyInCart) {
-            return nxToast.security("Already Archived", "This variant is already present in your cart manifest.");
-        }
-
-        if (qty > selectedSize.stock) {
-            return nxToast.security("Warehouse Limit", `Only ${selectedSize.stock} units remain.`);
-        }
+        if (!isAuthenticated) return nxToast.security("Access Denied", "Please login to sync this item.");
+        if (!selectedSize) return nxToast.security("Selection Required", "Choose a dimension.");
+        if (isAlreadyInCart) return nxToast.security("Already Archived", "Item in manifest.");
+        if (qty > selectedSize.stock) return nxToast.security("Warehouse Limit", `Only ${selectedSize.stock} units left.`);
 
         try {
             await addToCart.mutateAsync({
@@ -104,25 +119,60 @@ const ProductDetails = () => {
                 stock: selectedSize.stock,
                 price: selectedSize.salePrice || selectedSize.originalPrice
             });
-
-            nxToast.success("Archive Synced", "This item has been secured in your archive.");
+            nxToast.success("Archive Synced", "Secured in your archive.");
         } catch (err) {
-            nxToast.security("Sync Error", err.response?.data?.message || "Communication interrupted.");
+            nxToast.security("Sync Error", err.response?.data?.message || "Interrupted.");
         }
     };
+
     const handleWishlistToggle = () => {
-        if (!isAuthenticated) {
-            return nxToast.security("Access Denied", "Please login to sync wishlist.");
-        }
-
-        if (!id || !currentVariant?._id) {
-            return nxToast.security("Protocol Error", "Asset identifiers missing.");
-        }
-
+        if (!isAuthenticated) return nxToast.security("Access Denied", "Please login.");
         toggleWishlist(id, currentVariant._id);
     };
 
-    if (isLoading) return <div className="h-screen flex items-center justify-center text-[10px] font-black uppercase tracking-[0.5em] text-white/20">Initialising Archive...</div>;
+    const handleAskAI = async (overrideMessage = null) => {
+        const messageToSend = (overrideMessage || chatInput).trim();
+        if (!messageToSend || isAITyping) return;
+
+        if (!isAuthenticated) {
+            setChatHistory(prev => [...prev, {
+                role: 'model',
+                text: "I'd love to help, but you need to be logged in to access the Concierge! ✨"
+            }]);
+            return;
+        }
+
+        const cacheKey = `${id}-${messageToSend.toLowerCase()}`;
+        if (chatCache.current[cacheKey]) {
+            setChatHistory(prev => [...prev,
+                { role: 'user', text: messageToSend },
+                { role: 'model', text: chatCache.current[cacheKey] }
+            ]);
+            return;
+        }
+
+        setChatHistory(prev => [...prev, { role: 'user', text: messageToSend }]);
+        setChatInput("");
+        setIsAITyping(true);
+
+        try {
+            const slidingHistory = chatHistory.slice(-4);
+            const data = await askStyleAssistant(id, messageToSend, slidingHistory);
+            if (data.success) {
+                chatCache.current[cacheKey] = data.reply;
+                setChatHistory(prev => [...prev, { role: 'model', text: data.reply }]);
+            }
+        } catch (err) {
+            setChatHistory(prev => [...prev, {
+                role: 'model',
+                text: "My neural link is flickering. Try again in a minute."
+            }]);
+        } finally {
+            setIsAITyping(false);
+        }
+    };
+
+    if (isLoading) return <div className="h-screen flex items-center justify-center text-[10px] font-black uppercase tracking-[0.5em] text-white/20 animate-pulse">Initialising Archive...</div>;
     if (!product || activeVariants.length === 0) return null;
 
     const salePrice = selectedSize?.salePrice || 0;
@@ -130,11 +180,148 @@ const ProductDetails = () => {
     const discount = originalPrice > salePrice ? Math.round(((originalPrice - salePrice) / originalPrice) * 100) : 0;
 
     return (
-        <div className="relative min-h-screen font-sans text-white pt-16 selection:bg-[#7a6af6]/30">
+        <div className="relative min-h-screen font-sans text-white pt-16 selection:bg-[#7a6af6]/30 overflow-x-hidden">
             <Header />
 
+            {/* 🤖 NEXTZEN STYLE CONCIERGE (SIDE DRAWER) */}
+            <div className={`fixed inset-y-0 right-0 w-full sm:w-[420px] z-[110] transform transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="h-[96vh] my-[2vh] mr-[1vw] w-full bg-black/40 backdrop-blur-2xl border border-white/10 flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.5)] rounded-[2.5rem] overflow-hidden">
+                    <div className="p-6 border-b border-white/10 bg-white/[0.02] flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="relative">
+                                <div className="p-2 bg-[#7a6af6] rounded-xl shadow-[0_0_15px_rgba(122,106,246,0.3)]">
+                                    <Sparkles size={18} className="text-white" />
+                                </div>
+                                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-black" />
+                            </div>
+                            <div>
+                                <h3 className="text-[12px] font-bold uppercase tracking-widest text-white/90">Style Concierge</h3>
+                                <p className="text-[8px] font-medium text-[#7a6af6] uppercase tracking-[0.2em] mt-1 animate-pulse">Neural Link Active</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setIsChatOpen(false)} className="group p-2 hover:bg-white/10 rounded-full transition-all">
+                            <X size={20} className="text-white/40 group-hover:text-white transition-all" />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative">
+                        {chatHistory.length === 0 && (
+                            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-30">
+                                <MessageSquare size={32} strokeWidth={1} className="text-white" />
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest">System Ready</p>
+                                    <p className="text-[9px] font-medium max-w-[180px] leading-relaxed">Ask about sizing, styling, or stock.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {chatHistory.map((msg, i) => (
+                            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-400`}>
+                                <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-[13px] font-medium leading-relaxed tracking-wide ${msg.role === 'user' ? 'bg-[#7a6af6] text-white rounded-tr-none' : 'bg-white/5 border border-white/10 text-white/90 rounded-tl-none shadow-xl'}`}>
+                                    {msg.text}
+                                </div>
+                            </div>
+                        ))}
+
+                        {isAITyping && (
+                            <div className="flex justify-start">
+                                <div className="bg-white/5 border border-white/10 px-4 py-3 rounded-2xl rounded-tl-none">
+                                    <div className="flex gap-1.5">
+                                        <div className="w-1 h-1 bg-[#7a6af6] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                        <div className="w-1 h-1 bg-[#7a6af6] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                        <div className="w-1 h-1 bg-[#7a6af6] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={chatEndRef} />
+                    </div>
+
+                    {!isAITyping && chatHistory.length < 6 && (
+                        <div className="px-6 py-4 flex flex-wrap gap-2">
+                            {quickSuggestions.map((chip, i) => (
+                                <button key={i} onClick={() => handleAskAI(chip)} className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-[9px] font-bold uppercase tracking-wider text-white/50 hover:border-[#7a6af6]/50 hover:text-white hover:bg-[#7a6af6]/10 transition-all">
+                                    {chip}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="p-6 bg-white/[0.02] border-t border-white/5">
+                        <div className="relative group">
+                            <input
+                                type="text"
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleAskAI()}
+                                placeholder="Type a message..."
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 pr-14 text-[13px] text-white outline-none focus:border-[#7a6af6]/50 transition-all"
+                            />
+                            <button onClick={() => handleAskAI()} disabled={isAITyping || !chatInput.trim()} className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-[#7a6af6] text-white rounded-lg hover:scale-105 transition-all disabled:opacity-20">
+                                <Send size={16} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* 🤖 STYLE NUDGE (PROACTIVE POPUP) */}
+            {showNudge && !isChatOpen && chatHistory.length === 0 && (
+                <div className="fixed bottom-28 right-10 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <div className="relative group">
+                        {/* Tooltip Content */}
+                        <div className="bg-black/60 backdrop-blur-2xl border border-white/10 p-4 rounded-3xl shadow-2xl flex items-center gap-4 max-w-[240px] relative">
+                            <button 
+                                onClick={() => setShowNudge(false)}
+                                className="absolute -top-2 -right-2 w-5 h-5 bg-zinc-900 border border-white/10 rounded-full flex items-center justify-center text-white/30 hover:text-white transition-all"
+                            >
+                                <X size={10} />
+                            </button>
+                            
+                            <div className="w-10 h-10 shrink-0 bg-[#7a6af6] rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(122,106,246,0.3)] animate-bounce">
+                                <Bot size={20} className="text-white" />
+                            </div>
+                            
+                            <div className="space-y-0.5">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-white/90 italic">Style Query?</p>
+                                <p className="text-[9px] font-medium text-white/40 leading-tight">I can check stock or style this piece for you.</p>
+                            </div>
+                        </div>
+                        {/* Triangle Arrow */}
+                        <div className="absolute -bottom-1.5 right-8 w-3 h-3 bg-black/40 border-r border-b border-white/10 rotate-45 backdrop-blur-2xl" />
+                    </div>
+                </div>
+            )}
+
+            {/* 🟢 FLOATING TRIGGER BUTTON */}
+            <button
+                onClick={() => setIsChatOpen(true)}
+                className={`fixed bottom-8 right-8 z-[90] flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 pl-6 pr-4 py-4 rounded-2xl shadow-xl hover:bg-white/10 transition-all duration-500 group active:scale-95 ${isChatOpen ? 'opacity-0 scale-50 pointer-events-none' : 'opacity-100 scale-100'}`}
+            >
+                {/* Visual ping when nudge is active */}
+                {showNudge && (
+                    <span className="absolute -top-1 -left-1 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7a6af6] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-[#7a6af6]"></span>
+                    </span>
+                )}
+                
+                <div className="flex flex-col items-end">
+                    <span className="text-[11px] font-bold uppercase text-white/90">Style Assistant</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                        <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                        </span>
+                        <span className="text-[8px] font-medium text-white/40 uppercase tracking-widest">Online</span>
+                    </div>
+                </div>
+                <div className="w-11 h-11 bg-[#7a6af6] rounded-xl flex items-center justify-center text-white shadow-[#7a6af6]/20 group-hover:rotate-6 transition-all duration-500">
+                    <Sparkles size={20} fill="currentColor" />
+                </div>
+            </button>
+
             <main className="w-full px-4 md:px-8 lg:px-10 py-10 relative z-10">
-                {/* 1. BREADCRUMBS */}
                 <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.3em] text-white mb-6 pl-1">
                     <span onClick={() => navigate('/')} className="hover:text-white cursor-pointer transition-colors">Home</span>
                     <ChevronRight size={8} />
@@ -145,10 +332,7 @@ const ProductDetails = () => {
                     <span className="opacity-40">{product.name}</span>
                 </nav>
 
-                {/* 2. MAIN CONTAINER */}
                 <div className="w-full border border-white/10 rounded-[2rem] overflow-hidden backdrop-blur-3xl bg-white/[0.01] flex flex-col lg:flex-row shadow-2xl">
-
-                    {/* LEFT: IMAGE STAGE */}
                     <div className="lg:w-1/2 relative border-b lg:border-b-0 lg:border-r border-white/10 bg-white/[0.01]">
                         <div
                             ref={imgRef}
@@ -172,7 +356,6 @@ const ProductDetails = () => {
                                 </div>
                             )}
                         </div>
-
                         <div className="absolute bottom-6 left-6 flex gap-2">
                             {currentVariant?.images.map((img, i) => (
                                 <button key={i} onClick={() => setActiveImg(img)} className={`w-12 h-14 rounded-lg overflow-hidden border-2 transition-all shrink-0 ${activeImg === img ? 'border-[#7a6af6] scale-105 shadow-xl' : 'border-white/10 opacity-30 hover:opacity-100'}`}>
@@ -182,7 +365,6 @@ const ProductDetails = () => {
                         </div>
                     </div>
 
-                    {/* RIGHT: DETAILS */}
                     <div className="lg:w-1/2 p-8 lg:p-16 flex flex-col justify-center">
                         <div className="space-y-6">
                             <header className="space-y-2">
@@ -200,7 +382,6 @@ const ProductDetails = () => {
                                 </div>
                             </header>
 
-                            {/* SELECTION GRID */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6 border-y border-white/5">
                                 <div className="space-y-4">
                                     <p className="text-[9px] font-black uppercase tracking-widest text-white/30 italic">Color: {currentVariant?.color}</p>
@@ -215,7 +396,6 @@ const ProductDetails = () => {
                                         ))}
                                     </div>
                                 </div>
-
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
                                         <p className="text-[9px] font-black uppercase tracking-widest text-white/30 italic">Dimensions</p>
@@ -256,7 +436,6 @@ const ProductDetails = () => {
                                         <span className="text-[10px] font-black w-3 text-center italic">{qty}</span>
                                         <button onClick={() => setQty(q => Math.min(selectedSize?.stock || 1, Math.min(5, q + 1)))} className="text-white/20 hover:text-white transition-colors"><Plus size={14} /></button>
                                     </div>
-
                                     <button
                                         onClick={handleAddToCart}
                                         disabled={isOutOfStock || addToCart.isPending}
@@ -264,7 +443,6 @@ const ProductDetails = () => {
                                     >
                                         {addToCart.isPending ? <Loader2 size={16} className="animate-spin" /> : isOutOfStock ? "Archive Empty" : isAlreadyInCart ? <><ShieldCheck size={16} /> In Archive</> : <><ShoppingBag size={16} /> Commit To Archive</>}
                                     </button>
-
                                     <button
                                         onClick={handleWishlistToggle}
                                         disabled={wishlistPending}
@@ -273,7 +451,6 @@ const ProductDetails = () => {
                                         {wishlistPending ? <Loader2 size={18} className="animate-spin" /> : <Heart size={18} className={isWishlisted ? "fill-red-500" : "group-hover:fill-red-400"} />}
                                     </button>
                                 </div>
-
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.01] border border-white/5">
                                         <ShieldCheck size={14} className="text-[#7a6af6]" />
@@ -284,20 +461,18 @@ const ProductDetails = () => {
                                         <span className="text-[8px] font-black uppercase text-white/40 italic">Archive Logistics</span>
                                     </div>
                                 </div>
-
                                 <p className="text-[10px] text-white/30 leading-relaxed font-medium italic line-clamp-3 hover:line-clamp-none transition-all duration-500">{product.description}</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 3. RELATED PRODUCTS */}
+                {/* RELATED PRODUCTS */}
                 <section className="mt-20 space-y-10">
                     <div className="flex justify-between items-end border-b border-white/5 pb-4 px-1">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic">Related Archive</h2>
                         <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">Discovery 2026</span>
                     </div>
-
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         {recommendedData.map((rec) => (
                             <div key={rec._id} onClick={() => navigate(`/product/${rec._id}`)} className="group cursor-pointer space-y-2">

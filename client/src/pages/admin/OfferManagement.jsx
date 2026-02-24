@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Tag, Search, List, Trash2, Box, Calendar, Edit3, Layers, Award } from "lucide-react"; // Added Award icon
+import { 
+    Plus, Tag, Search, List, Trash2, Box, Calendar, 
+    Edit3, Layers, Award, ShieldCheck, ShieldAlert, Loader2 
+} from "lucide-react";
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import DataTable from "../../tables/admin/DataTable";
-import { useOffers } from "../../hooks/admin/useOffers";
+import { useOffers, useToggleOffer } from "../../hooks/admin/useOffers"; 
 import { adminToast } from "../../utils/adminToast";
 
 const OfferManagement = () => {
@@ -14,6 +17,8 @@ const OfferManagement = () => {
     const [page, setPage] = useState(1);
 
     const { offers, isLoading, deleteOffer } = useOffers();
+    // 🟢 Ensure these names match what you use in the button below
+    const { mutate: toggleStatus, isPending: isToggling } = useToggleOffer(); 
 
     /* ------------------ SEARCH DEBOUNCE ------------------ */
     useEffect(() => {
@@ -22,7 +27,7 @@ const OfferManagement = () => {
     }, [searchTerm]);
 
     /* ------------------ CLIENT-SIDE FILTERING ------------------ */
-    const filteredOffers = offers.filter(offer => 
+    const filteredOffers = (offers || []).filter(offer => 
         offer.title?.toLowerCase().includes(debouncedSearch.toLowerCase())
     );
 
@@ -101,87 +106,122 @@ const OfferManagement = () => {
                         </div>
 
                         <DataTable
-                            columns={["Strategy Name", "Target Scope", "Discount Value", "Timeline", "Actions"]}
+                            columns={["Strategy Name", "Target Scope", "Discount", "Status", "Actions"]}
                             data={filteredOffers}
                             loading={isLoading}
                             pagination={pagination}
                             onPageChange={setPage}
                             emptyText="No offer rules currently deployed"
-                            renderRow={(offer) => (
-                                <tr key={offer._id} className="group hover:bg-slate-50/50 transition-colors border-b last:border-0 border-slate-50">
-                                    
-                                    {/* COLUMN 1: STRATEGY */}
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-[#7a6af6] border border-slate-200">
-                                                <Tag size={16} strokeWidth={2.5} />
+                            renderRow={(offer) => {
+                                // 🟢 FIX: Define these variables inside renderRow so they are available for the JSX below
+                                const now = new Date();
+                                const isExpired = new Date(offer.endDate) < now;
+                                
+                                let statusConfig;
+                                if (!offer.isActive) {
+                                    statusConfig = { label: 'BLOCKED', bg: 'bg-red-50', border: 'border-red-100', text: 'text-red-600', dot: 'bg-red-500' };
+                                } else if (isExpired) {
+                                    statusConfig = { label: 'EXPIRED', bg: 'bg-slate-100', border: 'border-slate-200', text: 'text-slate-500', dot: 'bg-slate-400' };
+                                } else {
+                                    statusConfig = { label: 'ACTIVE', bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-600', dot: 'bg-green-500 animate-pulse' };
+                                }
+
+                                return (
+                                    <tr key={offer._id} className="group hover:bg-slate-50/50 transition-colors border-b last:border-0 border-slate-50">
+                                        
+                                        {/* COLUMN 1: STRATEGY */}
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-[#7a6af6] border border-slate-200 group-hover:border-[#0F172A] transition-all">
+                                                    <Tag size={16} strokeWidth={2.5} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[11px] font-black text-[#0F172A] uppercase tracking-tight">
+                                                        {offer.title}
+                                                    </p>
+                                                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
+                                                        REF: {offer._id.slice(-6).toUpperCase()}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-[11px] font-black text-[#0F172A] uppercase tracking-tight">
-                                                    {offer.title}
-                                                </p>
-                                                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">
-                                                    REF: {offer._id.slice(-6)}
-                                                </p>
+                                        </td>
+
+                                        {/* COLUMN 2: TARGET SCOPE */}
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <span className="p-1.5 rounded-lg bg-slate-100 text-slate-500">
+                                                    {offer.applyFor === 'PRODUCT' && <Box size={12} />}
+                                                    {offer.applyFor === 'CATEGORY' && <Layers size={12} />}
+                                                    {offer.applyFor === 'SUBCATEGORY' && <List size={12} />}
+                                                    {offer.applyFor === 'BRAND' && <Award size={12} />}
+                                                </span>
+                                                <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider italic">
+                                                    {offer.applyFor}
+                                                </span>
                                             </div>
-                                        </div>
-                                    </td>
+                                        </td>
 
-                                    {/* COLUMN 2: TARGET SCOPE */}
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <span className="p-1.5 rounded-lg bg-slate-100 text-slate-500">
-                                                {offer.applyFor === 'PRODUCT' && <Box size={12} />}
-                                                {offer.applyFor === 'CATEGORY' && <Layers size={12} />}
-                                                {offer.applyFor === 'SUBCATEGORY' && <List size={12} />}
-                                                {offer.applyFor === 'BRAND' && <Award size={12} />} {/* NEW: Brand Icon */}
-                                            </span>
-                                            <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider italic">
-                                                {offer.applyFor}
-                                            </span>
-                                        </div>
-                                    </td>
-
-                                    {/* COLUMN 3: VALUE */}
-                                    <td className="px-6 py-4">
-                                        <div className="inline-flex items-center px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-full border border-indigo-100">
-                                            <span className="text-[10px] font-black">{offer.discountValue}%</span>
-                                            <span className="text-[7px] font-bold uppercase ml-1 opacity-70 italic">OFF</span>
-                                        </div>
-                                    </td>
-
-                                    {/* COLUMN 4: TIMELINE */}
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col gap-1">
-                                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500">
-                                                <Calendar size={11} className="text-slate-400" />
-                                                Ends: {new Date(offer.endDate).toLocaleDateString('en-GB')}
+                                        {/* COLUMN 3: VALUE */}
+                                        <td className="px-6 py-4">
+                                            <div className="inline-flex items-center px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-full border border-indigo-100">
+                                                <span className="text-[10px] font-black">{offer.discountValue}%</span>
+                                                <span className="text-[7px] font-bold uppercase ml-1 opacity-70 italic">OFF</span>
                                             </div>
-                                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full w-fit ${offer.isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
-                                                {offer.isActive ? "Active" : "Paused"}
-                                            </span>
-                                        </div>
-                                    </td>
+                                        </td>
 
-                                    {/* COLUMN 5: ACTIONS */}
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <button
-                                                onClick={() => navigate(`/admin/offers/edit/${offer._id}`)}
-                                                className="p-2 text-slate-400 hover:text-[#7a6af6] hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-slate-100 transition-all"
-                                            >
-                                                <Edit3 size={15} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(offer._id)}
-                                                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-white rounded-lg shadow-sm border border-transparent hover:border-slate-100 transition-all"
-                                            >
-                                                <Trash2 size={15} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
+                                        {/* COLUMN 4: LIVE STATUS BADGE */}
+                                        <td className="px-6 py-4">
+                                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${statusConfig.bg} ${statusConfig.border}`}>
+                                                <div className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
+                                                <span className={`text-[8px] font-black uppercase tracking-widest ${statusConfig.text}`}>
+                                                    {statusConfig.label}
+                                                </span>
+                                            </div>
+                                        </td>
+
+                                        {/* COLUMN 5: ACTIONS */}
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                
+                                                <button
+                                                    onClick={() => toggleStatus(offer._id)}
+                                                    disabled={isToggling}
+                                                    className={`p-2 rounded-xl transition-all border border-transparent ${
+                                                        offer.isActive 
+                                                            ? 'text-slate-400 hover:text-red-500 hover:bg-red-50 hover:border-red-100' 
+                                                            : 'text-green-500 hover:text-green-600 hover:bg-green-50 hover:border-green-100'
+                                                    }`}
+                                                    title={offer.isActive ? "Block Offer" : "Unblock Offer"}
+                                                >
+                                                    {isToggling ? (
+                                                        <Loader2 size={16} className="animate-spin" />
+                                                    ) : offer.isActive ? (
+                                                        <ShieldAlert size={16} strokeWidth={2.5} />
+                                                    ) : (
+                                                        <ShieldCheck size={16} strokeWidth={2.5} />
+                                                    )}
+                                                </button>
+
+                                                <button
+                                                    onClick={() => navigate(`/admin/offers/edit/${offer._id}`)}
+                                                    className="p-2 text-slate-400 hover:text-[#7a6af6] hover:bg-[#7a6af6]/10 rounded-xl transition-all border border-transparent hover:border-[#7a6af6]/20"
+                                                    title="Edit Offer"
+                                                >
+                                                    <Edit3 size={16} strokeWidth={2.5} />
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handleDelete(offer._id)}
+                                                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all border border-transparent hover:border-rose-100"
+                                                    title="Delete Offer"
+                                                >
+                                                    <Trash2 size={16} strokeWidth={2.5} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            }}
                         />
                     </div>
                 </div>

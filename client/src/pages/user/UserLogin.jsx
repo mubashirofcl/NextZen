@@ -29,8 +29,29 @@ const UserLogin = () => {
         defaultValues: { email: "", password: "" },
     });
 
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const ref = params.get("ref");
+        if (ref) {
+            localStorage.setItem("pending_referral", ref);
+            console.log("📍 Referral saved to storage:", ref);
+        }
+    }, [location.search]);
+
     const handleGoogleSignIn = () => {
-        window.location.href = "http://localhost:5000/api/auth/google";
+        const params = new URLSearchParams(window.location.search);
+        let ref = params.get("ref");
+
+        if (!ref) {
+            ref = localStorage.getItem("pending_referral");
+        }
+
+        const backendBaseUrl = "http://localhost:5000/api/auth/google";
+        const finalUrl = ref
+            ? `${backendBaseUrl}?ref=${ref}`
+            : backendBaseUrl;
+
+        window.location.href = finalUrl;
     };
 
     useEffect(() => {
@@ -45,7 +66,7 @@ const UserLogin = () => {
         if (blockedReason) {
             setBlockedReason(blockedReason);
             setShowBlockedModal(true);
-  
+
             sessionStorage.removeItem("BLOCKED_MESSAGE");
         }
     }, [location.search]);

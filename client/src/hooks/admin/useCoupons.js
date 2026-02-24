@@ -4,7 +4,8 @@ import {
     createCouponApi,
     updateCouponApi,
     deleteCouponApi,
-    getCouponByIdApi
+    getCouponByIdApi,
+    toggleCouponStatusApi
 } from "../../api/admin/coupon.api";
 import { nxToast } from "../../utils/userToast";
 import { useNavigate } from "react-router-dom";
@@ -30,7 +31,7 @@ export const useCoupons = (id = null) => {
     const createMutation = useMutation({
         mutationFn: createCouponApi,
         onSuccess: (res) => {
-            queryClient.invalidateQueries(["admin-coupons"]);
+            queryClient.invalidateQueries({ queryKey: ["admin-coupons"] });
             nxToast.success(res.message || "Coupon Deployed");
             navigate("/admin/coupons");
         },
@@ -40,8 +41,8 @@ export const useCoupons = (id = null) => {
     const updateMutation = useMutation({
         mutationFn: updateCouponApi,
         onSuccess: (res) => {
-            queryClient.invalidateQueries(["admin-coupons"]);
-            queryClient.invalidateQueries(["admin-coupon", id]); // Refresh specific details
+            queryClient.invalidateQueries({ queryKey: ["admin-coupons"] });
+            queryClient.invalidateQueries({ queryKey: ["admin-coupon", id] }); // Refresh specific details
             nxToast.success(res.message || "Coupon Updated");
             navigate("/admin/coupons");
         },
@@ -51,7 +52,7 @@ export const useCoupons = (id = null) => {
     const deleteMutation = useMutation({
         mutationFn: deleteCouponApi,
         onSuccess: () => {
-            queryClient.invalidateQueries(["admin-coupons"]);
+            queryClient.invalidateQueries({ queryKey: ["admin-coupons"] });
             nxToast.success("Coupon Purged");
         },
         onError: (err) => nxToast.error(err.response?.data?.message || "Purge failed")
@@ -60,7 +61,7 @@ export const useCoupons = (id = null) => {
     return {
         // Data
         coupons: coupons?.coupons || [],
-        couponDetail: couponDetail?.coupon, // Ensure backend returns { success: true, coupon: {...} }
+        couponDetail: couponDetail?.coupon, 
 
         // States
         isLoading,
@@ -72,4 +73,43 @@ export const useCoupons = (id = null) => {
         updateCoupon: updateMutation.mutateAsync,
         deleteCoupon: deleteMutation.mutateAsync,
     };
+};
+
+export const useToggleCoupon = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: toggleCouponStatusApi,
+
+        onMutate: async (couponId) => {
+            await queryClient.cancelQueries({ queryKey: ["admin-coupons"] });
+            const previousCoupons = queryClient.getQueryData(["admin-coupons"]);
+
+            queryClient.setQueryData(["admin-coupons"], (old) => {
+                if (!old || !old.coupons) return old;
+                return {
+                    ...old,
+                    coupons: old.coupons.map((coupon) =>
+                        coupon._id === couponId
+                            ? { ...coupon, isActive: !coupon.isActive }
+                            : coupon
+                    ),
+                };
+            });
+
+            return { previousCoupons };
+        },
+
+        onError: (err, newTodo, context) => {
+            queryClient.setQueryData(["admin-coupons"], context.previousCoupons);
+            nxToast.error("Update Failed", err.response?.data?.message || "Could not change status.");
+        },
+
+        onSuccess: (data) => {
+            nxToast.success(data.message || "Status Updated");
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ["admin-coupons"] });
+        }
+    });
 };

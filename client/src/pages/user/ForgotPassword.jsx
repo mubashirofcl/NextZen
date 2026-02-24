@@ -45,7 +45,7 @@ const ForgotPassword = () => {
                                 type="email"
                                 placeholder="name@example.com"
                                 {...register("email", { required: "Email is required" })}
-                                className="w-full h-14 px-5 bg-gray-50 border-none rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
+                                className="w-full h-14 px-5 bg-gray-50 border-none rounded-xl text-xs text-black font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
                             />
                             {errors.email && <p className="text-red-500 text-[9px] font-bold mt-1 ml-1 uppercase tracking-tighter italic">{errors.email.message}</p>}
                         </div>
