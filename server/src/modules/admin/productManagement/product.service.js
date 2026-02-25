@@ -59,10 +59,10 @@ export const createProductService = async (payload) => {
     if (!subCategory?.isActive) throw new Error("Sub-category is inactive.");
     if (!brand) throw new Error("Selected brand is blocked or deleted.");
 
-    // 🟢 Fix: Ensure offerId is either a valid ObjectId or explicitly null
     const resolvedOfferId = (offerId && mongoose.Types.ObjectId.isValid(offerId)) ? offerId : null;
 
-    const [product] = await createProductRepo({
+    // 🟢 FIXED: Removed the brackets []. createProductRepo returns a single Object.
+    const product = await createProductRepo({
         ...productData,
         categoryId,
         subcategoryId,
@@ -89,7 +89,6 @@ export const updateProductService = async (productId, payload) => {
     const { variants, categoryId, subcategoryId, brandId, offerId, ...productData } = payload;
     const cleanProductId = new mongoose.Types.ObjectId(productId);
 
-    // 1. RE-VALIDATE CATEGORY/BRAND STATUS
     if (categoryId || subcategoryId || brandId) {
         const [category, sub, brand] = await Promise.all([
             categoryId ? categoryModel.findById(categoryId) : null,
@@ -102,7 +101,6 @@ export const updateProductService = async (productId, payload) => {
         if (brandId && (!brand || !brand.isActive)) throw new Error("Selected brand is inactive/blocked");
     }
 
-    // 2. VALIDATE VARIANTS
     if (variants !== undefined) {
         if (!Array.isArray(variants) || variants.length === 0) throw new Error("At least one variant is required");
 
@@ -121,24 +119,20 @@ export const updateProductService = async (productId, payload) => {
         }
     }
 
-    // 🟢 3. FIX: Explicitly resolve offerId for Update
-    // If offerId is empty string or "null" string from frontend, set it to null to clear it
     const resolvedOfferId = (offerId && offerId !== "" && mongoose.Types.ObjectId.isValid(offerId)) 
         ? offerId 
         : null;
 
-    // 4. EXECUTE UPDATE
     const updatedProduct = await updateProductById(cleanProductId, {
         ...productData,
         categoryId,
         subcategoryId,
         brandId,
-        offerId: resolvedOfferId // Overwrite existing offer with new ID or null
+        offerId: resolvedOfferId 
     });
 
     if (!updatedProduct) throw new Error("Product not found");
 
-    // 5. SYNC VARIANTS
     if (variants !== undefined) {
         const activeVariantIds = [];
         for (const variant of variants) {

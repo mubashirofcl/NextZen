@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     ShoppingBag, Heart, ChevronRight, Minus, Plus,
     ShieldCheck, Truck, List, AlertCircle, Loader2,
-    Sparkles, X, Send, MessageSquare, RefreshCw, Bot
+    Sparkles, X, Send, MessageSquare, RefreshCw, Bot,
+    Palette,
+    Banknote
 } from 'lucide-react';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
@@ -494,6 +496,38 @@ const ProductDetails = () => {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </section>
+
+                <section className="max-w-[1440px] mx-auto border-t border-white/10 pt-20 grid grid-cols-1 md:grid-cols-3 gap-16 mb-10 mt-40">
+                    <div className="flex flex-col items-center text-center space-y-4 group">
+                        <div className="w-16 h-16 rounded-full bg-[#111] flex items-center justify-center group-hover:bg-[#7a6af6] transition-all duration-500 shadow-xl border border-white/5">
+                            <Palette className="text-white" size={28} />
+                        </div>
+                        <h3 className="text-sm font-black uppercase tracking-[0.2em] italic">Exclusive Collabs</h3>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest leading-relaxed max-w-[250px]">
+                            Collaborations with iconic artists and illustrators on premium fabrics.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col items-center text-center space-y-4 group">
+                        <div className="w-16 h-16 rounded-full bg-[#111] flex items-center justify-center group-hover:bg-[#7a6af6] transition-all duration-500 shadow-xl border border-white/5">
+                            <Banknote className="text-white" size={28} />
+                        </div>
+                        <h3 className="text-sm font-black uppercase tracking-[0.2em] italic">Honest Pricing</h3>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest leading-relaxed max-w-[250px]">
+                            Direct shop access ensuring luxury quality without the traditional high markups.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col items-center text-center space-y-4 group">
+                        <div className="w-16 h-16 rounded-full bg-[#111] flex items-center justify-center group-hover:bg-[#7a6af6] transition-all duration-500 shadow-xl border border-white/5">
+                            <ShieldCheck className="text-white" size={28} />
+                        </div>
+                        <h3 className="text-sm font-black uppercase tracking-[0.2em] italic">Guaranteed Quality</h3>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest leading-relaxed max-w-[250px]">
+                            Meticulous attention to every stitch, seam, and detail in every piece we drop.
+                        </p>
                     </div>
                 </section>
             </main>

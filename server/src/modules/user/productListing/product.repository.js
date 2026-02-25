@@ -42,16 +42,57 @@ const lookupOffersHierarchy = [
 ];
 
 export const getProductsRepository = async (filters) => {
-    const { search = "", page = 1, limit = 10, sort = "", minPrice, maxPrice, isFeatured } = filters;
+    const {
+        search = "",
+        page = 1,
+        limit = 10,
+        sort = "",
+        category,
+        subcategory,
+        brand,
+        size,
+        minPrice,
+        maxPrice,
+        isFeatured
+    } = filters;
+
     const skip = (Number(page) - 1) * Number(limit);
     const pipeline = [];
 
+    // 1. Initial Match
     const baseMatch = { isActive: true, isDeleted: false };
     if (isFeatured !== undefined) baseMatch.isFeatured = isFeatured;
+    if (category && mongoose.Types.ObjectId.isValid(category)) baseMatch.categoryId = new mongoose.Types.ObjectId(category);
+    if (subcategory && mongoose.Types.ObjectId.isValid(subcategory)) baseMatch.subcategoryId = new mongoose.Types.ObjectId(subcategory);
+
     pipeline.push({ $match: baseMatch });
 
+    // 2. JOIN CATEGORIES EARLY (Required for Name Search and UI Display)
+    pipeline.push({
+        $lookup: {
+            from: "categories",
+            localField: "subcategoryId",
+            foreignField: "_id",
+            as: "subcategoryInfo"
+        }
+    });
+
+    // 3. APPLY MULTI-FIELD SEARCH
+    if (search) {
+        pipeline.push({
+            $match: {
+                $or: [
+                    { name: { $regex: search, $options: "i" } },
+                    { "subcategoryInfo.name": { $regex: search, $options: "i" } }
+                ]
+            }
+        });
+    }
+
+    // 4. Offer & Brand Lookup Hierarchy
     pipeline.push(...lookupOffersHierarchy);
 
+    // 5. Variant & Size Unwinding
     pipeline.push(
         { $lookup: { from: "variants", localField: "_id", foreignField: "productId", as: "variantDocs" } },
         { $unwind: "$variantDocs" },
@@ -59,9 +100,19 @@ export const getProductsRepository = async (filters) => {
         { $unwind: "$variantDocs.sizes" }
     );
 
+    // Filter Brands & Sizes
+    if (brand && brand.length > 0) {
+        const brandIds = Array.isArray(brand) ? brand : brand.split(",");
+        pipeline.push({ $match: { brandId: { $in: brandIds.map(id => new mongoose.Types.ObjectId(id)) } } });
+    }
+    if (size && size.length > 0) {
+        const sizeList = Array.isArray(size) ? size : size.split(",");
+        pipeline.push({ $match: { "variantDocs.sizes.size": { $in: sizeList } } });
+    }
+
+    // 6. Price Calculations
     pipeline.push({
         $addFields: {
-            // STEP 1: Calculate the price if ONLY the campaign offer (e.g. 10%) was applied
             campaignPrice: {
                 $cond: [
                     { $gt: [{ $toDouble: "$winningOffer.maxDiscount" }, 0] },
@@ -74,21 +125,21 @@ export const getProductsRepository = async (filters) => {
 
     pipeline.push({
         $addFields: {
-            // STEP 2: Compare Campaign Price vs Manual Sale Price (17%) and pick the MINIMUM
             calculatedSalePrice: { $min: ["$campaignPrice", "$variantDocs.sizes.salePrice"] }
         }
     });
 
+    // 7. FINAL GROUPING (Fixed for Header UI)
     pipeline.push({
         $group: {
             _id: "$_id",
             name: { $first: "$name" },
             thumbnail: { $first: { $arrayElemAt: ["$variantDocs.images", 0] } },
-            subcategory: { $first: "$subDoc" },
+            // 🟢 FIX: Map subcategory specifically for the Header Dropdown
+            subcategory: { $first: { $arrayElemAt: ["$subcategoryInfo", 0] } }, 
             brand: { $first: "$brandDoc" },
             minSalePrice: { $min: "$calculatedSalePrice" },
             minOriginalPrice: { $min: "$variantDocs.sizes.originalPrice" },
-            // STEP 3: Back-calculate the discount percentage for the Badge based on final best price
             discountValue: {
                 $first: {
                     $round: [{
@@ -98,22 +149,28 @@ export const getProductsRepository = async (filters) => {
                         ]
                     }, 0]
                 }
-            },
-            totalStock: { $sum: "$variantDocs.sizes.stock" },
-            variantCount: { $addToSet: "$variantDocs._id" }
+            }
         }
     });
 
+    // Sorting & Facet
+    let sortObj = { createdAt: -1 };
+    if (sort === "price_asc") sortObj = { minSalePrice: 1 };
+    else if (sort === "price_desc") sortObj = { minSalePrice: -1 };
+    
+    pipeline.push({ $sort: sortObj });
+
     pipeline.push({
         $facet: {
-            data: [{ $sort: { createdAt: -1 } }, { $skip: skip }, { $limit: Number(limit) }],
+            data: [{ $skip: skip }, { $limit: Number(limit) }],
             totalCount: [{ $count: "count" }],
         },
     });
 
     const result = await productModel.aggregate(pipeline);
+
     return {
-        products: (result[0]?.data || []).map(p => ({ ...p, variantCount: p.variantCount?.length || 0 })),
+        products: (result[0]?.data || []),
         totalCount: result[0]?.totalCount[0]?.count || 0
     };
 };

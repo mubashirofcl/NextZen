@@ -73,12 +73,10 @@ const ProductForm = () => {
             reset({
                 ...productData,
                 subcategoryId: normalizedSubId || "",
-                offerId: normalizedOfferId || ""
+                offerId: normalizedOfferId || "",
+                variants: productData.variants || [],
+                highlights: productData.highlights || [""]
             });
-
-            if (productData.variants) {
-                setValue("variants", productData.variants);
-            }
 
             isInitialized.current = true;
         } else if (!isEditMode && !isInitialized.current) {
@@ -88,7 +86,7 @@ const ProductForm = () => {
             });
             isInitialized.current = true;
         }
-    }, [productData, isEditMode, reset, setValue, appendVariant]);
+    }, [productData, isEditMode, reset, appendVariant]);
 
     useEffect(() => {
         if (isEditMode && productData && subCategoryData?.length > 0) {
@@ -128,17 +126,23 @@ const ProductForm = () => {
 
     const onFormSubmit = async (payload) => {
         if (isSubmitting) return;
-        if (!payload.variants || payload.variants.length === 0) {
+
+        const variantsArray = Array.isArray(payload.variants) ? payload.variants : [];
+        const highlightsArray = Array.isArray(payload.highlights) ? payload.highlights : [];
+
+        if (variantsArray.length === 0) {
             adminToast.warn("Constraint Violation", "At least one variant is required.");
             return;
         }
 
         const cleanedPayload = {
             ...payload,
+            highlights: highlightsArray.filter(h => h && h.trim() !== ""),
             offerId: payload.offerId === "" ? null : payload.offerId,
-            variants: payload.variants.map(v => {
+            variants: variantsArray.map(v => {
                 const cleanV = { ...v };
                 if (!cleanV._id || cleanV._id === "") delete cleanV._id;
+                cleanV.sizes = Array.isArray(v.sizes) ? v.sizes : [];
                 return cleanV;
             })
         };
@@ -180,7 +184,6 @@ const ProductForm = () => {
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
                     <form className="space-y-3 pb-8" onSubmit={(e) => e.preventDefault()}>
 
-                        {/* PRIMARY IDENTITY */}
                         <div className="bg-white rounded-[20px] p-6 border shadow-sm">
                             <div className="flex items-center gap-2 mb-5 border-b pb-3 text-[#7a6af6]">
                                 <ClipboardList size={16} />
@@ -206,7 +209,54 @@ const ProductForm = () => {
                             </div>
                         </div>
 
-                        {/* 🟢 FIXED: INCENTIVE STRATEGY (OFFER SELECTION) */}
+                        <div className="bg-white rounded-[20px] p-6 border shadow-sm space-y-6">
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center px-1 border-b pb-3">
+                                    <div className="flex items-center gap-2">
+                                        <ListChecks size={16} className="text-[#7a6af6]" />
+                                        <h3 className="text-[10px] font-black text-[#0F172A] uppercase tracking-widest">Key Highlights</h3>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => appendHighlight("")}
+                                        className="flex items-center gap-1.5 text-[9px] font-black text-white bg-[#7a6af6] px-4 py-1.5 rounded-xl hover:shadow-lg transition-all"
+                                    >
+                                        <Plus size={12} /> Add Point
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {highlightFields.map((field, index) => (
+                                        <div key={field.id} className="group flex items-center gap-2 bg-slate-50 p-2 rounded-[12px] border border-slate-100 hover:border-[#7a6af6] transition-all">
+                                            <div className="w-6 h-6 flex-shrink-0 bg-[#0F172A] text-white rounded-lg flex items-center justify-center text-[9px] font-black">
+                                                {index + 1}
+                                            </div>
+                                            <input
+                                                {...register(`highlights.${index}`, { required: "Required" })}
+                                                placeholder="Enter highlight feature..."
+                                                className="flex-1 bg-transparent py-1.5 text-[11px] font-bold text-[#0F172A] outline-none placeholder:text-slate-300"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeHighlight(index)}
+                                                className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                {highlightFields.length === 0 && (
+                                    <p className="text-[9px] text-center text-slate-400 font-bold uppercase italic py-4">No highlights defined for this deployment.</p>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 border-t pt-6">
+                                <ToggleField label="Featured Showcase" register={register("isFeatured")} icon={<Activity size={14} />} />
+                                <ToggleField label="Visibility Status" register={register("isActive")} icon={<Layout size={14} />} />
+                            </div>
+                        </div>
+
                         <div className="bg-white rounded-[20px] p-6 border shadow-sm">
                             <div className="flex items-center gap-2 mb-5 border-b pb-3 text-[#7a6af6]">
                                 <Percent size={16} />
@@ -236,7 +286,6 @@ const ProductForm = () => {
                             </div>
                         </div>
 
-                        {/* SIZING MODE */}
                         <div className="bg-white rounded-[20px] p-4 border shadow-sm">
                             <label className="text-[9px] font-black text-[#0F172A] uppercase ml-1 mb-3 block tracking-widest">Inventory Sizing Mode</label>
                             <div className="grid grid-cols-3 gap-3">
@@ -249,7 +298,6 @@ const ProductForm = () => {
                             </div>
                         </div>
 
-                        {/* CONFIGURATION MATRIX */}
                         <div className="flex justify-between items-center px-6 py-3 bg-[#0F172A] rounded-[16px] text-white">
                             <h3 className="text-[10px] font-black uppercase">Configuration Matrix</h3>
                             <button type="button" onClick={() => appendVariant({ color: "New Color", hex: "#000000", images: [], sizes: getNewVariantSizes() })} className="px-4 py-1.5 bg-[#7a6af6] rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-[#6858e0] transition-colors">+ Add Colorway</button>
@@ -259,56 +307,6 @@ const ProductForm = () => {
                             <VariantCard key={field.id} index={index} register={register} watch={watch} onRemove={() => removeVariant(index)} setValue={setValue} errors={errors} />
                         ))}
 
-                        {/* 🟢 FIXED: HIGHLIGHTS & STATUS (RENDERED INPUTS) */}
-                        <div className="bg-white rounded-[20px] p-6 border shadow-sm space-y-6">
-                             <div className="space-y-4">
-                                <div className="flex justify-between items-center px-1 border-b pb-3">
-                                    <div className="flex items-center gap-2">
-                                        <ListChecks size={16} className="text-[#7a6af6]" />
-                                        <h3 className="text-[10px] font-black text-[#0F172A] uppercase tracking-widest">Key Highlights</h3>
-                                    </div>
-                                    <button 
-                                        type="button" 
-                                        onClick={() => appendHighlight("")} 
-                                        className="flex items-center gap-1.5 text-[9px] font-black text-white bg-[#7a6af6] px-4 py-1.5 rounded-xl hover:shadow-lg transition-all"
-                                    >
-                                        <Plus size={12} /> Add Point
-                                    </button>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {highlightFields.map((field, index) => (
-                                        <div key={field.id} className="group flex items-center gap-2 bg-slate-50 p-2 rounded-[12px] border border-slate-100 hover:border-[#7a6af6] transition-all">
-                                            <div className="w-6 h-6 flex-shrink-0 bg-[#0F172A] text-white rounded-lg flex items-center justify-center text-[9px] font-black">
-                                                {index + 1}
-                                            </div>
-                                            <input 
-                                                {...register(`highlights.${index}`, { required: "Required" })} 
-                                                placeholder="Enter highlight feature..."
-                                                className="flex-1 bg-transparent py-1.5 text-[11px] font-bold text-[#0F172A] outline-none placeholder:text-slate-300" 
-                                            />
-                                            <button 
-                                                type="button" 
-                                                onClick={() => removeHighlight(index)} 
-                                                className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                                {highlightFields.length === 0 && (
-                                    <p className="text-[9px] text-center text-slate-400 font-bold uppercase italic py-4">No highlights defined for this deployment.</p>
-                                )}
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 border-t pt-6">
-                                <ToggleField label="Featured Showcase" register={register("isFeatured")} icon={<Activity size={14} />} />
-                                <ToggleField label="Visibility Status" register={register("isActive")} icon={<Layout size={14} />} />
-                            </div>
-                        </div>
-
-                        {/* DEPLOYMENT SUMMARY */}
                         <div className="bg-white rounded-[20px] p-6 shadow-sm border border-slate-200">
                             <div className="flex items-center gap-2 mb-5 border-b border-slate-50 pb-3">
                                 <div className="w-8 h-8 bg-[#0F172A] text-white rounded-lg flex items-center justify-center shadow-md"><Layout size={14} /></div>
@@ -350,7 +348,6 @@ const ProductForm = () => {
     );
 };
 
-/* --- SHARED SUB-COMPONENTS --- */
 const InputField = ({ label, register, error }) => (
     <div className="space-y-1.5">
         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">{label}</label>

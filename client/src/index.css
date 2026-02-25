@@ -4,7 +4,6 @@
 
 @layer components {
 
-    /* Ultra-thin scrollbar for the Chat Drawer */
     .custom-scrollbar::-webkit-scrollbar {
         width: 2px;
     }
@@ -15,7 +14,6 @@
 
     .custom-scrollbar::-webkit-scrollbar-thumb {
         background: rgba(122, 106, 246, 0.2);
-        /* Subtle NextZen Purple */
         border-radius: 10px;
     }
 
@@ -23,9 +21,9 @@
         background: rgba(122, 106, 246, 0.5);
     }
 
-    /* Force background blur support for Safari */
     .backdrop-blur-xl {
         -webkit-backdrop-filter: blur(24px);
         backdrop-filter: blur(24px);
     }
 }
+

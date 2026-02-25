@@ -41,7 +41,6 @@ export const getCouponById = async (req, res, next) => {
     }
 };
 
-// 🟢 ADMIN: Update coupon
 export const updateCoupon = async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -61,7 +60,6 @@ export const updateCoupon = async (req, res, next) => {
     }
 };
 
-// 🟢 ADMIN: Delete coupon
 export const deleteCoupon = async (req, res, next) => {
     try {
         await couponService.purgeCoupon(req.params.id);
@@ -71,11 +69,10 @@ export const deleteCoupon = async (req, res, next) => {
     }
 };
 
-// 🟢 USER: Validate applied coupon during checkout
 export const validateUserCoupon = async (req, res, next) => {
     try {
         const { code, subtotal } = req.body;
-        const userId = req.user?.userId; // Required for 'Uses Per Customer' check
+        const userId = req.user?.userId; 
 
         if (!userId) {
             return res.status(401).json({ success: false, message: "Unauthorized: User identification missing." });
