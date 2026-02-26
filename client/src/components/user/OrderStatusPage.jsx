@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, XCircle, ArrowRight, Package, ShieldCheck, FileText, RefreshCw, ShoppingBag, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, ArrowRight, Package, ShieldCheck, FileText, RefreshCw, ShoppingBag, Loader2, Info } from 'lucide-react';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
 import userAxios from '../../api/baseAxios';
@@ -16,14 +16,14 @@ const OrderStatusPage = ({ type = 'success' }) => {
     const [fetchedOrder, setFetchedOrder] = useState(null);
     const [isLoading, setIsLoading] = useState(type === 'failed' && !location.state);
 
-    const { error, orderPayload, totalAmount } = location.state || {};
+    const { error, totalAmount } = location.state || {};
 
     const isSuccess = type === 'success';
     const themeColor = isSuccess ? "#7a6af6" : "#ef4444";
     const statusLabel = isSuccess ? "Confirmed" : "Failed";
 
     useEffect(() => {
-        if (!isSuccess && !totalAmount && orderId) {
+        if (!isSuccess && orderId) {
             const fetchFailedOrder = async () => {
                 try {
                     setIsLoading(true);
@@ -38,62 +38,67 @@ const OrderStatusPage = ({ type = 'success' }) => {
                 } finally {
                     setIsLoading(false);
                 }
-            };
+            }
             fetchFailedOrder();
         }
-    }, [isSuccess, totalAmount, orderId, navigate]);
+    }, [isSuccess, orderId, navigate]);
 
-    const actualTotalAmount = totalAmount || fetchedOrder?.totalAmount;
+    const actualTotalAmount = fetchedOrder?.totalAmount || totalAmount;
     const actualError = error || "The bank was unable to authorize this transaction.";
 
     const handleRetry = async () => {
         try {
-            if (!actualTotalAmount) {
-                nxToast.error("Session Expired", "Please restart from your order history.");
-                return navigate('/profile/orders');
-            }
-
             const isLoaded = await loadRazorpayScript();
             if (!isLoaded) return nxToast.error("Gateway Offline");
 
+            // 🟢 Pass ONLY the orderId. Let the server determine the correct discounted price.
             const { data: sessionData } = await userAxios.post("/user/payment/create-order", {
-                amount: actualTotalAmount,
                 orderId: orderId,
                 isRetry: true
             });
 
-            if (!sessionData.success) return nxToast.error("Could not refresh session");
+            if (!sessionData.success) return nxToast.error("Could not sync payment");
+
+            // 🟢 UPDATE: Reflect the server's corrected payableAmount on the UI instantly.
+            // If coupon expired, the server recalculated totalAmount and sent it back.
+            if (sessionData.payableAmount) {
+                setFetchedOrder(prev => prev ? { ...prev, totalAmount: sessionData.payableAmount } : prev);
+            }
 
             const options = {
                 key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+                // 🟢 USE THE AMOUNT RETURNED FROM SERVER (Persisted Discounted Price)
                 amount: sessionData.order.amount,
                 currency: "INR",
                 name: "Next Zen Store",
-                description: "Re-attempting Payment",
+                description: "Settling Order Balance",
                 order_id: sessionData.order.id,
                 handler: async function (response) {
                     try {
-                        const verifyRes = await userAxios.post("/user/payment/verify-payment", response);
-                        if (verifyRes.data.success) {
-                            await userAxios.patch(`/users/orders/${orderId}/complete-retry`, {
-                                paymentInfo: response,
-                                newRazorpayOrderId: sessionData.order.id
-                            });
+                        const updateRes = await userAxios.patch(`/users/orders/${orderId}/complete-retry`, {
+                            paymentInfo: response,
+                            newRazorpayOrderId: sessionData.order.id
+                        });
 
-                            nxToast.success("Success", "Payment confirmed successfully.");
+                        // 🟢 Handle coupon expiry warning from completeRetry
+                        if (updateRes.data.warning) {
+                            nxToast.warn("Policy Update", updateRes.data.warning);
+                        }
+
+                        if (updateRes.data.success) {
+                            nxToast.success("Success", "Payment confirmed.");
                             navigate(`/checkout/success/${orderId}`, { replace: true });
                         }
                     } catch (err) {
-                        nxToast.error("Sync Error", "Contact Support.");
+                        nxToast.error("Verification Failed", err.response?.data?.message || "Sync Error");
                     }
                 },
-                theme: { color: themeColor },
-                modal: { ondismiss: () => nxToast.security("Retry Cancelled") }
+                theme: { color: "#7a6af6" },
+                modal: { ondismiss: () => nxToast.info("Payment Interrupted") }
             };
-            const rzp = new window.Razorpay(options);
-            rzp.open();
+            new window.Razorpay(options).open();
         } catch (err) {
-            nxToast.error("Gateway Error", "Failed to initialize retry.");
+            nxToast.error("Inventory Alert", err.response?.data?.message || "Retry failed");
         }
     };
 
@@ -102,7 +107,7 @@ const OrderStatusPage = ({ type = 'success' }) => {
     if (isLoading) {
         return (
             <div className="min-h-screen bg-black text-white flex items-center justify-center">
-                <Loader2 className="animate-spin text-red-500" size={40} />
+                <Loader2 className="animate-spin text-[#7a6af6]" size={40} />
             </div>
         );
     }
@@ -121,12 +126,6 @@ const OrderStatusPage = ({ type = 'success' }) => {
 
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`${glassStyle} max-w-[420px] w-full p-8 text-center space-y-8 relative overflow-hidden`}>
 
-                    <motion.div
-                        initial={{ top: "-100%" }} animate={{ top: "100%" }}
-                        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                        className="absolute left-0 w-full h-20 bg-gradient-to-b from-transparent via-white/5 to-transparent pointer-events-none z-20"
-                    />
-
                     <div className="relative mx-auto w-20 h-20 flex items-center justify-center">
                         <motion.div
                             initial={{ scale: 0 }} animate={{ scale: 1.5, opacity: 0 }}
@@ -141,7 +140,7 @@ const OrderStatusPage = ({ type = 'success' }) => {
                     </div>
 
                     <div className="space-y-3 relative z-10">
-                        <p className="text-[9px] font-black uppercase tracking-[0.6em] italic" style={{ color: isSuccess ? themeColor : '#f87171' }}>
+                        <p className="text-[9px] font-black uppercase tracking-[0.6em] italic" style={{ color: isSuccess ? "#02faa7" : '#f87171' }}>
                             Order // {statusLabel}
                         </p>
                         <h1 className="text-4xl font-black uppercase tracking-tighter italic leading-none">
@@ -151,7 +150,7 @@ const OrderStatusPage = ({ type = 'success' }) => {
                         <div className="space-y-4 pt-2">
                             <div className="inline-block px-4 py-1.5 bg-white/5 border border-white/10 rounded-xl">
                                 <p className="text-[10px] text-white/50 font-black uppercase tracking-widest">
-                                    Order ID: <span className="text-white">#{orderId?.slice(-8).toUpperCase() || 'ORDER-ID'}</span>
+                                    Total Amount: <span className="text-white">₹{actualTotalAmount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                                 </p>
                             </div>
                             <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest leading-relaxed max-w-[280px] mx-auto italic">

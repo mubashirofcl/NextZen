@@ -50,6 +50,7 @@ const OrderDetailPage = () => {
     const { data: order, isLoading } = useOrderDetail(orderId);
     const { placeOrder } = useOrder();
     const [actionModal, setActionModal] = useState({ isOpen: false, type: '', itemId: '', itemName: '' });
+    const [isRetrying, setIsRetrying] = useState(false);
 
     const fixNum = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 
@@ -98,23 +99,41 @@ const OrderDetailPage = () => {
 
     const handleRetryPayment = async () => {
         try {
-            if (!order?._id) return nxToast.error("Order context missing.");
+            setIsRetrying(true);
+            if (!order?._id) return nxToast.error("Manifest missing.");
+            
             const isLoaded = await loadRazorpayScript();
-            if (!isLoaded) return nxToast.security("Gateway failed.");
+            if (!isLoaded) return nxToast.security("Gateway error.");
+
 
             const { data: sessionData } = await userAxios.post("/user/payment/create-order", {
-                amount: order.totalAmount,
                 orderId: order._id,
                 isRetry: true
             });
 
-            if (!sessionData.success) return nxToast.error("Session failed.");
+            if (!sessionData.success) {
+                return nxToast.security("Procedure Blocked", sessionData.message);
+            }
+
+            if (sessionData.payableAmount && sessionData.payableAmount !== order.totalAmount) {
+                nxToast.security("Policy Alert", "Promotion expired. Manifest adjusted to standard price.");
+                queryClient.setQueryData(["order", orderId], (old) => 
+                    old ? { 
+                        ...old, 
+                        totalAmount: sessionData.payableAmount, 
+                        couponCode: null, 
+                        couponDiscount: 0,
+                        couponExpired: true 
+                    } : old
+                );
+            }
 
             const options = {
                 key: import.meta.env.VITE_RAZORPAY_KEY_ID,
                 amount: sessionData.order.amount,
                 currency: "INR",
                 name: "Next Zen Store",
+                description: `Settling Manifest #${order.orderNumber?.split('-')[1]}`,
                 order_id: sessionData.order.id,
                 handler: async function (response) {
                     try {
@@ -122,19 +141,32 @@ const OrderDetailPage = () => {
                             paymentInfo: response,
                             newRazorpayOrderId: sessionData.order.id
                         });
+
                         if (updateRes.data.success) {
-                            nxToast.success("Payment Verified");
+                            nxToast.success("Manifest Secured");
                             await queryClient.invalidateQueries({ queryKey: ["order", orderId] });
                             navigate(`/checkout/success/${order._id}`, { replace: true });
                         }
-                    } catch (err) { nxToast.security("Sync Error"); }
+                    } catch (err) {
+                        nxToast.security("Sync Error", "Transaction verified but manifest update failed.");
+                    }
                 },
-                prefill: { name: order.addressId?.fullName || "", email: order.userId?.email || "" },
+                prefill: {
+                    name: order.addressId?.fullName || "",
+                    email: order.userId?.email || ""
+                },
                 theme: { color: "#7a6af6" },
-                modal: { ondismiss: () => nxToast.security("Cancelled") }
+                modal: { ondismiss: () => nxToast.info("Checkout Interrupted") }
             };
+
             new window.Razorpay(options).open();
-        } catch (err) { nxToast.security("Gateway Error"); }
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || "Verification Failed";
+            nxToast.security("Warehouse Sync Error", errorMsg);
+            await queryClient.invalidateQueries({ queryKey: ["order", orderId] });
+        } finally {
+            setIsRetrying(false);
+        }
     };
 
     const glassStyle = "bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[2rem] shadow-2xl";
@@ -164,12 +196,10 @@ const OrderDetailPage = () => {
                     const remainingSubtotal = activeItems.reduce((acc, curr) => acc + curr.totalAmount, 0);
 
                     if (activeItems.length > 0 && remainingSubtotal < minAmt) {
-                        return nxToast.error(`Cannot cancel. Minimum order of ₹${minAmt} is required for the applied coupon. Try cancelling the full order.`);
+                        return nxToast.security("Action Blocked", `Minimum order of ₹${minAmt} required for applied coupon.`);
                     }
                 }
-            } catch (error) {
-                console.error("Coupon validation error", error);
-            }
+            } catch (error) { console.error(error); }
         }
 
         setActionModal({
@@ -226,19 +256,16 @@ const OrderDetailPage = () => {
                         {order.items?.map((item, idx) => {
                             const currentCouponDiscount = financials.couponSavings;
                             const currentSubTotal = financials.initialSubtotal;
-
                             let itemCouponShare = 0;
                             if (currentCouponDiscount > 0 && currentSubTotal > 0) {
                                 itemCouponShare = fixNum((item.totalAmount / currentSubTotal) * currentCouponDiscount);
                             }
-
                             const netItemPrice = fixNum(item.totalAmount - itemCouponShare);
 
                             return (
                                 <div key={idx} className={`${glassStyle} p-6 flex flex-col sm:flex-row items-center gap-6 group relative overflow-hidden`}>
                                     <div className="w-16 h-20 rounded-xl overflow-hidden bg-black border border-white/10 shrink-0 relative">
                                         <img src={item.variantId?.images?.[0] || item.productId?.thumbnail} className={`w-full h-full object-cover ${['Cancelled', 'Returned'].includes(item.status) ? 'opacity-20 grayscale' : 'opacity-90'}`} alt="" />
-                                        {['Cancelled', 'Returned'].includes(item.status) && <XCircle size={14} className="absolute inset-0 m-auto text-red-500/50" />}
                                     </div>
                                     <div className="flex-1 w-full space-y-2">
                                         <div className="flex justify-between items-start">
@@ -249,18 +276,11 @@ const OrderDetailPage = () => {
                                             <div className="text-right">
                                                 <p className={`text-lg font-black italic ${['Cancelled', 'Returned'].includes(item.status) ? 'text-white/10 line-through' : 'text-white'}`}>₹{item.totalAmount?.toLocaleString()}</p>
                                                 {itemCouponShare > 0 && !['Cancelled', 'Returned'].includes(item.status) && (
-                                                    <p className="text-[8px] font-bold text-indigo-400 uppercase italic">- ₹{itemCouponShare.toFixed(2)} Coupon share</p>
+                                                    <p className="text-[8px] font-bold text-indigo-400 uppercase italic">- ₹{itemCouponShare.toFixed(2)} Promo share</p>
                                                 )}
                                                 {(['Cancelled', 'Returned'].includes(item.status)) && (
-                                                    <div className={`flex items-center gap-1 text-[7px] font-black uppercase mt-1 px-1.5 py-0.5 rounded border ${isActualRefund
-                                                        ? "text-green-400 bg-green-400/10 border-green-400/20"
-                                                        : "text-white/40 bg-white/5 border-white/10"
-                                                        }`}>
-                                                        {isActualRefund ? (
-                                                            <><Wallet size={8} /> Refunded: ₹{netItemPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
-                                                        ) : (
-                                                            <><XCircle size={8} /> Voided: ₹{netItemPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
-                                                        )}
+                                                    <div className={`flex items-center gap-1 text-[7px] font-black uppercase mt-1 px-1.5 py-0.5 rounded border ${isActualRefund ? "text-green-400 bg-green-400/10 border-green-400/20" : "text-white/40 bg-white/5 border-white/10"}`}>
+                                                        {isActualRefund ? <><Wallet size={8} /> Refunded: ₹{netItemPrice.toFixed(2)}</> : <><XCircle size={8} /> Voided: ₹{netItemPrice.toFixed(2)}</>}
                                                     </div>
                                                 )}
                                             </div>
@@ -293,22 +313,28 @@ const OrderDetailPage = () => {
                 </div>
 
                 <aside className="xl:col-span-4 space-y-6">
-                    <div className="bg-white text-black p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+                    <div className="bg-white text-black p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none"><ShieldCheck size={160} /></div>
                         <h3 className="text-[10px] font-black uppercase text-black/30 mb-8 border-b border-black/5 pb-4 italic text-center tracking-[0.5em]">Settlement</h3>
 
                         <div className="space-y-4 text-[11px] font-bold uppercase tracking-tight relative z-10">
                             <div className="flex justify-between text-black/40">
                                 <span>Subtotal</span>
-                                <span className="text-black font-black">₹{financials.initialSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                <span className="text-black font-black">₹{financials.initialSubtotal.toFixed(2)}</span>
                             </div>
 
-                            {financials.couponSavings > 0 && (
+
+                            {financials.couponSavings > 0 ? (
                                 <div className="flex justify-between text-[11px] font-black text-indigo-600 uppercase italic">
                                     <span className="flex items-center gap-1"><Tag size={10} /> Coupon ({order.couponCode})</span>
-                                    <span>- ₹{financials.couponSavings.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                    <span>- ₹{financials.couponSavings.toFixed(2)}</span>
                                 </div>
-                            )}
+                            ) : order.couponExpired ? (
+                                <div className="flex justify-between text-[10px] font-bold text-red-500 uppercase italic bg-red-50 p-2 rounded-lg border border-red-100 animate-pulse">
+                                    <span className="flex items-center gap-1"><AlertTriangle size={10} /> Promo Expired</span>
+                                    <span className="text-[8px] opacity-50">Standard Rate Applied</span>
+                                </div>
+                            ) : null}
 
                             <div className="flex justify-between text-black/40 border-b border-black/5 pb-6">
                                 <span>Logistics</span>
@@ -316,33 +342,28 @@ const OrderDetailPage = () => {
                             </div>
 
                             {financials.totalRefunded > 0 && (
-                                <div className={`flex justify-between text-[9px] font-black uppercase p-3 rounded-xl border shadow-sm ${isActualRefund
-                                    ? "text-green-600 bg-green-50 border-green-100"
-                                    : "text-red-500 bg-red-50 border-red-100"
-                                    }`}>
-                                    <span className="flex items-center gap-1.5">
-                                        <ArrowDownLeft size={12} strokeWidth={3} />
-                                        {isActualRefund ? 'Refund Issued' : 'Cancelled Value'}
-                                    </span>
-                                    <span className="tracking-tighter">- ₹{financials.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <div className={`flex justify-between text-[9px] font-black uppercase p-3 rounded-xl border shadow-sm ${isActualRefund ? "text-green-600 bg-green-50 border-green-100" : "text-red-500 bg-red-50 border-red-100"}`}>
+                                    <span className="flex items-center gap-1.5"><ArrowDownLeft size={12} strokeWidth={3} /> {isActualRefund ? 'Refund Issued' : 'Cancelled Value'}</span>
+                                    <span className="tracking-tighter">- ₹{financials.totalRefunded.toFixed(2)}</span>
                                 </div>
                             )}
 
                             <div className="pt-6 mt-4 border-t border-black/5 flex flex-col items-end">
-                                <span className="text-[10px] font-black uppercase italic text-[#7a6af6] tracking-[0.2em]">
-                                    {financials.totalRefunded > 0
-                                        ? (isActualRefund ? 'Settled Value' : 'Revised Total Payable')
-                                        : 'Payable Total'
-                                    }
-                                </span>
+                                <span className="text-[10px] font-black uppercase italic text-[#7a6af6] tracking-[0.2em]">Final Settlement</span>
                                 <span className="text-6xl font-black italic tracking-tighter leading-none mt-2 text-[#0F172A]">
-                                    ₹{financials.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    ₹{financials.net.toFixed(2)}
                                 </span>
                             </div>
                         </div>
 
                         {order.status === 'payment_failed' && (
-                            <button onClick={handleRetryPayment} className="w-full mt-10 py-5 bg-red-600 text-white rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95"><RefreshCw size={16} /> Complete Payment</button>
+                            <button 
+                                onClick={handleRetryPayment} 
+                                disabled={isRetrying}
+                                className="w-full mt-10 py-5 bg-red-600 text-white rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isRetrying ? <Loader2 className="animate-spin" size={16} /> : <><RefreshCw size={16} /> Complete Payment</>}
+                            </button>
                         )}
                         {order.status.toLowerCase() === 'delivered' && (
                             <button onClick={() => generateInvoice(order)} className="w-full mt-10 py-5 bg-black text-white rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-3 hover:bg-[#7a6af6] transition-all shadow-xl active:scale-95"><FileText size={16} /> Get Invoice</button>
@@ -351,7 +372,7 @@ const OrderDetailPage = () => {
 
                     <div className={`${glassStyle} p-8 flex justify-between items-center`}>
                         <div className="flex flex-col gap-1">
-                            <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1 italic flex items-center gap-2">Protocol</p>
+                            <p className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1 italic">Protocol</p>
                             <p className="text-xs font-black uppercase italic text-white">{order.paymentMethod === 'cashOnDelivery' ? 'Cash' : order.paymentMethod === 'wallet' ? 'Wallet' : 'Razorpay'}</p>
                             <p className={`text-[8px] font-black uppercase mt-1 ${hasPaid ? 'text-green-500' : 'text-amber-500'}`}>{order.paymentStatus}</p>
                         </div>

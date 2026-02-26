@@ -103,7 +103,17 @@ const CheckoutPage = () => {
         const finalTotal = Math.max(0, (subtotal + deliveryCharge) - couponDiscount);
         const totalDiscount = (totalMRP - subtotal) + couponDiscount;
 
-        return { subtotal, totalMRP, deliveryCharge, finalTotal, totalDiscount, couponDiscount };
+        return { 
+            subtotal, 
+            totalMRP, 
+            deliveryCharge, 
+            finalTotal, 
+            totalDiscount, 
+            couponDiscount,
+            // 🟢 Aliasing for modal consistency
+            subTotal: subtotal,
+            totalAmount: finalTotal 
+        };
     }, [cart, appliedCoupon]);
 
     const handleApplyCoupon = async (codeFromList = null) => {
@@ -154,6 +164,8 @@ const CheckoutPage = () => {
         try {
             const isLoaded = await loadRazorpayScript();
             if (!isLoaded) return nxToast.security("Payment gateway offline");
+            
+            // 🟢 Send the calculated finalTotal (which has coupon discount already removed)
             const { data } = await userAxios.post("/user/payment/create-order", {
                 amount: financials.finalTotal,
                 items: cart.items,
@@ -218,7 +230,8 @@ const CheckoutPage = () => {
         if (paymentMethod === 'wallet' && (wallet?.balance || 0) < financials.finalTotal) {
             return nxToast.security("Insufficient wallet balance");
         }
-        setFrozenTotals({ ...financials, totalAmount: financials.finalTotal });
+        // 🟢 Pass the live financials object to be frozen in the modal state
+        setFrozenTotals({ ...financials });
         setIsConfirmModalOpen(true);
     };
 
@@ -236,7 +249,7 @@ const CheckoutPage = () => {
                 totalAmount: item.currentPrice * item.quantity
             })),
             paymentMethod,
-            totals: { ...financials, totalAmount: financials.finalTotal },
+            totals: frozenTotals, // 🟢 Send the frozen totals containing the discount
             couponCode: appliedCoupon?.code || null
         };
 

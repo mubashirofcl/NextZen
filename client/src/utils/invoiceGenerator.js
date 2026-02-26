@@ -5,13 +5,13 @@ export const generateInvoice = (order) => {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
     const theme = {
-        primary: [15, 23, 42],       // #0F172A
-        accent: [122, 106, 246],     // #7a6af6
-        slate: [51, 65, 85],         // text color
-        muted: [148, 163, 184],      // light text
-        border: [226, 232, 240],     // lines
-        success: [34, 197, 94],      // green
-        danger: [239, 68, 68],       // red (for refunds)
+        primary: [15, 23, 42],     
+        accent: [122, 106, 246],     
+        slate: [51, 65, 85],         
+        muted: [148, 163, 184],     
+        border: [226, 232, 240],    
+        success: [34, 197, 94],    
+        danger: [239, 68, 68],      
         light: [248, 250, 252]
     };
 
@@ -180,7 +180,7 @@ export const generateInvoice = (order) => {
 
     addSummaryRow("Logistics & Shipping", shippingCost === 0 ? "FREE" : `INR ${shippingCost.toLocaleString('en-IN')}`);
     
-    // 🟢 Display Refunds if any items were cancelled or returned
+    //  Display Refunds if any items were cancelled or returned
     if (totalRefunded > 0) {
         addSummaryRow(
             "Processed Refunds / Cancellations", 

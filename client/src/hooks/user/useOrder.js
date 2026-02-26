@@ -10,10 +10,9 @@ export const useOrder = () => {
 
     const placeOrder = useMutation({
         mutationFn: placeCodOrderApi,
-        onSuccess: (data, variables) => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
-
         },
         onError: (error) => {
             nxToast.security("Protocol Breach", error.response?.data?.message || "Sync Error");
@@ -43,7 +42,63 @@ export const useOrderDetail = (orderId) => {
             return data.order;
         },
         enabled: !!orderId,
-        refetchInterval: 5000, 
+        refetchInterval: (query) =>
+            query.state.data?.paymentStatus === 'Pending' ? 3000 : false,
+    });
+};
+
+export const useRetryPayment = () => {
+    return useMutation({
+        mutationFn: async (orderId) => {
+
+            const { data } = await userAxios.post("/user/payment/create-order", {
+                orderId,
+                isRetry: true
+            });
+            return data;
+        },
+        onSuccess: (data) => {
+
+        },
+        onError: (err) => {
+            const message = err.response?.data?.message || "Payment re-initialization failed";
+
+            if (message.toLowerCase().includes("stock") || message.toLowerCase().includes("blocked")) {
+                nxToast.security("Order Invalid", message);
+            } else {
+                nxToast.error("Retry Failed", message);
+            }
+        }
+    });
+};
+
+export const useCompleteRetry = () => {
+    const queryClient = useQueryClient();
+    const navigate = useNavigate();
+
+    return useMutation({
+        mutationFn: async ({ orderId, paymentInfo, newRazorpayOrderId }) => {
+            const { data } = await userAxios.patch(`/users/orders/${orderId}/complete-retry`, {
+                paymentInfo,
+                newRazorpayOrderId
+            });
+            return data;
+        },
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["order", variables.orderId] });
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+            queryClient.invalidateQueries({ queryKey: ["inventory"] }); 
+
+            if (data.warning) {
+                nxToast.warn("Policy Update", data.warning);
+            }
+            
+            nxToast.success("Success", "Order confirmed successfully.");
+            navigate(`/checkout/success/${variables.orderId}`, { replace: true });
+        },
+        onError: (err) => {
+            nxToast.error("Verification Error", err.response?.data?.message || "Sync Error");
+        }
     });
 };
 
@@ -57,7 +112,7 @@ export const useCancelItem = () => {
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ["order", variables.orderId] });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
-            nxToast.success("Item Cancelled", "Stock restored to inventory.");
+            nxToast.success("Item Cancelled", "Refund credited to wallet.");
         },
         onError: (err) => {
             nxToast.security("Cancel Failed", err.response?.data?.message || "Action blocked.");

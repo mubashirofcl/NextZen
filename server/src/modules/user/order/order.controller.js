@@ -22,7 +22,7 @@ export const placeOrder = async (req, res, next) => {
         const deliveryCharge = fixNum(totals.deliveryCharge || 0);
 
         let discountAmount = 0;
-        if (couponCode && orderStatus !== 'payment_failed') {
+        if (couponCode) {
             const coupon = await couponModel.findOne({ code: couponCode, isActive: true });
             if (coupon) {
                 const now = new Date();
@@ -108,43 +108,97 @@ export const placeOrder = async (req, res, next) => {
 };
 
 export const completeRetry = async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const idIdentifier = req.params.orderId;
         const { paymentInfo, newRazorpayOrderId } = req.body;
+
         const order = await orderModel.findOne({
             $or: [
                 { _id: mongoose.Types.ObjectId.isValid(idIdentifier) ? idIdentifier : null },
                 { razorpayOrderId: idIdentifier }
             ]
-        });
+        }).session(session);
 
-        if (!order) return res.status(404).json({ success: false, message: "Order not found." });
-        if (order.paymentStatus === 'Paid') return res.status(200).json({ success: true, orderId: order._id, message: "Already processed" });
+        if (!order) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: "Order not found." });
+        }
+
+        if (order.paymentStatus === 'Paid') {
+            await session.abortTransaction();
+            return res.status(200).json({ success: true, orderId: order._id, message: "Already processed" });
+        }
+
+        for (const item of order.items) {
+            const variant = await variantModel.findOne({
+                _id: item.variantId,
+                "sizes.size": item.size
+            }).session(session);
+
+            const sizeData = variant?.sizes.find(s => s.size === item.size);
+            if (!sizeData || sizeData.stock < item.quantity) {
+                await session.abortTransaction();
+                return res.status(400).json({
+                    success: false,
+                    message: `Stock conflict: ${item.size} is currently out of stock.`
+                });
+            }
+        }
+
+        let couponWarning = "";
+        if (order.couponCode) {
+            const coupon = await couponModel.findOne({ code: order.couponCode, isActive: true }).session(session);
+            const now = new Date();
+            
+            const isInvalid = !coupon || 
+                             coupon.endDate < now || 
+                             coupon.usedCount >= coupon.usageLimit || 
+                             order.subTotal < coupon.minPurchaseAmt;
+
+            if (isInvalid) {
+                couponWarning = "Coupon has expired/blocked. Order adjusted to standard price.";
+                order.couponCode = null;
+                order.couponDiscount = 0;
+                order.totalAmount = fixNum(order.subTotal + order.deliveryCharge);
+            }
+        }
 
         if (newRazorpayOrderId) order.razorpayOrderId = newRazorpayOrderId;
+        order.status = 'pending';
+        order.paymentStatus = 'Paid';
 
-        if (order.status === 'payment_failed' || order.status === 'pending') {
-            order.status = 'pending';
-            order.paymentStatus = 'Paid';
+        await paymentModel.create([{
+            orderId: order._id, userId: order.userId, amount: order.totalAmount,
+            method: "razorpay", status: "success", razorpayOrderId: order.razorpayOrderId,
+            razorpayPaymentId: paymentInfo.razorpay_payment_id,
+            razorpaySignature: paymentInfo.razorpay_signature, rawResponse: paymentInfo
+        }], { session });
 
-            await paymentModel.create({
-                orderId: order._id, userId: order.userId, amount: order.totalAmount,
-                method: "razorpay", status: "success", razorpayOrderId: order.razorpayOrderId,
-                razorpayPaymentId: paymentInfo.razorpay_payment_id,
-                razorpaySignature: paymentInfo.razorpay_signature, rawResponse: paymentInfo
-            });
-
-            for (const item of order.items) {
-                await variantModel.findOneAndUpdate({ _id: item.variantId, "sizes.size": item.size }, { $inc: { "sizes.$.stock": -item.quantity } });
-            }
-
-            if (order.couponCode) await couponModel.findOneAndUpdate({ code: order.couponCode }, { $inc: { usedCount: 1 } });
-
-            await order.save();
-            await cartModel.findOneAndUpdate({ userId: order.userId }, { items: [], subtotal: 0, totalMarketPrice: 0 });
+        for (const item of order.items) {
+            await variantModel.findOneAndUpdate(
+                { _id: item.variantId, "sizes.size": item.size },
+                { $inc: { "sizes.$.stock": -item.quantity } },
+                { session }
+            );
         }
-        res.status(200).json({ success: true, orderId: order._id });
-    } catch (error) { next(error); }
+
+        if (order.couponCode) {
+            await couponModel.findOneAndUpdate({ code: order.couponCode }, { $inc: { usedCount: 1 } }, { session });
+        }
+
+        await order.save({ session });
+        await cartModel.findOneAndUpdate({ userId: order.userId }, { items: [], subtotal: 0, totalMarketPrice: 0 }, { session });
+
+        await session.commitTransaction();
+        res.status(200).json({ success: true, orderId: order._id, warning: couponWarning });
+    } catch (error) {
+        await session.abortTransaction();
+        next(error);
+    } finally {
+        session.endSession();
+    }
 };
 
 export const cancelOrderItem = async (req, res, next) => {
