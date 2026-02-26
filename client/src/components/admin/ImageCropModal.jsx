@@ -15,7 +15,6 @@ const ImageCropModal = ({ src, onCancel, onConfirm }) => {
     <div className="fixed inset-0 z-[10000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-[400px] overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-300">
 
-        {/* COMPACT MODAL HEADER */}
         <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 bg-[#7a6af6] rounded-lg flex items-center justify-center text-white shadow-md">
@@ -30,7 +29,6 @@ const ImageCropModal = ({ src, onCancel, onConfirm }) => {
           </button>
         </div>
 
-        {/* COMPACT CROPPER AREA */}
         <div className="p-5">
           <div className="relative h-[320px] w-full bg-slate-900 rounded-xl overflow-hidden shadow-inner border border-slate-100">
             <Cropper
@@ -44,7 +42,6 @@ const ImageCropModal = ({ src, onCancel, onConfirm }) => {
             />
           </div>
 
-          {/* ZOOM CONTROL */}
           <div className="mt-5 space-y-2">
             <div className="flex justify-between items-center px-0.5">
               <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -63,7 +60,6 @@ const ImageCropModal = ({ src, onCancel, onConfirm }) => {
             />
           </div>
 
-          {/* ACTION BUTTONS */}
           <div className="flex gap-2.5 mt-6">
             <button
               type="button"

@@ -11,7 +11,6 @@ export const getWalletByUserId = async (userId) => {
 export const updateWalletBalance = async (userId, amount, type, description, orderId = null) => {
     const updateQuery = type === 'credit' ? { $inc: { balance: amount } } : { $inc: { balance: -amount } };
 
-    // 🟢 BACKEND GUARD: Prevent "undefined" from reaching the DB
     const safeDescription = (description && !description.includes('undefined'))
         ? description
         : type === 'credit' ? 'Consolidated Refund' : 'Order Purchase';

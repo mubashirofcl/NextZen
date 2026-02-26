@@ -5,7 +5,6 @@ import {
   unblockUser,
 } from "../../api/admin/userManagement.api";
 
-/* ===================== QUERY ===================== */
 
 export const useAdminUsers = ({ page, search, status }) => {
   return useQuery({
@@ -20,7 +19,6 @@ export const useAdminUsers = ({ page, search, status }) => {
   });
 };
 
-/* ===================== MUTATIONS ===================== */
 
 export const useBlockUser = () => {
   const queryClient = useQueryClient();

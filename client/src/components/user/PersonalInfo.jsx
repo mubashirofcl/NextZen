@@ -41,7 +41,6 @@ const PersonalInfo = () => {
         currency: 'INR',
     }).format(user?.walletBalance ?? user?.wallet?.balance ?? 0);
 
-    // 🟢 Referral Logic with Fallback Protection
     const referralLink = user?.referralCode 
         ? `${window.location.origin}/signup?ref=${user.referralCode}`
         : "Generating your link...";
@@ -75,7 +74,6 @@ const PersonalInfo = () => {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-700">
-            {/* PROFILE CARD */}
             <div className={`${glassStyle} p-10`}>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-6">
                     <div>
@@ -104,7 +102,6 @@ const PersonalInfo = () => {
                 </div>
             </div>
 
-            {/* 🟢 REFERRAL PROGRAM CARD */}
             <div className={`${glassStyle} p-10 relative overflow-hidden group`}>
                 <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
                     <Share2 size={180} />
@@ -116,7 +113,7 @@ const PersonalInfo = () => {
                             <p className="text-[9px] text-[#7a6af6] font-black uppercase tracking-[0.4em] mt-1">Grow the community, reap the rewards</p>
                         </div>
                         
-                        {/* 🎁 REWARD DETAILS BOX */}
+
                         <div className="flex gap-4">
                             <div className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl">
                                 <p className="text-[7px] font-black text-[#7a6af6] uppercase tracking-[0.2em] mb-1">Your Reward</p>
@@ -160,7 +157,6 @@ const PersonalInfo = () => {
                 </div>
             </div>
 
-            {/* WALLET DISPLAY */}
             <div className='grid grid-cols-1 gap-6'>
                 <div onClick={() => navigate('/profile/wallet')} className="group cursor-pointer bg-gradient-to-br from-white/[0.08] to-transparent backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 shadow-xl hover:border-[#7a6af6]/40 transition-all relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity"><Wallet size={120} /></div>

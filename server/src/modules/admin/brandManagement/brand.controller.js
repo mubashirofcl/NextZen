@@ -10,7 +10,6 @@ export const createBrand = asyncHandler(async (req, res) => {
   }
 });
 
-/* UPDATE */
 export const updateBrand = asyncHandler(async (req, res) => {
   try {
     const brand = await brandService.updateBrandService(
@@ -23,7 +22,6 @@ export const updateBrand = asyncHandler(async (req, res) => {
   }
 });
 
-/* TOGGLE & LIST remain the same */
 export const toggleBrandStatus = asyncHandler(async (req, res) => {
   const brand = await brandService.toggleBrandStatusService(req.params.id);
   res.json(brand);

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { X, Save, Upload, Loader2, Award, Percent } from "lucide-react";
+import { X, Save, Upload, Loader2, Award, Percent, Info } from "lucide-react";
 import { adminToast } from "../../utils/adminToast";
-import { useOffers } from "../../hooks/admin/useOffers"; // Integrated Offer Hook
+import { useOffers } from "../../hooks/admin/useOffers";
 
 const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
   const {
@@ -13,12 +13,13 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
     watch,
     setError,
     formState: { isSubmitting, errors },
-  } = useForm();
+  } = useForm({
+    mode: "onBlur"
+  });
 
   const [uploading, setUploading] = useState(false);
   const logo = watch("logo");
 
-  // Fetch only active BRAND level offers
   const { offers } = useOffers();
   const brandOffers = offers?.filter(o => o.applyFor === "BRAND" && o.isActive) || [];
 
@@ -28,7 +29,7 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
       reset({
         name: initialData.name,
         logo: initialData.logo,
-        offerId: initialData.offerId?._id || initialData.offerId || "" // Handle populated or raw ID
+        offerId: initialData.offerId?._id || initialData.offerId || ""
       });
     } else {
       reset({ name: "", logo: "", offerId: "" });
@@ -48,19 +49,20 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
   const handleImageUpload = async (file) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      adminToast.warn("Format Error", "Only image files allowed");
+      adminToast.warn("Format Error", "Please upload a valid image file");
       return;
     }
-    if (file.size > 8 * 1024 * 1024) {
-      adminToast.warn("Size Error", "Image must be under 8MB");
+    if (file.size > 5 * 1024 * 1024) {
+      adminToast.warn("File Size Alert", "Logo must be smaller than 5MB");
       return;
     }
     try {
       setUploading(true);
       const res = await uploadImage(file);
       setValue("logo", res.url, { shouldValidate: true });
+      adminToast.success("Logo Ready", "Brand asset processed successfully");
     } catch {
-      adminToast.warn("Sync Error", "Image processing failed");
+      adminToast.error("Processing Error", "Failed to prepare the logo");
     } finally {
       setUploading(false);
     }
@@ -68,16 +70,18 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
 
   const submitHandler = async (data) => {
     try {
-      // Ensure offerId is null if "None" is selected
       const payload = {
         ...data,
+        name: data.name.trim(),
         offerId: data.offerId === "" ? null : data.offerId
       };
       await onSubmit(payload);
+      adminToast.success("Success", `Brand ${mode === "add" ? "registered" : "updated"} successfully`);
       onClose();
     } catch (err) {
-      const msg = err.response?.data?.message || "Brand already exists!";
+      const msg = err.response?.data?.message || "This brand name is already registered";
       setError("name", { type: "server", message: msg });
+      adminToast.error("Registration Failed", msg);
     }
   };
 
@@ -97,6 +101,7 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
             </div>
           </div>
           <button
+            type="button"
             onClick={() => !uploading && onClose()}
             className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-xl transition-all active:scale-90"
           >
@@ -108,7 +113,7 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
           <form onSubmit={handleSubmit(submitHandler)} className="space-y-6">
             <div className="flex justify-center">
               <label className="relative cursor-pointer group">
-                <div className={`w-32 h-32 rounded-[28px] border-4 border-dashed transition-all flex flex-col items-center justify-center overflow-hidden bg-white shadow-inner ${errors.logo ? 'border-red-200 bg-red-50' : 'border-slate-100 group-hover:border-[#7a6af6] group-hover:bg-slate-50'}`}>
+                <div className={`w-32 h-32 rounded-[28px] border-4 border-dashed transition-all flex flex-col items-center justify-center overflow-hidden bg-white shadow-inner ${errors.logo ? 'border-red-300 bg-red-50' : 'border-slate-100 group-hover:border-[#7a6af6] group-hover:bg-slate-50'}`}>
                   {uploading ? (
                     <Loader2 className="animate-spin text-[#7a6af6]" size={28} />
                   ) : logo ? (
@@ -128,10 +133,10 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
                 />
               </label>
             </div>
+            {errors.logo && <p className="text-[9px] font-black text-red-500 uppercase text-center mt-2 flex items-center justify-center gap-1"><Info size={10}/> Brand logo is required</p>}
 
             <input type="hidden" {...register("logo", { required: true })} />
 
-            {/* BRAND NAME FIELD */}
             <div className="space-y-2">
               <div className="flex justify-between items-end mb-1">
                 <label className="text-[10px] font-black uppercase text-[#0F172A] tracking-widest ml-1">
@@ -139,17 +144,19 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
                 </label>
                 {errors.name && (
                   <p className="text-[9px] font-black text-red-500 uppercase animate-pulse pr-1">
-                    {errors.name.message}
+                    ! {errors.name.message}
                   </p>
                 )}
               </div>
               <input
                 {...register("name", {
-                  required: "Name is required",
+                  required: "Brand name is mandatory",
+                  minLength: { value: 2, message: "Min 2 characters" },
+                  maxLength: { value: 25, message: "Max 25 characters" },
                   validate: {
-                    notEmpty: (val) => val.trim().length > 0 || "Cannot be empty",
-                    noLeadingSpace: (val) => !/^\s/.test(val) || "No leading spaces",
-                    onlyLettersAndSpaces: (val) => /^[A-Za-z ]+$/.test(val) || "Letters only",
+                    notEmpty: (val) => val.trim().length > 0 || "Cannot consist only of spaces",
+                    noLeadingSpace: (val) => !/^\s/.test(val) || "Cannot start with spaces",
+                    validChars: (val) => /^[A-Za-z0-9\s&-]+$/.test(val) || "Invalid characters used",
                   }
                 })}
                 placeholder="e.g. NIKE"
@@ -161,7 +168,6 @@ const BrandModal = ({ isOpen, onClose, mode, initialData, onSubmit }) => {
               />
             </div>
 
-            {/* OFFER STRATEGY FIELD (NEW) */}
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-[#0F172A] tracking-widest ml-1">
                 Campaign Strategy

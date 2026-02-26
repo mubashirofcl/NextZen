@@ -42,7 +42,7 @@ const ProductForm = () => {
     const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
     const { register, handleSubmit, control, reset, watch, setValue, formState: { errors } } = useForm({
-        mode: "onChange",
+        mode: "onBlur",
         defaultValues: {
             name: "", brandId: "", categoryId: "", subcategoryId: "", description: "",
             offerId: "",
@@ -131,7 +131,7 @@ const ProductForm = () => {
         const highlightsArray = Array.isArray(payload.highlights) ? payload.highlights : [];
 
         if (variantsArray.length === 0) {
-            adminToast.warn("Constraint Violation", "At least one variant is required.");
+            adminToast.warn("Information Missing", "At least one colorway variant is required for deployment.");
             return;
         }
 
@@ -152,10 +152,11 @@ const ProductForm = () => {
                 ? await updateMutation.mutateAsync({ id, ...cleanedPayload })
                 : await createMutation.mutateAsync(cleanedPayload);
 
-            adminToast.success("Successfully Synced");
+            adminToast.success("Success", `The product has been ${isEditMode ? 'updated' : 'deployed'} successfully.`);
             navigate("/admin/products");
         } catch (err) {
-            adminToast.warn("Execution Failed", err.response?.data?.message || "Sync Error");
+            const errorMessage = err.response?.data?.message || "Internal system error occurred during sync.";
+            adminToast.error("Execution Error", errorMessage);
         }
     };
 
@@ -167,7 +168,7 @@ const ProductForm = () => {
 
     return (
         <div className="min-h-screen flex bg-[#f1f5f9] p-2 gap-2 items-start font-sans relative">
-            {(isSubmitting || isProductLoading) && <GlobalLoader message="Accessing Neural Database..." />}
+            {(isSubmitting || isProductLoading) && <GlobalLoader message="Synchronizing with Vault..." />}
             <AdminSidebar />
 
             <main className={`flex-1 flex flex-col gap-2 h-[calc(100vh-16px)] transition-all ${isSubmitting ? 'blur-sm pointer-events-none' : ''}`}>
@@ -177,7 +178,7 @@ const ProductForm = () => {
                         <h2 className="text-[12px] font-black uppercase tracking-tight text-[#0F172A]">Deployment Console</h2>
                     </div>
                     <button onClick={handleSubmit(onFormSubmit)} className="bg-[#0F172A] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all">
-                        {isSubmitting ? <Loader2 className="animate-spin" size={12} /> : <Save size={12} />} {isEditMode ? "Save Changes" : "Deploy Product"}
+                        {isSubmitting ? <Loader2 className="animate-spin" size={12} /> : <Save size={12} />} {isEditMode ? "Update Product" : "Launch Product"}
                     </button>
                 </header>
 
@@ -190,21 +191,54 @@ const ProductForm = () => {
                                 <h3 className="text-[10px] font-black text-[#0F172A] uppercase tracking-widest">Primary Identity</h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <InputField label="Product Name *" register={register("name", { required: true })} error={errors.name} />
-                                <SelectField label="Authority Brand *" register={register("brandId", { required: true })} options={brandOptions?.items || brandOptions || []} placeholder="Select Brand" error={errors.brandId} />
+                                <InputField 
+                                    label="Product Name *" 
+                                    register={register("name", { 
+                                        required: "Please provide a name for the product",
+                                        minLength: { value: 3, message: "Product name must be at least 3 characters" },
+                                        maxLength: { value: 60, message: "Product name must be under 60 characters" }
+                                    })} 
+                                    error={errors.name} 
+                                />
+                                <SelectField 
+                                    label="Authority Brand *" 
+                                    register={register("brandId", { required: "Please select an associated brand" })} 
+                                    options={brandOptions?.items || brandOptions || []} 
+                                    placeholder="Select Brand" 
+                                    error={errors.brandId} 
+                                />
                                 <div className="grid grid-cols-2 gap-3 md:col-span-2">
-                                    <SelectField label="Core Category *" register={register("categoryId", { required: true })} options={categoryOptions?.items || categoryOptions || []} placeholder="Select Category" />
+                                    <SelectField 
+                                        label="Core Category *" 
+                                        register={register("categoryId", { required: "A core category is mandatory" })} 
+                                        options={categoryOptions?.items || categoryOptions || []} 
+                                        placeholder="Select Category" 
+                                        error={errors.categoryId}
+                                    />
                                     <div className="space-y-1.5">
                                         <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Sub-Category *</label>
-                                        <select {...register("subcategoryId", { required: true })} disabled={!selectedCategoryId || isSubLoading} className={`w-full bg-white border-2 rounded-[12px] px-3 py-2.5 text-[11px] font-bold text-[#0F172A] outline-none shadow-sm transition-all ${errors.subcategoryId ? 'border-red-500' : 'border-slate-100 focus:border-[#7a6af6]'}`}>
-                                            <option value="">{isSubLoading ? "Syncing..." : "Select Sub-Category"}</option>
+                                        <select 
+                                            {...register("subcategoryId", { required: "A sub-category is required" })} 
+                                            disabled={!selectedCategoryId || isSubLoading} 
+                                            className={`w-full bg-white border-2 rounded-[12px] px-3 py-2.5 text-[11px] font-bold text-[#0F172A] outline-none shadow-sm transition-all ${errors.subcategoryId ? 'border-red-500 ring-2 ring-red-50' : 'border-slate-100 focus:border-[#7a6af6]'}`}
+                                        >
+                                            <option value="">{isSubLoading ? "Synchronizing..." : "Select Sub-Category"}</option>
                                             {subCategoryData?.map(opt => <option key={opt._id} value={opt._id}>{opt.name}</option>)}
                                         </select>
+                                        {errors.subcategoryId && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase italic tracking-tighter">! {errors.subcategoryId.message}</p>}
                                     </div>
                                 </div>
                                 <div className="md:col-span-2">
                                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Description *</label>
-                                    <textarea {...register("description", { required: true })} className="w-full bg-slate-50 border-2 border-slate-100 rounded-[12px] p-4 text-xs font-bold text-[#0F172A] h-24 outline-none focus:border-[#7a6af6] transition-all" />
+                                    <textarea 
+                                        {...register("description", { 
+                                            required: "A product description is necessary",
+                                            minLength: { value: 20, message: "Description must provide at least 20 characters of detail" },
+                                            maxLength: { value: 800, message: "Description limit is 800 characters" }
+                                        })} 
+                                        className={`w-full bg-slate-50 border-2 rounded-[12px] p-4 text-xs font-bold text-[#0F172A] h-24 outline-none transition-all ${errors.description ? 'border-red-500 ring-2 ring-red-50' : 'border-slate-100 focus:border-[#7a6af6]'}`} 
+                                    />
+                                    {errors.description && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase italic tracking-tighter">! {errors.description.message}</p>}
                                 </div>
                             </div>
                         </div>
@@ -232,7 +266,10 @@ const ProductForm = () => {
                                                 {index + 1}
                                             </div>
                                             <input
-                                                {...register(`highlights.${index}`, { required: "Required" })}
+                                                {...register(`highlights.${index}`, { 
+                                                    required: "Field cannot be left empty",
+                                                    maxLength: { value: 100, message: "Bullet point too long" }
+                                                })}
                                                 placeholder="Enter highlight feature..."
                                                 className="flex-1 bg-transparent py-1.5 text-[11px] font-bold text-[#0F172A] outline-none placeholder:text-slate-300"
                                             />
@@ -352,6 +389,7 @@ const InputField = ({ label, register, error }) => (
     <div className="space-y-1.5">
         <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">{label}</label>
         <input {...register} className={`w-full bg-white border-2 rounded-[12px] px-4 py-2.5 text-[11px] font-bold text-[#0F172A] outline-none shadow-sm transition-all ${error ? 'border-red-500 ring-2 ring-red-50' : 'border-slate-100 focus:border-[#7a6af6]'}`} />
+        {error && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase italic tracking-tighter">! {error.message}</p>}
     </div>
 );
 
@@ -362,6 +400,7 @@ const SelectField = ({ label, register, options, placeholder, error }) => (
             <option value="">{placeholder}</option>
             {options?.map(opt => <option key={opt._id} value={opt._id}>{opt.name}</option>)}
         </select>
+        {error && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase italic tracking-tighter">! {error.message}</p>}
     </div>
 );
 

@@ -15,18 +15,14 @@ const OfferManagement = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [page, setPage] = useState(1);
-
     const { offers, isLoading, deleteOffer } = useOffers();
-    // 🟢 Ensure these names match what you use in the button below
     const { mutate: toggleStatus, isPending: isToggling } = useToggleOffer(); 
 
-    /* ------------------ SEARCH DEBOUNCE ------------------ */
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
         return () => clearTimeout(t);
     }, [searchTerm]);
 
-    /* ------------------ CLIENT-SIDE FILTERING ------------------ */
     const filteredOffers = (offers || []).filter(offer => 
         offer.title?.toLowerCase().includes(debouncedSearch.toLowerCase())
     );
@@ -57,7 +53,7 @@ const OfferManagement = () => {
             <AdminSidebar />
 
             <main className="flex-1 flex flex-col gap-3 overflow-hidden">
-                {/* HEADER */}
+
                 <header className="bg-white/80 backdrop-blur-md border border-white rounded-[20px] px-6 py-3 flex justify-between items-center shadow-sm">
                     <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         Admin / <span className="text-[#0F172A] font-black">Offer Forge</span>
@@ -95,7 +91,6 @@ const OfferManagement = () => {
                     </div>
                 </header>
 
-                {/* TABLE SECTION */}
                 <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                     <div className="bg-white rounded-[20px] shadow-sm overflow-hidden border border-slate-100">
                         <div className="p-5 border-b flex justify-between items-center bg-slate-50/50">
@@ -113,7 +108,7 @@ const OfferManagement = () => {
                             onPageChange={setPage}
                             emptyText="No offer rules currently deployed"
                             renderRow={(offer) => {
-                                // 🟢 FIX: Define these variables inside renderRow so they are available for the JSX below
+
                                 const now = new Date();
                                 const isExpired = new Date(offer.endDate) < now;
                                 
@@ -128,8 +123,7 @@ const OfferManagement = () => {
 
                                 return (
                                     <tr key={offer._id} className="group hover:bg-slate-50/50 transition-colors border-b last:border-0 border-slate-50">
-                                        
-                                        {/* COLUMN 1: STRATEGY */}
+
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-[#7a6af6] border border-slate-200 group-hover:border-[#0F172A] transition-all">
@@ -146,7 +140,6 @@ const OfferManagement = () => {
                                             </div>
                                         </td>
 
-                                        {/* COLUMN 2: TARGET SCOPE */}
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
                                                 <span className="p-1.5 rounded-lg bg-slate-100 text-slate-500">
@@ -161,7 +154,6 @@ const OfferManagement = () => {
                                             </div>
                                         </td>
 
-                                        {/* COLUMN 3: VALUE */}
                                         <td className="px-6 py-4">
                                             <div className="inline-flex items-center px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-full border border-indigo-100">
                                                 <span className="text-[10px] font-black">{offer.discountValue}%</span>
@@ -169,7 +161,6 @@ const OfferManagement = () => {
                                             </div>
                                         </td>
 
-                                        {/* COLUMN 4: LIVE STATUS BADGE */}
                                         <td className="px-6 py-4">
                                             <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${statusConfig.bg} ${statusConfig.border}`}>
                                                 <div className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
@@ -179,7 +170,6 @@ const OfferManagement = () => {
                                             </div>
                                         </td>
 
-                                        {/* COLUMN 5: ACTIONS */}
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 

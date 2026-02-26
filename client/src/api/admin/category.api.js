@@ -1,6 +1,5 @@
 import adminAxios from "./adminAxios";
 
-/* ================= FETCH ================= */
 
 export const fetchAdminCategories = async ({
   page,
@@ -32,14 +31,12 @@ export const fetchAdminSubCategories = async (params) => {
   return data;
 };
 
-/* ================= CREATE ================= */
 
 export const createAdminCategory = async (payload) => {
   const { data } = await adminAxios.post("/admin/categories", payload);
   return data;
 };
 
-/* ================= UPDATE ================= */
 
 export const updateAdminCategory = async ({ id, ...payload }) => {
   if (!id) {
@@ -54,7 +51,6 @@ export const updateAdminCategory = async ({ id, ...payload }) => {
   return data;
 };
 
-/* ================= SOFT DELETE ================= */
 
 export const deleteAdminCategory = async (id) => {
   if (!id) {

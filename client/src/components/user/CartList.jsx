@@ -69,7 +69,6 @@ const CartList = () => {
                                 </div>
                             )}
 
-                            {/* Image Wrapper */}
                             <div 
                                 onClick={() => !isOutOfStock && navigate(`/product/${item.productId?._id}`)}
                                 className={`w-20 h-24 flex-shrink-0 rounded-2xl overflow-hidden bg-black border border-white/5 relative group/img ${isOutOfStock ? 'opacity-30' : 'cursor-pointer'}`}
@@ -86,7 +85,6 @@ const CartList = () => {
                                 )}
                             </div>
 
-                            {/* Content Info */}
                             <div className={`flex-1 space-y-4 ${isOutOfStock ? 'opacity-30' : ''}`}>
                                 <div>
                                     <h3 
@@ -128,7 +126,6 @@ const CartList = () => {
                                 </div>
                             </div>
 
-                            {/* Remove Button */}
                             <button
                                 onClick={() => remove.mutate(item._id)}
                                 className="absolute top-6 right-6 z-30 p-2 text-white/10 hover:text-red-500 transition-all"
@@ -136,7 +133,6 @@ const CartList = () => {
                                 <Trash2 size={16} />
                             </button>
 
-                            {/* Pricing */}
                             <div className={`text-right sm:border-l border-white/5 sm:pl-10 min-w-[120px] ${isOutOfStock ? 'opacity-30' : ''}`}>
                                 <div className="space-y-1">
                                     {hasDiscount && (

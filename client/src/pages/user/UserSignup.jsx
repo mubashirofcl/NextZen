@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Eye, EyeOff, Star, Twitter, Instagram, Facebook, Tag, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Star, Twitter, Instagram, Facebook, Tag, ArrowRight } from "lucide-react";
 import { useForm } from "react-hook-form";
-// 🟢 Import useSearchParams
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { requestSignupOTP } from "../../api/user/user.api";
 import { nxToast } from "../../utils/userToast";
@@ -19,36 +18,32 @@ const UserSignup = () => {
         register,
         handleSubmit,
         watch,
-        setValue,
         formState: { errors, isSubmitting }
     } = useForm({
+        mode: "onBlur",
         defaultValues: {
+            name: "",
+            email: "",
+            password: "",
+            confirmPassword: "",
             referralCode: urlReferralCode
         }
     });
 
-    // 1. Update the useEffect to save the ref to localStorage
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const ref = params.get("ref");
         if (ref) {
             localStorage.setItem("pending_referral", ref);
-            console.log("📍 Referral saved to storage:", ref);
         }
-    }, [location.search]);
+    }, []);
 
     const handleGoogleSignIn = () => {
         const params = new URLSearchParams(window.location.search);
-        let ref = params.get("ref");
-
-        if (!ref) {
-            ref = localStorage.getItem("pending_referral");
-        }
+        let ref = params.get("ref") || localStorage.getItem("pending_referral");
 
         const backendBaseUrl = "http://localhost:5000/api/auth/google";
-        const finalUrl = ref
-            ? `${backendBaseUrl}?ref=${ref}`
-            : backendBaseUrl;
+        const finalUrl = ref ? `${backendBaseUrl}?ref=${ref}` : backendBaseUrl;
 
         window.location.href = finalUrl;
     };
@@ -61,6 +56,8 @@ const UserSignup = () => {
                 purpose: "SIGNUP"
             });
 
+            nxToast.success("Verification Sent", "A fresh security code is waiting in your inbox.");
+            
             navigate("/verify-otp", {
                 state: {
                     flow: "signup",
@@ -70,9 +67,10 @@ const UserSignup = () => {
                     referralCode: data.referralCode || localStorage.getItem("pending_referral")
                 }
             });
-            nxToast.success("Verification code sent to your Email");
         } catch (err) {
-            setServerError(err.response?.data?.message || "Signup failed.");
+            const errorMsg = err.response?.data?.message || "We encountered a problem. Please try again.";
+            setServerError(errorMsg);
+            nxToast.error("Signup Interrupted", errorMsg);
         }
     };
 
@@ -81,7 +79,6 @@ const UserSignup = () => {
             <main className="flex-grow flex items-center justify-center py-8 px-4 text-black">
                 <div className="max-w-[900px] w-full flex bg-white/60 shadow-2xl rounded-2xl overflow-hidden min-h-[580px]">
 
-                    {/* LEFT SIDE - IMAGE */}
                     <div className="hidden lg:block lg:w-[42%] relative">
                         <img
                             src="https://images.unsplash.com/photo-1675079506207-668db5bb2e80?q=80&w=2070&auto=format&fit=crop"
@@ -92,7 +89,7 @@ const UserSignup = () => {
                             <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 bg-[#0F172A] rounded-lg flex items-center justify-center font-bold text-lg shadow-lg">N</div>
                                 <div>
-                                    <h1 className="font-bold text-md leading-none tracking-tight">NEXTZEN</h1>
+                                    <h1 className="font-bold text-md leading-none tracking-tight text-white uppercase">NEXTZEN</h1>
                                     <p className="text-[9px] opacity-80 uppercase tracking-widest mt-1">Premium Apparel</p>
                                 </div>
                             </div>
@@ -110,8 +107,7 @@ const UserSignup = () => {
                         </div>
                     </div>
 
-                    {/* RIGHT SIDE - FORM */}
-                    <div className="w-full lg:w-[58%] p-8 lg:px-10 flex flex-col justify-center">
+                    <div className="w-full lg:w-[58%] p-8 lg:px-10 flex flex-col justify-center bg-white/40">
                         <div className="max-w-xs mx-auto w-full">
                             <div className="text-center mb-6">
                                 <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight mb-1">Create Account</h2>
@@ -125,64 +121,78 @@ const UserSignup = () => {
                             )}
 
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-                                {/* NAME */}
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Full Name</label>
                                     <input
                                         type="text"
                                         placeholder="Enter your name"
-                                        {...register("name", { required: "Name is required", minLength: 3 })}
-                                        className="w-full px-3.5 py-2.5 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
+                                        {...register("name", { 
+                                            required: "Name is required", 
+                                            minLength: { value: 3, message: "Name is too short" },
+                                            maxLength: { value: 30, message: "Name is too long" },
+                                            pattern: { value: /^[a-zA-Z\s]*$/, message: "Only letters allowed" }
+                                        })}
+                                        className={`w-full px-3.5 py-2.5 bg-gray-50 rounded-xl text-xs outline-none transition-all border ${errors.name ? 'border-red-300' : 'border-transparent focus:ring-1 focus:ring-gray-300'}`}
                                     />
-                                    {errors.name && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase">{errors.name.message}</p>}
+                                    {errors.name && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase tracking-tighter">! {errors.name.message}</p>}
                                 </div>
 
-                                {/* EMAIL */}
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Email Address</label>
                                     <input
                                         type="email"
                                         placeholder="john@example.com"
-                                        {...register("email", { required: "Email required", pattern: /^\S+@\S+$/i })}
-                                        className="w-full px-3.5 py-2.5 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
+                                        {...register("email", { 
+                                            required: "Email is required", 
+                                            pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: "Invalid email format" },
+                                            maxLength: { value: 50, message: "Email is too long" }
+                                        })}
+                                        className={`w-full px-3.5 py-2.5 bg-gray-50 rounded-xl text-xs outline-none transition-all border ${errors.email ? 'border-red-300' : 'border-transparent focus:ring-1 focus:ring-gray-300'}`}
                                     />
-                                    {errors.email && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase">Valid email required</p>}
+                                    {errors.email && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase tracking-tighter">! {errors.email.message}</p>}
                                 </div>
 
-                                {/* PASSWORDS GRID */}
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1 relative">
                                         <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Password</label>
-                                        <input
-                                            type={showPass ? "text" : "password"}
-                                            placeholder="••••••••"
-                                            {...register("password", { required: "Required", minLength: { value: 6, message: "Min 6 chars" } })}
-                                            className="w-full px-3.5 py-2.5 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
-                                        />
-                                        <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-8 text-gray-400 hover:text-gray-600">
-                                            {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                                        </button>
-                                        {errors.password && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase">{errors.password.message}</p>}
+                                        <div className="relative">
+                                            <input
+                                                type={showPass ? "text" : "password"}
+                                                placeholder="••••••••"
+                                                {...register("password", { 
+                                                    required: "Required", 
+                                                    minLength: { value: 6, message: "Min 6 chars" },
+                                                    maxLength: { value: 20, message: "Max 20 chars" }
+                                                })}
+                                                className={`w-full px-3.5 py-2.5 bg-gray-50 rounded-xl text-xs outline-none transition-all border ${errors.password ? 'border-red-300' : 'border-transparent focus:ring-1 focus:ring-gray-300'}`}
+                                            />
+                                            <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                                {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                                            </button>
+                                        </div>
+                                        {errors.password && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase tracking-tighter">! {errors.password.message}</p>}
                                     </div>
 
                                     <div className="space-y-1 relative">
                                         <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Confirm</label>
-                                        <input
-                                            type={showConfirmPass ? "text" : "password"}
-                                            placeholder="••••••••"
-                                            {...register("confirmPassword", {
-                                                validate: v => v === watch("password") || "Mismatch"
-                                            })}
-                                            className="w-full px-3.5 py-2.5 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
-                                        />
-                                        <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-8 text-gray-400 hover:text-gray-600">
-                                            {showConfirmPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                                        </button>
-                                        {errors.confirmPassword && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase">{errors.confirmPassword.message}</p>}
+                                        <div className="relative">
+                                            <input
+                                                type={showConfirmPass ? "text" : "password"}
+                                                placeholder="••••••••"
+                                                {...register("confirmPassword", {
+                                                    required: "Required",
+                                                    validate: v => v === watch("password") || "Mismatch"
+                                                })}
+                                                className={`w-full px-3.5 py-2.5 bg-gray-50 rounded-xl text-xs outline-none transition-all border ${errors.confirmPassword ? 'border-red-300' : 'border-transparent focus:ring-1 focus:ring-gray-300'}`}
+                                            />
+                                            <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                                {showConfirmPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                                            </button>
+                                        </div>
+                                        {errors.confirmPassword && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase tracking-tighter">! {errors.confirmPassword.message}</p>}
                                     </div>
                                 </div>
 
-                                {/* 🟢 REFERRAL CODE INPUT (Approaches 1 & 2) */}
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Referral Code (Optional)</label>
                                     <div className="relative group">
@@ -192,9 +202,10 @@ const UserSignup = () => {
                                         <input
                                             type="text"
                                             placeholder="GIFT-100"
-                                            {...register("referralCode")}
-                                            className={`w-full pl-9 pr-3.5 py-2.5 border-none rounded-xl text-xs outline-none focus:ring-1 transition-all ${urlReferralCode ? 'bg-indigo-50/50 ring-1 ring-indigo-200' : 'bg-gray-50 focus:ring-gray-300'
-                                                }`}
+                                            {...register("referralCode", {
+                                                maxLength: { value: 15, message: "Code too long" }
+                                            })}
+                                            className={`w-full pl-9 pr-3.5 py-2.5 border-none rounded-xl text-xs outline-none focus:ring-1 transition-all ${urlReferralCode ? 'bg-indigo-50/50 ring-1 ring-indigo-200' : 'bg-gray-50 focus:ring-gray-300'}`}
                                         />
                                         {urlReferralCode && (
                                             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-indigo-500 uppercase tracking-tighter animate-pulse">
@@ -208,9 +219,9 @@ const UserSignup = () => {
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="w-full bg-[#0F172A] text-white py-3.5 rounded-xl text-[10px] uppercase tracking-[0.2em] font-bold shadow-lg hover:bg-black transition-all active:scale-[0.98] disabled:bg-gray-400 mt-2"
+                                    className="w-full bg-[#0F172A] text-white py-3.5 rounded-xl text-[10px] uppercase tracking-[0.2em] font-bold shadow-lg hover:bg-black transition-all active:scale-[0.98] disabled:bg-gray-400 mt-2 flex items-center justify-center gap-2"
                                 >
-                                    {isSubmitting ? "Processing..." : "Sign Up"}
+                                    {isSubmitting ? "Processing..." : <>Sign Up <ArrowRight size={14} /></>}
                                 </button>
                             </form>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Edit3, Tag, Layers, List, Search, Ban, CheckCircle, Trash2, Percent } from "lucide-react"; // Added Percent icon
+import { Plus, Edit3, Tag, Layers, List, Search, Ban, CheckCircle, Trash2, Percent } from "lucide-react"; 
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import DataTable from "../../tables/admin/DataTable";
@@ -28,13 +28,11 @@ const CategoryManagement = () => {
     const createCategory = useCreateCategory();
     const updateCategory = useUpdateCategory();
 
-    /* ------------------ SEARCH DEBOUNCE ------------------ */
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
         return () => clearTimeout(t);
     }, [searchTerm]);
 
-    /* ------------------ FETCH LEVEL 1 ------------------ */
     const { data, isLoading } = useAdminCategories({
         page,
         search: debouncedSearch,
@@ -49,7 +47,6 @@ const CategoryManagement = () => {
         total: data?.totalItems ?? 0,
     };
 
-    /* ------------------ SUBMIT CATEGORY ------------------ */
     const submitCategory = async (payload) => {
         if (mode === "add") {
             await createCategory.mutateAsync(payload);
@@ -89,7 +86,6 @@ const CategoryManagement = () => {
             <AdminSidebar />
 
             <main className="flex-1 flex flex-col gap-3 overflow-hidden">
-                {/* HEADER */}
                 <header className="bg-white/80 backdrop-blur-md border border-white rounded-[20px] px-6 py-3 flex justify-between items-center shadow-sm">
                     <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         Admin / <span className="text-[#0F172A] font-black">Categories</span>
@@ -132,7 +128,6 @@ const CategoryManagement = () => {
                     </div>
                 </header>
 
-                {/* TABLE SECTION */}
                 <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                     <div className="bg-white rounded-[20px] shadow-sm overflow-hidden">
                         <div className="p-5 border-b flex justify-between items-center bg-slate-50/30">
@@ -152,7 +147,6 @@ const CategoryManagement = () => {
                             renderRow={(cat) => (
                                 <tr key={cat._id} className="group hover:bg-slate-50/30 transition-colors border-b last:border-0 border-slate-50">
 
-                                    {/* COLUMN 1: CATEGORY DETAILS */}
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200 group-hover:border-[#0F172A] transition-all">
@@ -169,7 +163,6 @@ const CategoryManagement = () => {
                                         </div>
                                     </td>
 
-                                    {/* COLUMN 2: OFFER RULE (NEW BADGE SYSTEM) */}
                                     <td className="px-6 py-4">
                                         {cat.offerId ? (
                                             <div className="flex flex-col gap-1">
@@ -188,7 +181,7 @@ const CategoryManagement = () => {
                                         )}
                                     </td>
 
-                                    {/* COLUMN 3: SUBCATEGORY COUNT */}
+     
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">
                                             <Layers size={12} className="text-slate-400" />
@@ -198,7 +191,6 @@ const CategoryManagement = () => {
                                         </div>
                                     </td>
 
-                                    {/* COLUMN 4: STATUS */}
                                     <td className="px-6 py-4">
                                         <span
                                             className={`inline-flex items-center px-2 py-1 rounded-md text-[9px] font-black uppercase border ${cat.isActive
@@ -211,7 +203,7 @@ const CategoryManagement = () => {
                                         </span>
                                     </td>
 
-                                    {/* COLUMN 5: ACTIONS */}
+                      
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-1">
                                             <button
@@ -244,7 +236,6 @@ const CategoryManagement = () => {
                 </div>
             </main>
 
-            {/* MODALS */}
             <CategoryModal
                 isOpen={catModal}
                 onClose={() => setCatModal(false)}

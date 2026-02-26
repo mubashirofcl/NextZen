@@ -15,7 +15,6 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
     const [customAmount, setCustomAmount] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     
-    // 🟢 Validation Error State
     const [validationError, setValidationError] = useState("");
     
     const { mutateAsync: addMoneyMutation } = useAddMoney();
@@ -24,18 +23,21 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
 
     const finalAmount = customAmount ? Number(customAmount) : selectedPreset;
 
-    // 🟢 Dynamic Validation Function
     const validateAmount = (amount) => {
         if (!amount && amount !== 0) {
-            setValidationError("Please enter an amount.");
+            setValidationError("Please specify an amount to proceed.");
+            return false;
+        }
+        if (isNaN(amount)) {
+            setValidationError("Please enter a valid numerical value.");
             return false;
         }
         if (amount < 1) {
-            setValidationError("Minimum amount to add is ₹1.");
+            setValidationError("The minimum amount you can add is ₹1.");
             return false;
         }
         if (amount > 100000) {
-            setValidationError("Maximum limit per transaction is ₹1,00,000.");
+            setValidationError("For security, the maximum per transaction is ₹1,00,000.");
             return false;
         }
         setValidationError("");
@@ -50,6 +52,7 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
 
     const handleCustomAmountChange = (e) => {
         const val = e.target.value;
+        if (val.length > 7) return; 
         setCustomAmount(val);
         setSelectedPreset(null); 
         validateAmount(Number(val));
@@ -68,13 +71,18 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
     };
 
     const handlePayment = async () => {
-        if (!validateAmount(finalAmount)) return;
+        if (!validateAmount(finalAmount)) {
+            nxToast.warn("Entry Required", "Please enter a valid amount before proceeding.");
+            return;
+        }
 
         try {
             setIsProcessing(true);
             const isLoaded = await loadRazorpayScript();
             if (!isLoaded) {
-                setFailReason("Payment Gateway is offline. Please check your connection.");
+                const msg = "Payment Gateway is offline. Please check your connection.";
+                setFailReason(msg);
+                nxToast.error("Gateway Error", msg);
                 setStep('failed');
                 return;
             }
@@ -101,8 +109,9 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
                             amount: finalAmount
                         });
                         setStep('success');
+                        nxToast.success("Funds Added", "Your wallet has been topped up successfully.");
                     } catch (err) {
-                        setFailReason("Payment was successful, but verification failed. Contact support.");
+                        setFailReason("Payment was successful, but verification failed. Please contact support.");
                         setStep('failed');
                     } finally {
                         setIsProcessing(false);
@@ -112,7 +121,9 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
                 modal: { 
                     ondismiss: () => {
                         setIsProcessing(false);
-                        setFailReason("Transaction was cancelled or interrupted.");
+                        const msg = "Transaction was cancelled or interrupted.";
+                        setFailReason(msg);
+                        nxToast.info("Payment Cancelled", "You closed the payment window.");
                         setStep('failed');
                     } 
                 }
@@ -121,7 +132,9 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
             new window.Razorpay(options).open();
         } catch (error) {
             setIsProcessing(false);
-            setFailReason("Could not initialize secure gateway.");
+            const msg = "Could not initialize secure gateway.";
+            setFailReason(msg);
+            nxToast.error("Security Block", msg);
             setStep('failed');
         }
     };
@@ -132,7 +145,6 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
                 
                 <div className="p-8">
                     
-                    {/* 🟢 STEP 1: INPUT FORM */}
                     {step === 'input' && (
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <button 
@@ -185,7 +197,6 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
                                         validationError ? 'border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-slate-200 focus:border-[#0F172A] focus:ring-1 focus:ring-[#0F172A]'
                                     }`}
                                 />
-                                {/* 🟢 Show Error Message */}
                                 {validationError && (
                                     <p className="text-[9px] font-bold text-red-500 uppercase flex items-center gap-1 mt-2 animate-in fade-in slide-in-from-top-1">
                                         <AlertCircle size={10} /> {validationError}
@@ -236,7 +247,6 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
                         </div>
                     )}
 
-                    {/* 🟢 STEP 2: SUCCESS SCREEN */}
                     {step === 'success' && (
                         <div className="py-10 flex flex-col items-center text-center animate-in zoom-in-95 duration-500">
                             <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mb-6 border-8 border-green-100">
@@ -256,7 +266,6 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
                         </div>
                     )}
 
-                    {/* 🟢 STEP 3: FAILED SCREEN (THEME UPDATED) */}
                     {step === 'failed' && (
                         <div className="py-10 flex flex-col items-center text-center animate-in zoom-in-95 duration-500">
                             <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mb-6 border-8 border-red-100/50">

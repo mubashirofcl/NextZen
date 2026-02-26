@@ -37,10 +37,9 @@ export const deleteOffer = async (req, res, next) => {
     }
 };
 
-// This endpoint will be used by Product/Category forms to fetch "Pull" options
 export const getAvailableRules = async (req, res, next) => {
     try {
-        const { type } = req.query; // ?type=PRODUCT or ?type=CATEGORY
+        const { type } = req.query; 
         const offers = await offerService.getAvailableRules(type);
         res.status(200).json({ success: true, offers });
     } catch (error) { next(error); }

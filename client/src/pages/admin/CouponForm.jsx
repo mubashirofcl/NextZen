@@ -30,12 +30,10 @@ const CouponForm = () => {
     const { createCoupon, updateCoupon, couponDetail, isLoadingDetail, isPending } = useCoupons(id);
 
     const isInitialized = useRef(false);
-
-    // Get today's date in YYYY-MM-DD format for date input minimums
     const todayStr = new Date().toISOString().split('T')[0];
 
     const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({
-        mode: "onChange",
+        mode: "onBlur",
         defaultValues: {
             code: "",
             discountType: "PERCENT",
@@ -54,7 +52,6 @@ const CouponForm = () => {
     const discountType = watch("discountType");
     const startDate = watch("startDate");
 
-    // Sync form with backend data for Edit Mode
     useEffect(() => {
         if (isEditMode && couponDetail && !isInitialized.current) {
             reset({
@@ -67,9 +64,9 @@ const CouponForm = () => {
     }, [couponDetail, isEditMode, reset]);
 
     const onFormSubmit = async (data) => {
-        // Ensure numbers are properly parsed before sending
         const payload = {
             ...data,
+            code: data.code.toUpperCase().trim(),
             discountValue: Number(data.discountValue),
             maxDiscount: data.maxDiscount ? Number(data.maxDiscount) : null,
             minPurchaseAmt: Number(data.minPurchaseAmt),
@@ -87,7 +84,7 @@ const CouponForm = () => {
     return (
         <div className="min-h-screen flex bg-[#f1f5f9] p-2 gap-2 items-start font-sans relative">
             {(isPending || (isEditMode && isLoadingDetail)) && (
-                <GlobalLoader message={isEditMode ? "Synchronizing with Vault..." : "Deploying Promotion..."} />
+                <GlobalLoader message={isEditMode ? "Updating voucher records..." : "Creating your new promotion..."} />
             )}
 
             <AdminSidebar />
@@ -112,7 +109,6 @@ const CouponForm = () => {
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
                     <form className="space-y-3 pb-8" onSubmit={(e) => e.preventDefault()}>
 
-                        {/* Section 1: Visual Identity */}
                         <div className="bg-white rounded-[20px] p-6 border shadow-sm">
                             <div className="flex items-center gap-2 mb-5 border-b pb-3 text-[#7a6af6]">
                                 <ClipboardList size={16} />
@@ -123,8 +119,9 @@ const CouponForm = () => {
                                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Internal Description (Label) *</label>
                                     <input 
                                         {...register("description", { 
-                                            required: "Description is required",
-                                            validate: value => value.trim().length > 0 || "Cannot be empty spaces"
+                                            required: "Please enter a description for this offer",
+                                            maxLength: { value: 50, message: "Description is too long (max 50 characters)" },
+                                            validate: value => value.trim().length >= 5 || "Description must be at least 5 characters long"
                                         })} 
                                         placeholder="e.g. Summer Flash Sale 2026" 
                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-[12px] px-4 py-2.5 text-[11px] font-bold text-[#0F172A] outline-none focus:border-[#7a6af6] transition-all" 
@@ -135,10 +132,10 @@ const CouponForm = () => {
                                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Customer Promo Code *</label>
                                     <input 
                                         {...register("code", { 
-                                            required: "A promo code is required", 
-                                            minLength: { value: 3, message: "Code must be at least 3 characters" },
-                                            maxLength: { value: 15, message: "Code cannot exceed 15 characters" },
-                                            pattern: { value: /^[A-Z0-9]+$/i, message: "Only letters and numbers allowed (No spaces)" }
+                                            required: "A unique promo code is required", 
+                                            minLength: { value: 3, message: "The code must be at least 3 characters" },
+                                            maxLength: { value: 12, message: "The code must not exceed 12 characters" },
+                                            pattern: { value: /^[A-Z0-9]+$/i, message: "Only letters and numbers are allowed" }
                                         })} 
                                         placeholder="e.g. SUMMER50" 
                                         className="w-full bg-white border-2 border-slate-100 rounded-[12px] px-4 py-2.5 text-[11px] font-bold text-[#0F172A] uppercase outline-none focus:border-[#7a6af6] transition-all" 
@@ -148,7 +145,6 @@ const CouponForm = () => {
                             </div>
                         </div>
 
-                        {/* Section 2: Incentive Configuration */}
                         <div className="bg-white rounded-[20px] p-6 border shadow-sm">
                             <div className="flex items-center gap-2 mb-5 border-b pb-3 text-[#7a6af6]">
                                 <Settings2 size={16} />
@@ -167,9 +163,9 @@ const CouponForm = () => {
                                     <input 
                                         type="number" 
                                         {...register("discountValue", { 
-                                            required: "Discount value is required", 
-                                            min: { value: 1, message: "Value must be at least 1" }, 
-                                            max: discountType === 'PERCENT' ? { value: 99, message: "Cannot discount 100% or more" } : undefined 
+                                            required: "Please specify the discount amount", 
+                                            min: { value: 1, message: "Minimum value is 1" }, 
+                                            max: discountType === 'PERCENT' ? { value: 80, message: "Maximum discount is 80%" } : { value: 5000, message: "Maximum flat discount is ₹5000" }
                                         })} 
                                         placeholder="e.g. 15"
                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-[12px] px-4 py-2.5 text-[11px] font-bold outline-none focus:border-[#7a6af6]" 
@@ -181,19 +177,19 @@ const CouponForm = () => {
                                     <input 
                                         type="number" 
                                         {...register("maxDiscount", {
-                                            min: { value: 1, message: "Must be greater than 0 if set" }
+                                            min: { value: 1, message: "Must be at least ₹1" },
+                                            max: { value: 10000, message: "Savings cap cannot exceed ₹10000" }
                                         })} 
                                         disabled={discountType === 'FLAT'} 
-                                        placeholder={discountType === 'FLAT' ? 'Not applicable for Flat types' : 'e.g. 500'} 
+                                        placeholder={discountType === 'FLAT' ? 'Not needed for flat discount' : 'e.g. 500'} 
                                         className="w-full bg-white border-2 border-slate-100 rounded-[12px] px-4 py-2.5 text-[11px] font-bold disabled:bg-slate-50 disabled:text-slate-300 transition-all outline-none focus:border-[#7a6af6]" 
                                     />
                                     {errors.maxDiscount && <ErrorMsg message={errors.maxDiscount.message} />}
-                                    <p className="text-[7px] text-slate-400 font-bold uppercase mt-1 ml-1">Limits max discount for high-value carts</p>
+                                    <p className="text-[7px] text-slate-400 font-bold uppercase mt-1 ml-1">Protects your margins on large orders</p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Section 3: Guardrails & Limits */}
                         <div className="bg-white rounded-[20px] p-6 border shadow-sm">
                             <div className="flex items-center gap-2 mb-5 border-b pb-3 text-[#7a6af6]">
                                 <ShieldCheck size={16} />
@@ -201,12 +197,13 @@ const CouponForm = () => {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                 <div className="space-y-1.5">
-                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Min. Cart Value (₹) *</label>
+                                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Min. Order Value (₹) *</label>
                                     <input 
                                         type="number" 
                                         {...register("minPurchaseAmt", { 
-                                            required: "Minimum cart value is required",
-                                            min: { value: 0, message: "Cannot be a negative number" } 
+                                            required: "Minimum order value is required",
+                                            min: { value: 0, message: "Cannot be a negative number" },
+                                            max: { value: 50000, message: "Maximum limit is ₹50000" }
                                         })} 
                                         placeholder="e.g. 999"
                                         className="w-full bg-white border-2 border-slate-100 rounded-[12px] px-4 py-2.5 text-[11px] font-bold outline-none focus:border-[#7a6af6]" 
@@ -219,7 +216,8 @@ const CouponForm = () => {
                                         type="number" 
                                         {...register("usagePerUser", { 
                                             required: "Usage per user is required", 
-                                            min: { value: 1, message: "Must allow at least 1 use per customer" } 
+                                            min: { value: 1, message: "Minimum is 1 use" },
+                                            max: { value: 5, message: "Maximum allowed is 5 uses" }
                                         })} 
                                         placeholder="e.g. 1"
                                         className="w-full bg-white border-2 border-slate-100 rounded-[12px] px-4 py-2.5 text-[11px] font-bold outline-none focus:border-[#7a6af6]" 
@@ -231,8 +229,9 @@ const CouponForm = () => {
                                     <input 
                                         type="number" 
                                         {...register("usageLimit", { 
-                                            required: "Store usage limit is required", 
-                                            min: { value: 1, message: "Must allow at least 1 total use" } 
+                                            required: "Overall usage limit is required", 
+                                            min: { value: 1, message: "Minimum is 1 total use" },
+                                            max: { value: 10000, message: "Maximum is 10000 total uses" }
                                         })} 
                                         placeholder="e.g. 100"
                                         className="w-full bg-white border-2 border-slate-100 rounded-[12px] px-4 py-2.5 text-[11px] font-bold outline-none focus:border-[#7a6af6]" 
@@ -242,7 +241,6 @@ const CouponForm = () => {
                             </div>
                         </div>
 
-                        {/* Section 4: Lifecycle Timeline */}
                         <div className="bg-white rounded-[20px] p-6 border shadow-sm">
                             <div className="flex items-center gap-2 mb-5 border-b pb-3 text-[#7a6af6]">
                                 <Calendar size={16} />
@@ -253,8 +251,8 @@ const CouponForm = () => {
                                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Launch Date *</label>
                                     <input 
                                         type="date" 
-                                        min={!isEditMode ? todayStr : undefined} // Only restrict past dates on creation
-                                        {...register("startDate", { required: "Start date is mandatory" })} 
+                                        min={!isEditMode ? todayStr : undefined} 
+                                        {...register("startDate", { required: "Please select a start date" })} 
                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-[12px] px-4 py-2.5 text-[11px] font-bold text-[#0F172A] outline-none focus:border-[#7a6af6]" 
                                     />
                                     {errors.startDate && <ErrorMsg message={errors.startDate.message} />}
@@ -263,10 +261,10 @@ const CouponForm = () => {
                                     <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Expiry Date *</label>
                                     <input 
                                         type="date" 
-                                        min={startDate || todayStr} // End date must be >= start date or today
+                                        min={startDate || todayStr}
                                         {...register("endDate", { 
-                                            required: "End date is mandatory", 
-                                            validate: value => value >= startDate || "Expiry date must be after or equal to the launch date." 
+                                            required: "Please select an end date", 
+                                            validate: value => value >= startDate || "The expiry date cannot be set before the launch date" 
                                         })} 
                                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-[12px] px-4 py-2.5 text-[11px] font-bold text-[#0F172A] outline-none focus:border-[#7a6af6]" 
                                     />
@@ -275,7 +273,6 @@ const CouponForm = () => {
                             </div>
                         </div>
 
-                        {/* Deployment Summary Bar */}
                         <div className="bg-[#0F172A] rounded-[20px] p-6 shadow-xl flex flex-col md:flex-row justify-between items-center text-white gap-4">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/10">
@@ -292,7 +289,7 @@ const CouponForm = () => {
                                     <input type="checkbox" {...register("isActive")} className="w-10 h-5 accent-[#7a6af6] cursor-pointer" />
                                 </div>
                                 <button type="button" onClick={handleSubmit(onFormSubmit)} disabled={isPending} className="bg-[#7a6af6] px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#6c5ce7] shadow-lg shadow-[#7a6af6]/20 transition-all active:scale-95 disabled:opacity-50">
-                                    {isEditMode ? 'Commit Changes' : 'Activate Campaign'}
+                                    {isEditMode ? 'Update Voucher' : 'Activate Campaign'}
                                 </button>
                             </div>
                         </div>

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ShoppingBag, Heart, ChevronRight, Minus, Plus,
-    ShieldCheck, Truck, List, AlertCircle, Loader2,
-    Sparkles, X, Send, MessageSquare, RefreshCw, Bot,
+    ShieldCheck, Truck, List, Loader2,
+    Sparkles, X, Send, MessageSquare, Bot,
     Palette,
     Banknote
 } from 'lucide-react';
@@ -32,14 +32,12 @@ const ProductDetails = () => {
     const activeVariants = product?.variants?.filter(v => v.isDeleted === false) || [];
     const { data: recommendedData = [] } = useRecommended(product?.subcategory?._id || product?.subcategoryId, id);
 
-    // --- BASE UI STATES ---
     const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
     const [selectedSize, setSelectedSize] = useState(null);
     const [activeImg, setActiveImg] = useState(null);
     const [zoomPos, setZoomPos] = useState({ x: 0, y: 0, show: false });
     const [qty, setQty] = useState(1);
 
-    // --- 🤖 CHATBOT STATES ---
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatInput, setChatInput] = useState("");
     const [chatHistory, setChatHistory] = useState([]);
@@ -92,12 +90,11 @@ const ProductDetails = () => {
         if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }, [chatHistory, isAITyping]);
 
-    // Auto-hide nudge when chat opens
     useEffect(() => {
         if (isChatOpen) setShowNudge(false);
     }, [isChatOpen]);
 
-    // --- HANDLERS ---
+
     const handleMouseMove = (e) => {
         if (!imgRef.current) return;
         const { left, top, width, height } = imgRef.current.getBoundingClientRect();
@@ -185,7 +182,6 @@ const ProductDetails = () => {
         <div className="relative min-h-screen font-sans text-white pt-16 selection:bg-[#7a6af6]/30 overflow-x-hidden">
             <Header />
 
-            {/* 🤖 NEXTZEN STYLE CONCIERGE (SIDE DRAWER) */}
             <div className={`fixed inset-y-0 right-0 w-full sm:w-[420px] z-[110] transform transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="h-[96vh] my-[2vh] mr-[1vw] w-full bg-black/40 backdrop-blur-2xl border border-white/10 flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.5)] rounded-[2.5rem] overflow-hidden">
                     <div className="p-6 border-b border-white/10 bg-white/[0.02] flex items-center justify-between">
@@ -267,11 +263,9 @@ const ProductDetails = () => {
                 </div>
             </div>
 
-            {/* 🤖 STYLE NUDGE (PROACTIVE POPUP) */}
             {showNudge && !isChatOpen && chatHistory.length === 0 && (
                 <div className="fixed bottom-28 right-10 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <div className="relative group">
-                        {/* Tooltip Content */}
                         <div className="bg-black/60 backdrop-blur-2xl border border-white/10 p-4 rounded-3xl shadow-2xl flex items-center gap-4 max-w-[240px] relative">
                             <button
                                 onClick={() => setShowNudge(false)}
@@ -289,18 +283,16 @@ const ProductDetails = () => {
                                 <p className="text-[9px] font-medium text-white/40 leading-tight">I can check stock or style this piece for you.</p>
                             </div>
                         </div>
-                        {/* Triangle Arrow */}
                         <div className="absolute -bottom-1.5 right-8 w-3 h-3 bg-black/40 border-r border-b border-white/10 rotate-45 backdrop-blur-2xl" />
                     </div>
                 </div>
             )}
 
-            {/* 🟢 FLOATING TRIGGER BUTTON */}
             <button
                 onClick={() => setIsChatOpen(true)}
                 className={`fixed bottom-8 right-8 z-[90] flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 pl-6 pr-4 py-4 rounded-2xl shadow-xl hover:bg-white/10 transition-all duration-500 group active:scale-95 ${isChatOpen ? 'opacity-0 scale-50 pointer-events-none' : 'opacity-100 scale-100'}`}
             >
-                {/* Visual ping when nudge is active */}
+
                 {showNudge && (
                     <span className="absolute -top-1 -left-1 flex h-3 w-3">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7a6af6] opacity-75"></span>
@@ -469,14 +461,12 @@ const ProductDetails = () => {
                     </div>
                 </div>
 
-                {/* RELATED PRODUCTS */}
                 <section className="mt-20 space-y-10">
                     <div className="flex justify-between items-end border-b border-white/5 pb-4 px-1">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic">Related Archive</h2>
                         <span className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20">Discovery 2026</span>
                     </div>
 
-                    {/* 🟢 Grid restricted to one row using cols count and slicing data */}
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 overflow-hidden">
                         {recommendedData.slice(0, 6).map((rec) => (
                             <div key={rec._id} onClick={() => navigate(`/product/${rec._id}`)} className="group cursor-pointer space-y-2">

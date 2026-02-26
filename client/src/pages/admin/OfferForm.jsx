@@ -11,8 +11,8 @@ const OfferForm = () => {
     const navigate = useNavigate();
     const { createOffer, updateOffer, offerDetail, isPending } = useOffers(id);
 
-    // Destructured setError to handle backend uniqueness conflicts
     const { register, handleSubmit, reset, watch, setError, formState: { errors } } = useForm({
+        mode: "onBlur",
         defaultValues: { applyFor: "PRODUCT", discountType: "PERCENT", isActive: true }
     });
 
@@ -33,26 +33,25 @@ const OfferForm = () => {
 
     const onFormSubmit = async (data) => {
         try {
-            // Trim title to remove accidental wrapping spaces
             const cleanData = { ...data, title: data.title.trim() };
             
             if (id) await updateOffer({ id, data: cleanData });
             else await createOffer(cleanData);
             
-            adminToast.success(id ? "Rule Synced" : "Rule Deployed");
+            adminToast.success(id ? "Offer configuration synchronized successfully" : "New offer rule deployed to store");
             navigate("/admin/offers");
         } catch (err) {
             const msg = err?.response?.data?.message || err.message;
-            // Map uniqueness errors specifically to the title field
+
             if (msg.toLowerCase().includes("title") || msg.toLowerCase().includes("exists")) {
-                setError("title", { type: "manual", message: msg });
+                setError("title", { type: "manual", message: "This offer title is already in use" });
+                adminToast.error("Please provide a unique title for this offer");
             } else {
                 adminToast.error(msg);
             }
         }
     };
 
-    // UI Helpers
     const errorLabel = "text-[8px] font-bold text-red-500 uppercase mt-1 ml-1 flex items-center gap-1";
     const inputBase = "w-full border-2 rounded-[12px] px-4 py-2.5 text-[11px] font-bold outline-none transition-all";
     const inputNormal = `${inputBase} bg-slate-50 border-slate-100 focus:border-[#7a6af6] text-[#0F172A]`;
@@ -85,7 +84,6 @@ const OfferForm = () => {
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
                     <form className="space-y-3 pb-8" onSubmit={(e) => e.preventDefault()}>
 
-                        {/* IDENTITY */}
                         <div className="bg-white rounded-[20px] p-6 border shadow-sm">
                             <h3 className="text-[10px] font-black text-[#7a6af6] uppercase mb-4 tracking-widest flex items-center gap-2 border-b pb-3">
                                 <Tag size={14} /> Rule Identity
@@ -94,11 +92,12 @@ const OfferForm = () => {
                                 <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Offer Title *</label>
                                 <input
                                     {...register("title", {
-                                        required: "Offer title is required",
+                                        required: "Please enter a descriptive title",
+                                        maxLength: { value: 40, message: "Title must be under 40 characters" },
                                         validate: {
-                                            noOnlySpaces: v => v.trim().length > 0 || "Title cannot be empty spaces",
-                                            minLen: v => v.trim().length >= 3 || "Min 3 characters required",
-                                            namingConvention: v => /^[A-Za-z0-9 _-]+$/.test(v) || "Only alphanumeric, space, _ and -"
+                                            noOnlySpaces: v => v.trim().length > 0 || "Title cannot be empty",
+                                            minLen: v => v.trim().length >= 3 || "Title must be at least 3 characters",
+                                            namingConvention: v => /^[A-Za-z0-9 _-]+$/.test(v) || "Only letters, numbers, spaces, _ and - allowed"
                                         }
                                     })}
                                     placeholder="E.G. FESTIVE_DROP_2026"
@@ -108,7 +107,6 @@ const OfferForm = () => {
                             </div>
                         </div>
 
-                        {/* CONFIG */}
                         <div className="bg-white rounded-[20px] p-6 border shadow-sm">
                             <h3 className="text-[10px] font-black text-[#7a6af6] uppercase mb-4 tracking-widest flex items-center gap-2 border-b pb-3">
                                 <Layers size={14} /> Scope Configuration
@@ -124,7 +122,6 @@ const OfferForm = () => {
                             </div>
                         </div>
 
-                        {/* LOGIC */}
                         <div className="bg-white rounded-[20px] p-6 border shadow-sm">
                             <h3 className="text-[10px] font-black text-[#7a6af6] uppercase mb-4 tracking-widest flex items-center gap-2 border-b pb-3">
                                 <Settings2 size={14} /> Incentive Logic
@@ -136,9 +133,9 @@ const OfferForm = () => {
                                         <input
                                             type="number"
                                             {...register("discountValue", {
-                                                required: "Value is required",
-                                                min: { value: 1, message: "Minimum 1%" },
-                                                max: { value: 90, message: "Maximum 90%" },
+                                                required: "Discount percentage is required",
+                                                min: { value: 1, message: "Discount must be at least 1%" },
+                                                max: { value: 90, message: "Discount cannot exceed 90%" },
                                                 valueAsNumber: true
                                             })}
                                             className={errors.discountValue ? inputError : inputNormal}
@@ -154,7 +151,7 @@ const OfferForm = () => {
                                         <input
                                             type="date"
                                             min={id ? undefined : today}
-                                            {...register("startDate", { required: "Start date required" })}
+                                            {...register("startDate", { required: "Start date is mandatory" })}
                                             className={errors.startDate ? inputError : inputNormal}
                                         />
                                         {errors.startDate && <p className={errorLabel}>{errors.startDate.message}</p>}
@@ -165,8 +162,8 @@ const OfferForm = () => {
                                             type="date"
                                             min={startDateValue || today}
                                             {...register("endDate", {
-                                                required: "End date required",
-                                                validate: (v) => v > startDateValue || "Must be after launch"
+                                                required: "End date is mandatory",
+                                                validate: (v) => v >= startDateValue || "Must expire after launch date"
                                             })}
                                             className={errors.endDate ? inputError : inputNormal}
                                         />
@@ -176,7 +173,6 @@ const OfferForm = () => {
                             </div>
                         </div>
 
-                        {/* STATUS */}
                         <div className="bg-[#0F172A] rounded-[20px] p-6 flex justify-between items-center text-white shadow-xl">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-[#7a6af6]/20 rounded-xl flex items-center justify-center border border-[#7a6af6]/30 backdrop-blur-md">
@@ -184,7 +180,7 @@ const OfferForm = () => {
                                 </div>
                                 <p className="text-[10px] font-black uppercase tracking-widest">
                                     Forge Status: <span className={Object.keys(errors).length > 0 ? "text-red-400" : "text-[#7a6af6]"}>
-                                        {Object.keys(errors).length > 0 ? "Validation Error" : "System Ready"}
+                                        {Object.keys(errors).length > 0 ? "Adjustment Needed" : "Rule Ready"}
                                     </span>
                                 </p>
                             </div>

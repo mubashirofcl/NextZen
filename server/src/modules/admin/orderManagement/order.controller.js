@@ -4,10 +4,7 @@ import * as orderRepository from './order.repository.js';
 import mongoose from 'mongoose';
 import { updateWalletBalance } from '../../user/wallet/wallet.service.js';
 
-/**
- * 🟢 HELPER: Polymorphic Order Finder
- * Prevents "Cast to ObjectId failed" by checking if ID is a custom string or MongoID
- */
+
 const findOrder = async (id, session = null) => {
     const query = typeof id === 'string' && id.startsWith("ORD-") 
         ? { orderNumber: id } 
@@ -16,7 +13,7 @@ const findOrder = async (id, session = null) => {
     return session ? Order.findOne(query).session(session) : Order.findOne(query);
 };
 
-// 1. GET ALL ORDERS
+
 export const getAllOrders = async (req, res) => {
     try {
         const result = await orderRepository.getAdminOrdersRepository(req.query);
@@ -32,12 +29,10 @@ export const getAllOrders = async (req, res) => {
     }
 };
 
-// 2. GET ORDER DETAILS (Fixed polymorphic search)
 export const getOrderDetail = async (req, res) => {
     try {
         const { id } = req.params;
         
-        // Pass the smart query to the repository
         const searchCriteria = id.startsWith("ORD-") ? { orderNumber: id } : { _id: id };
         const data = await orderRepository.getOrderDetailRepository(searchCriteria);
         
@@ -48,7 +43,6 @@ export const getOrderDetail = async (req, res) => {
     }
 };
 
-// 3. UPDATE MANIFEST (Main Status & Refund Handler)
 export const updateAdminManifest = async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -56,15 +50,12 @@ export const updateAdminManifest = async (req, res, next) => {
         const idParam = req.params.orderId || req.params.id;
         const { globalStatus, itemId, itemStatus, paymentStatus } = req.body;
 
-        // 🟢 FIX: Use polymorphic helper
         const order = await findOrder(idParam, session);
         if (!order) return res.status(404).json({ success: false, message: "Order not found." });
 
         if (paymentStatus) order.paymentStatus = paymentStatus;
 
-        // ---------------------------------------------------------
-        // 🟢 A. GLOBAL STATUS UPDATE
-        // ---------------------------------------------------------
+
         if (globalStatus) {
             const normalizedGlobal = globalStatus.toLowerCase();
             const oldGlobalStatus = order.status;
@@ -109,9 +100,6 @@ export const updateAdminManifest = async (req, res, next) => {
             }
         }
 
-        // ---------------------------------------------------------
-        // 🟢 B. ITEM SPECIFIC STATUS UPDATE (REFUND LOGIC)
-        // ---------------------------------------------------------
         if (itemId && itemStatus) {
             const item = order.items.id(itemId);
             if (item) {
@@ -164,7 +152,6 @@ export const updateAdminManifest = async (req, res, next) => {
             }
         }
 
-        // 🟢 C. AUTO-UPDATE GLOBAL STATUS
         const allItems = order.items;
         const totalItems = allItems.length;
         const cancelledCount = allItems.filter(i => i.status === 'Cancelled').length;
@@ -189,7 +176,6 @@ export const updateAdminManifest = async (req, res, next) => {
     }
 };
 
-// 4. AUTHORIZE ITEM REFUND (Fixed polymorphic search)
 export const authorizeItemRefund = async (req, res, next) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -230,7 +216,6 @@ export const authorizeItemRefund = async (req, res, next) => {
     }
 };
 
-// 5. HANDLE RETURN APPROVAL (Fixed polymorphic search)
 export const handleReturnApproval = async (req, res, next) => {
     try {
         const { orderId, itemId, action, comment } = req.body;
@@ -256,7 +241,6 @@ export const handleReturnApproval = async (req, res, next) => {
     }
 };
 
-// 6. RETURN ITEM REQUEST (Fixed polymorphic search)
 export const returnOrderItem = async (req, res, next) => {
     try {
         const { orderId, itemId } = req.params;
@@ -269,7 +253,6 @@ export const returnOrderItem = async (req, res, next) => {
             return res.status(400).json({ success: false, message: "Only Delivered orders can be returned." });
         }
 
-        // Use findOne and save instead of updateOne to handle subdocument logic cleanly
         const item = order.items.id(itemId);
         if (item) {
             item.status = "Return Requested";

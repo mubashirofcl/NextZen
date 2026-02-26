@@ -16,7 +16,6 @@ const OrderActionModal = ({ config, onClose, orderId }) => {
     const isCancelAll = config.type === 'cancel_all';
     const isPending = isCancelling || isReturning || isCancellingAll;
 
-    // --- PRESET REASONS CONFIG ---
     const cancelPresets = ["Changed my mind", "Found better price", "Ordered by mistake", "Delayed delivery"];
     const returnPresets = ["Damaged product", "Wrong size received", "Quality not as expected", "Missing items"];
     const presets = isReturn ? returnPresets : cancelPresets;
@@ -75,7 +74,6 @@ const OrderActionModal = ({ config, onClose, orderId }) => {
                     </div>
                 </div>
 
-                {/* --- PRESET PILLS --- */}
                 <div className="mb-6">
                     <p className="text-[9px] font-black uppercase text-slate-400 mb-3 tracking-widest">Select a Reason:</p>
                     <div className="flex flex-wrap gap-2">

@@ -43,9 +43,9 @@ export const getAdminOrdersRepository = async ({ status, search, page = 1, limit
     return { orders, totalCount };
 };
 
-// 🟢 FIXED: Polymorphic Query to prevent Cast to ObjectId error
+
 export const getOrderDetailRepository = async (orderId) => {
-    // Check if orderId is an object (from the previous error log) or a custom string
+
     const isCustomId = typeof orderId === 'string' && orderId.startsWith("ORD-");
     const isWrappedObject = typeof orderId === 'object' && orderId.orderNumber;
 
@@ -56,11 +56,11 @@ export const getOrderDetailRepository = async (orderId) => {
     } else if (isCustomId) {
         searchCriteria = { orderNumber: orderId };
     } else {
-        // Assume it's a standard MongoDB ObjectId
+
         searchCriteria = { _id: orderId };
     }
 
-    // Use findOne instead of findById to support both string and ID searches
+
     return await orderModel.findOne(searchCriteria)
         .populate('userId', 'name email phone')
         .populate('addressId')

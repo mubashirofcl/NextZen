@@ -27,11 +27,10 @@ const AdminOrderManagement = () => {
     const orders = data?.orders ?? [];
     const pagination = {
         page: data?.currentPage ?? 1,
-        pages: Math.max(1, data?.totalPages ?? 1), // 🟢 Ensure pages is at least 1
+        pages: Math.max(1, data?.totalPages ?? 1), 
         total: data?.totalOrders ?? 0,
     };
 
-    // 🟢 UI THEME RESOLVER: Friendly status mapping
     const getStatusStyles = (status) => {
         const s = status?.toLowerCase();
         switch (s) {
@@ -78,7 +77,7 @@ const AdminOrderManagement = () => {
                             <option value="shipped">Shipped</option>
                             <option value="delivered">Delivered</option>
                             <option value="cancelled">Cancelled</option>
-                            <option value="returns">Returns (Req/App/Ref)</option> {/* 🟢 Better filtering label if your backend supports 'returns' */}
+                            <option value="returns">Returns (Req/App/Ref)</option> 
                             <option value="payment_failed">Payment Failed</option>
                         </select>
                     </div>
@@ -87,7 +86,7 @@ const AdminOrderManagement = () => {
                 <div className="flex-1 flex flex-col gap-3 overflow-hidden">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3 shrink-0">
                         <StatsCard title="Total Found" value={pagination.total} icon={<ShoppingBag size={18} />} color="blue" />
-                        {/* 🟢 NOTE: The below stats only reflect the CURRENT page data. To get accurate global stats, your backend must send them. For now, I added "On Page" to clarify to the admin. */}
+  
                         <StatsCard title="In Transit (Page)" value={orders.filter(o => o.status === 'shipped').length} icon={<Truck size={18} />} color="blue" />
                         <StatsCard title="Processing (Page)" value={orders.filter(o => o.status === 'pending').length} icon={<Clock size={18} />} color="orange" />
                         <StatsCard title="Issues (Page)" value={orders.filter(o => o.status === 'payment_failed').length} icon={<AlertOctagon size={18} />} color="red" />
@@ -102,7 +101,7 @@ const AdminOrderManagement = () => {
                                 pagination={null}
                                 renderRow={(order) => {
                                     const isFullyCancelled = order.status === 'cancelled';
-                                    // 🟢 FIXED: Safely check for variations of COD
+                          
                                     const isCOD = ['COD', 'cashOnDelivery'].includes(order.paymentMethod);
                                     const displayPaymentStatus = (isCOD && isFullyCancelled) ? "Cancelled" : order.paymentStatus;
 
@@ -156,7 +155,7 @@ const AdminOrderManagement = () => {
 
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
-                                                    {/* 🟢 FIXED: Using createdAt for creation date instead of updatedAt */}
+                                                  
                                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
                                                         {new Date(order.createdAt || order.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </p>
@@ -199,7 +198,6 @@ const AdminOrderManagement = () => {
 };
 
 const SmartPagination = ({ currentPage, totalPages, onPageChange }) => {
-    // 🟢 FIXED: Safe guard for zero pages
     if (totalPages <= 1) return null;
 
     const getPageNumbers = () => {
@@ -232,7 +230,7 @@ const SmartPagination = ({ currentPage, totalPages, onPageChange }) => {
 
             {getPageNumbers().map((p, i) => (
                 <button
-                    key={p === '...' ? `dots-${i}` : p} // 🟢 FIXED: Unique keys
+                    key={p === '...' ? `dots-${i}` : p} 
                     onClick={() => typeof p === 'number' && onPageChange(p)}
                     disabled={p === '...'}
                     className={`w-8 h-8 flex items-center justify-center rounded-lg text-[10px] font-bold transition-all ${p === currentPage

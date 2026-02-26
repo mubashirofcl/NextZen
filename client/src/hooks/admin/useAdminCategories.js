@@ -1,4 +1,3 @@
-// src/hooks/admin/useAdminCategories.js
 import { useQuery } from "@tanstack/react-query";
 import { fetchAdminCategories, fetchAdminSubCategories, fetchCategoriesSelection } from "../../api/admin/category.api";
 

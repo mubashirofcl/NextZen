@@ -1,6 +1,3 @@
-/**
- * Resolves the best available discount percentage based on hierarchy
- */
 export const resolveEffectiveDiscount = (product) => {
     const now = new Date();
 
@@ -21,7 +18,7 @@ export const resolveEffectiveDiscount = (product) => {
         return catOffer.discountValue;
     }
 
-    return 0; // No active offer found
+    return 0; 
 };
 
 /**
@@ -32,7 +29,6 @@ export const applyOffersToProduct = (product) => {
 
     if (discount === 0) return product;
 
-    // Apply the resolved discount to every size in every variant
     product.variants = product.variants.map(variant => ({
         ...variant,
         sizes: variant.sizes.map(size => {
@@ -40,7 +36,7 @@ export const applyOffersToProduct = (product) => {
             const calculatedSale = original - (original * (discount / 100));
             return {
                 ...size,
-                salePrice: Math.round(calculatedSale), // Final price for user
+                salePrice: Math.round(calculatedSale), 
                 appliedDiscount: discount
             };
         })

@@ -25,7 +25,6 @@ const AdminOrderDetail = () => {
     const order = response?.data;
     const { mutate: updateOrderStatus, isPending: isUpdating } = useUpdateOrderStatus();
 
-    // 🟢 PRECISION HELPER: Fixes 0.1 + 0.2 floating point bugs
     const fixNum = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 
     const isPrepaid = ['razorpay', 'wallet'].includes(order?.paymentMethod);

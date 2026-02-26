@@ -22,7 +22,6 @@ export const findByType = async (type) => {
 };
 
 export const findOneByNameAndType = async (title, applyFor) => {
-    // Uses case-insensitive regex to match "winter sale" vs "WINTER SALE"
     return await Offer.findOne({
         title: { $regex: new RegExp(`^${title}$`, "i") },
         applyFor: applyFor

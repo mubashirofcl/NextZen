@@ -16,17 +16,14 @@ const CouponManagement = () => {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [page, setPage] = useState(1);
 
-    // Using the unified hook we built earlier
     const { coupons, isLoading, deleteCoupon } = useCoupons();
     const { mutate: toggleStatus, isPending } = useToggleCoupon();
 
-    /* ------------------ SEARCH DEBOUNCE ------------------ */
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
         return () => clearTimeout(t);
     }, [searchTerm]);
 
-    /* ------------------ CLIENT-SIDE FILTERING ------------------ */
     const filteredCoupons = (coupons || []).filter(c =>
         c.code.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
         c.description?.toLowerCase().includes(debouncedSearch.toLowerCase())
@@ -57,7 +54,6 @@ const CouponManagement = () => {
             <AdminSidebar />
 
             <main className="flex-1 flex flex-col gap-3 overflow-hidden">
-                {/* HEADER - MATCHING CATEGORY MANAGEMENT DESIGN */}
                 <header className="bg-white/80 backdrop-blur-md border border-white rounded-[20px] px-6 py-3 flex justify-between items-center shadow-sm">
                     <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                         Admin / <span className="text-[#0F172A] font-black">Coupons</span>
@@ -95,7 +91,6 @@ const CouponManagement = () => {
                     </div>
                 </header>
 
-                {/* TABLE SECTION */}
                 <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                     <div className="bg-white rounded-[20px] shadow-sm overflow-hidden border border-slate-100">
                         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -113,7 +108,6 @@ const CouponManagement = () => {
                             onPageChange={setPage}
                             emptyText="No active promotions in the vault"
                             renderRow={(coupon) => {
-                                // 🟢 DYNAMIC LIVE STATUS LOGIC
                                 const now = new Date();
                                 const isExpired = new Date(coupon.endDate) < now;
                                 const isExhausted = coupon.usedCount >= coupon.usageLimit;
@@ -132,7 +126,6 @@ const CouponManagement = () => {
                                 return (
                                     <tr key={coupon._id} className="group hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-none">
 
-                                        {/* COLUMN 1: DETAILS */}
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:border-[#0F172A] transition-all text-[#7a6af6]">
@@ -149,7 +142,6 @@ const CouponManagement = () => {
                                             </div>
                                         </td>
 
-                                        {/* COLUMN 2: DISCOUNT */}
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase border ${coupon.discountType === 'PERCENT'
                                                 ? "bg-indigo-50 text-indigo-600 border-indigo-100"
@@ -159,7 +151,6 @@ const CouponManagement = () => {
                                             </span>
                                         </td>
 
-                                        {/* COLUMN 3: VALIDITY */}
                                         <td className="px-6 py-4">
                                             <div className="space-y-1.5">
                                                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 uppercase">
@@ -172,7 +163,6 @@ const CouponManagement = () => {
                                             </div>
                                         </td>
 
-                                        {/* COLUMN 4: USAGE */}
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1.5">
                                                 <div className="flex justify-between items-center w-24">
@@ -188,7 +178,6 @@ const CouponManagement = () => {
                                             </div>
                                         </td>
 
-                                        {/* 🟢 COLUMN 5: LIVE STATUS BADGE */}
                                         <td className="px-6 py-4">
                                             <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${statusConfig.bg} ${statusConfig.border}`}>
                                                 <div className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
@@ -198,11 +187,9 @@ const CouponManagement = () => {
                                             </div>
                                         </td>
 
-                                        {/* COLUMN 6: ACTIONS */}
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 
-                                                {/* Block/Unblock Button */}
                                                 <button
                                                     onClick={() => toggleStatus(coupon._id)}
                                                     disabled={isPending}
@@ -222,7 +209,6 @@ const CouponManagement = () => {
                                                     )}
                                                 </button>
 
-                                                {/* Edit Button */}
                                                 <button
                                                     onClick={() => navigate(`/admin/coupons/edit/${coupon._id}`)}
                                                     className="p-2 text-slate-400 hover:text-[#7a6af6] hover:bg-[#7a6af6]/10 rounded-xl transition-all border border-transparent hover:border-[#7a6af6]/20"
@@ -231,7 +217,6 @@ const CouponManagement = () => {
                                                     <Edit3 size={16} strokeWidth={2.5} />
                                                 </button>
 
-                                                {/* Delete Button */}
                                                 <button
                                                     onClick={() => handleDelete(coupon._id)}
                                                     className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100"

@@ -35,7 +35,6 @@ export const requestOTP = async (email, purpose) => {
   };
 };
 
-// ==================== VERIFY ONLY (NO CONSUME) ====================
 export const verifyOTPOnly = async (email, otp, purpose) => {
   const validOTP = await userRepo.findValidOTP(
     email.toLowerCase(),
@@ -50,7 +49,6 @@ export const verifyOTPOnly = async (email, otp, purpose) => {
   return validOTP;
 };
 
-// ==================== VERIFY + CONSUME ====================
 export const verifyAndConsumeOTP = async (email, otp, purpose) => {
   const validOTP = await verifyOTPOnly(email, otp, purpose);
   await userRepo.markOTPAsUsed(validOTP._id);

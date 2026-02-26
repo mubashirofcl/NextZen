@@ -4,8 +4,6 @@ export const extractPublicId = (url) => {
     if (!url) return null;
     try {
 
-        // Example: https://res.cloudinary.com/demo/image/upload/v1234/nextzen/profiles/user_1.jpg
-
         const parts = url.split('/');
         const uploadIndex = parts.indexOf('upload');
         
@@ -25,7 +23,6 @@ export const extractPublicId = (url) => {
 
 export const uploadProfileImage = async (base64String, userId, oldPublicId = null) => {
     try {
-        // Delete old image if exists
         if (oldPublicId) {
             try {
                 await cloudinary.uploader.destroy(oldPublicId);

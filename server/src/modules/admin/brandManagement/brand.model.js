@@ -12,7 +12,6 @@ const brandSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    // --- NEW FIELD FOR OFFERS ---
     offerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Offer",

@@ -19,8 +19,6 @@ import {
 
 const router = express.Router();
 
-// ==================== PROTECTED ADDRESS ROUTES ====================
-
 router.use(userAuth);
 router.use(checkBlockedUser);
 

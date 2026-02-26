@@ -3,7 +3,6 @@ import * as orderRepo from "./order.repository.js";
 import cartModel from "../cart/cart.model.js";
 import couponModel from "../../admin/couponManagemen/coupon.model.js";
 
-// Helper function to handle JS floating point precision
 const sanitizeAmount = (amount) => Math.round((amount + Number.EPSILON) * 100) / 100;
 
 export const processCODOrder = async (userId, orderPayload) => {
@@ -24,7 +23,6 @@ export const processCODOrder = async (userId, orderPayload) => {
     }
 
     const processedItems = items.map(i => {
-        // 🟢 FIX: Sanitize item total
         const productBaseTotal = sanitizeAmount(i.price * i.quantity);
         return {
             productId: i.productId,
@@ -38,7 +36,6 @@ export const processCODOrder = async (userId, orderPayload) => {
         };
     });
 
-    // 🟢 FIX: Sanitize subtotal
     const rawSubTotal = items.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0);
     const subTotal = sanitizeAmount(rawSubTotal);
     
@@ -62,7 +59,6 @@ export const processCODOrder = async (userId, orderPayload) => {
         }
     }
 
-    // 🟢 FIX: Sanitize final total
     const totalAmount = Math.max(0, sanitizeAmount((subTotal + deliveryCharge) - discountAmount));
 
     const orderData = {

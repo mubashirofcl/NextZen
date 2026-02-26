@@ -15,7 +15,6 @@ const RecommendedSection = ({ products = [] }) => {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-10">
                 {products.slice(0, 4).map((p) => {
-                    // Logic: Resolve discount percentage from repository data
                     const activeDiscount = Number(p.discountValue || 0);
                     const hasOffer = activeDiscount > 0;
 
@@ -25,7 +24,7 @@ const RecommendedSection = ({ products = [] }) => {
                             onClick={() => navigate(`/product/${p._id}`)}
                             className="group cursor-pointer space-y-4"
                         >
-                            {/* Image Container matching your Nextgen design */}
+
                             <div className="aspect-[3/4] bg-white/[0.02] border border-white/10 rounded-[2rem] overflow-hidden relative shadow-2xl transition-all duration-500 hover:border-[#7a6af6]/40">
                                 <img 
                                     src={p.thumbnail} 
@@ -33,7 +32,6 @@ const RecommendedSection = ({ products = [] }) => {
                                     alt={p.name} 
                                 />
 
-                                {/* 🟢 OFFER BADGE - VISIBILITY FIX */}
                                 {hasOffer && (
                                     <div className="absolute top-4 left-4 z-20 animate-in slide-in-from-left-2 duration-500">
                                         <div className="bg-[#7a6af6] text-white px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-[0_0_20px_rgba(122,106,246,0.4)] border border-white/20">
@@ -46,7 +44,7 @@ const RecommendedSection = ({ products = [] }) => {
                                 )}
                             </div>
                             
-                            {/* Text Details matching your Shop Card style */}
+      
                             <div className="px-2 space-y-1">
                                 <h4 className="text-[11px] font-black uppercase tracking-tight text-white/60 group-hover:text-[#7a6af6] transition-colors truncate italic">
                                     {p.name}

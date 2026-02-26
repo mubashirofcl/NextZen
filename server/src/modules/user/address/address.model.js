@@ -65,7 +65,6 @@ const addressSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Ensures only ONE default address per user
 addressSchema.index(
   { user: 1, isDefault: 1 },
   { unique: true, partialFilterExpression: { isDefault: true } }

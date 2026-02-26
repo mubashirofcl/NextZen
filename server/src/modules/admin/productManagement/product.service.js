@@ -13,9 +13,7 @@ import {
     findVariantsByProductId,
 } from "./product.repository.js";
 
-/* --------------------------------
-   HELPER: VALIDATION & FILTERING
---------------------------------- */
+
 const validateAndFilterVariants = (variants) => {
     if (!variants || !Array.isArray(variants) || variants.length === 0) {
         throw new Error("At least one colorway (variant) is required.");
@@ -41,9 +39,6 @@ const validateAndFilterVariants = (variants) => {
     });
 };
 
-/* --------------------------------
-   CREATE PRODUCT
---------------------------------- */
 export const createProductService = async (payload) => {
     let { variants, categoryId, subcategoryId, brandId, offerId, ...productData } = payload;
 
@@ -61,7 +56,6 @@ export const createProductService = async (payload) => {
 
     const resolvedOfferId = (offerId && mongoose.Types.ObjectId.isValid(offerId)) ? offerId : null;
 
-    // 🟢 FIXED: Removed the brackets []. createProductRepo returns a single Object.
     const product = await createProductRepo({
         ...productData,
         categoryId,
@@ -82,9 +76,6 @@ export const createProductService = async (payload) => {
     return product;
 };
 
-/* --------------------------------
-   UPDATE PRODUCT
---------------------------------- */
 export const updateProductService = async (productId, payload) => {
     const { variants, categoryId, subcategoryId, brandId, offerId, ...productData } = payload;
     const cleanProductId = new mongoose.Types.ObjectId(productId);
@@ -163,9 +154,7 @@ export const updateProductService = async (productId, payload) => {
     return updatedProduct;
 };
 
-/* --------------------------------
-   GET LIST & DETAILS
---------------------------------- */
+
 export const getAdminProductsService = async ({ page = 1, search = "", subcategoryId = "" }) => {
     return getAdminProductsRepo({
         page: Number(page),

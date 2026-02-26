@@ -11,7 +11,6 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendEmail = async ({ to, subject, html }) => {
-    // 🟢 Validation check
     if (!to) throw new Error("Email Service Error: 'to' recipient is undefined.");
 
     const transporter = nodemailer.createTransport({

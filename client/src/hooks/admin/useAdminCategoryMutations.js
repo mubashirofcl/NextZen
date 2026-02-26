@@ -6,7 +6,6 @@ import {
   fetchAdminSubCategories,
 } from "../../api/admin/category.api";
 
-/* ================= CREATE ================= */
 
 export const useCreateCategory = () => {
   const qc = useQueryClient();
@@ -14,7 +13,6 @@ export const useCreateCategory = () => {
   return useMutation({
     mutationFn: createAdminCategory,
     onSuccess: () => {
-      // Invalidate both levels to ensure counts and offers sync
       qc.invalidateQueries({ queryKey: ["admin-categories"] });
       qc.invalidateQueries({ queryKey: ["admin-subcategories"] });
       qc.invalidateQueries({ queryKey: ["categories-selection"] });
@@ -22,7 +20,6 @@ export const useCreateCategory = () => {
   });
 };
 
-/* ================= UPDATE ================= */
 
 export const useUpdateCategory = () => {
   const qc = useQueryClient();
@@ -38,7 +35,7 @@ export const useUpdateCategory = () => {
   });
 };
 
-/* ================= SOFT DELETE ================= */
+
 
 export const useDeleteCategory = () => {
   const qc = useQueryClient();
@@ -52,17 +49,12 @@ export const useDeleteCategory = () => {
   });
 };
 
-/* ================= SUBCATEGORY FETCH ================= */
 
-/**
- * Fetches subcategories based on parentId.
- * Used in the SubCategoryModal to show the "Database Registry" list.
- */
 export const useAdminSubCategories = (params) => {
   return useQuery({
     queryKey: ["admin-subcategories", params?.parentId],
     queryFn: () => fetchAdminSubCategories(params),
-    enabled: !!params?.parentId, // Only fetch if we have a parent
-    staleTime: 5 * 60 * 1000, // Keep data fresh for 5 mins
+    enabled: !!params?.parentId, 
+    staleTime: 5 * 60 * 1000, 
   });
 };

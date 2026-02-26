@@ -13,10 +13,10 @@ export const findProductById = (id) =>
 export const updateProductById = (id, data) =>
     productModel.findOneAndUpdate(
         { _id: id, isDeleted: false },
-        { $set: data }, // 🟢 Uses $set to ensure fields like offerId: null are explicitly saved
+        { $set: data }, 
         {
-            new: true,           // Returns the document AFTER update
-            runValidators: true  // Ensures the update follows your Schema rules
+            new: true,           
+            runValidators: true  
         }
     );
 
@@ -48,7 +48,7 @@ export const softDeleteVariantsByProductId = async (productId, activeIds = []) =
     return result;
 };
 
-/* ---------- ADMIN LISTING PIPELINE ---------- */
+
 
 export const getAdminProductsRepo = async ({ page, limit, search }) => {
     const skip = (Math.max(page, 1) - 1) * limit;
@@ -61,11 +61,9 @@ export const getAdminProductsRepo = async ({ page, limit, search }) => {
     };
 
     const pipeline = [
-        // 1. Initial Match
+
         { $match: matchStage },
 
-        // 🟢 FIX 1: SORT BY NEWEST FIRST 
-        // Ensures latest deployments appear first in Admin and User terminals.
         { $sort: { createdAt: -1 } },
 
         // 2. Offer Hierarchy Lookups (Product, Sub-Cat, Category, Brand)
@@ -158,10 +156,6 @@ export const getAdminProductsRepo = async ({ page, limit, search }) => {
                 categoryName: "$subDoc.name",
                 createdAt: 1,
 
-                // 🟢 FIX 2: STRICT OFFER BADGE LOGIC
-                // We map discountValue directly to winningDiscount.
-                // This ensures the badge ONLY shows if an additional offer is added.
-                // If there's only a manual Sale Price difference, winningDiscount will be 0.
                 discountValue: "$winningDiscount"
             }
         },

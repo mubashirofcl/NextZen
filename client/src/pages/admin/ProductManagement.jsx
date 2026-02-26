@@ -83,8 +83,7 @@ const ProductManagement = () => {
                             pagination={pagination}
                             onPageChange={setPage}
                             renderRow={(product) => {
-                                // 🟢 CRITICAL LOGIC FIX: 
-                                // Check for ALL possible field names returned by our different repo versions
+       
                                 const activeDiscount = Number(product.discountValue || product.resolvedDiscountValue || product.appliedDiscount || 0);
                                 const hasOffer = activeDiscount > 0;
 
@@ -94,7 +93,7 @@ const ProductManagement = () => {
                                             <div className={`flex items-center gap-3 ${!product.isActive ? 'opacity-40 grayscale' : ''}`}>
                                                 <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden relative">
                                                     {product.thumbnail ? <img src={product.thumbnail} className="w-full h-full object-cover" alt="" /> : <Box size={20} className="m-auto mt-3 text-slate-300" />}
-                                                    {/* SMALL OVERLAY ICON FOR OFFERED PRODUCTS */}
+
                                                     {hasOffer && (
                                                         <div className="absolute top-0 right-0 bg-[#7a6af6] p-0.5 rounded-bl-lg border-b border-l border-white/20">
                                                             <Zap size={8} className="text-white fill-white" />
@@ -121,15 +120,13 @@ const ProductManagement = () => {
                                             </div>
                                         </td>
 
-                                        {/* PRICING CONSOLE - ENHANCED VISIBILITY */}
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-2">
                                                     <span className={`font-black text-xs ${hasOffer ? 'text-[#7a6af6]' : 'text-[#0F172A]'}`}>
                                                         ₹{product.minSalePrice?.toLocaleString("en-IN")}
                                                     </span>
-                                                    
-                                                    {/* THE OFFER BADGE */}
+
                                                     {hasOffer && (
                                                         <div className="inline-flex items-center px-2 py-0.5 bg-[#7a6af6] text-white rounded-md shadow-lg shadow-indigo-200 animate-in zoom-in duration-300">
                                                             <Percent size={8} className="mr-1 stroke-[4]" />

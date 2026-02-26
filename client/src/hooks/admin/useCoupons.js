@@ -14,14 +14,12 @@ export const useCoupons = (id = null) => {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
-    // Fetch All (Enabled only if no ID is provided)
     const { data: coupons, isLoading } = useQuery({
         queryKey: ["admin-coupons"],
         queryFn: getCouponsApi,
         enabled: !id
     });
 
-    // Fetch Single (Enabled only if ID is provided)
     const { data: couponDetail, isLoading: isLoadingDetail } = useQuery({
         queryKey: ["admin-coupon", id],
         queryFn: () => getCouponByIdApi(id),
@@ -42,7 +40,7 @@ export const useCoupons = (id = null) => {
         mutationFn: updateCouponApi,
         onSuccess: (res) => {
             queryClient.invalidateQueries({ queryKey: ["admin-coupons"] });
-            queryClient.invalidateQueries({ queryKey: ["admin-coupon", id] }); // Refresh specific details
+            queryClient.invalidateQueries({ queryKey: ["admin-coupon", id] });
             nxToast.success(res.message || "Coupon Updated");
             navigate("/admin/coupons");
         },
@@ -59,16 +57,13 @@ export const useCoupons = (id = null) => {
     });
 
     return {
-        // Data
         coupons: coupons?.coupons || [],
         couponDetail: couponDetail?.coupon, 
 
-        // States
         isLoading,
         isLoadingDetail,
         isPending: createMutation.isPending || updateMutation.isPending,
 
-        // Methods
         createCoupon: createMutation.mutateAsync,
         updateCoupon: updateMutation.mutateAsync,
         deleteCoupon: deleteMutation.mutateAsync,

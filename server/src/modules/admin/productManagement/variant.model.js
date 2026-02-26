@@ -30,8 +30,6 @@ const variantSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// ✅ OPTIONAL (but good)
-// Allows fast queries without blocking multiples
 variantSchema.index({ productId: 1 });
 
 export default mongoose.model("Variant", variantSchema);

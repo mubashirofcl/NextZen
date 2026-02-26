@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { X, Layers, Edit3, Loader2, Plus, CheckCircle2, Ban, RotateCcw, Percent } from "lucide-react";
+import { X, Layers, Edit3, Loader2, Plus, CheckCircle2, Ban, RotateCcw, Percent, Info } from "lucide-react";
 
 import {
     useCreateCategory,
@@ -8,7 +8,7 @@ import {
 } from "../../hooks/admin/useAdminCategoryMutations";
 import { adminToast } from "../../utils/adminToast";
 import { useAdminSubCategories } from "../../hooks/admin/useAdminCategories";
-import { useOffers } from "../../hooks/admin/useOffers"; // Import Hook
+import { useOffers } from "../../hooks/admin/useOffers";
 
 const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
     const {
@@ -18,16 +18,16 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
         setError,
         watch,
         formState: { isSubmitting, errors },
-    } = useForm();
+    } = useForm({
+        mode: "onBlur"
+    });
 
     const [editItem, setEditItem] = useState(null);
 
-    // Fetch Subcategories
     const { data, isLoading } = useAdminSubCategories({
         parentId: parentCategory?._id,
     });
 
-    // Fetch Available Subcategory Offers
     const { offers } = useOffers();
     const subCatOffers = offers.filter(o => o.applyFor === "SUBCATEGORY" && o.isActive);
 
@@ -50,17 +50,17 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                 id: sub._id,
                 isActive: newStatus,
             });
-            adminToast.success(newStatus ? "Sub-segment Activated" : "Sub-segment Blocked");
+            adminToast.success("Registry Updated", `Segment has been successfully ${newStatus ? 'activated' : 'restricted'}.`);
         } catch (err) {
-            adminToast.warn("Status Update Failed");
+            adminToast.error("Update Failed", "System was unable to modify the segment status.");
         }
     };
 
     const onSubmit = async (formData) => {
         try {
             const payload = {
-                name: formData.name,
-                offerId: formData.offerId || null, // Include offerId in payload
+                name: formData.name.trim(),
+                offerId: formData.offerId || null,
             };
 
             if (editItem) {
@@ -68,7 +68,7 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                     id: editItem._id,
                     ...payload
                 });
-                adminToast.success("Subcategory Refined");
+                adminToast.success("Success", "Sub-segment parameters refined successfully.");
                 setEditItem(null);
             } else {
                 await createCategory({
@@ -77,12 +77,13 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                     parentId: parentCategory._id,
                     isActive: true,
                 });
-                adminToast.success("Subcategory Deployed");
+                adminToast.success("Success", "New sub-segment deployed to archive.");
             }
             reset({ name: "", isActive: true, offerId: "" });
         } catch (err) {
-            const serverMsg = err.response?.data?.message || "Operation Failed";
+            const serverMsg = err.response?.data?.message || "Internal registry error occurred.";
             setError("name", { type: "server", message: serverMsg });
+            adminToast.error("Operation Denied", serverMsg);
         }
     };
 
@@ -91,7 +92,7 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
     return (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white w-full max-w-[500px] rounded-[28px] shadow-2xl p-10 relative animate-in zoom-in duration-300">
-                <button onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-[#0F172A] transition-colors">
+                <button type="button" onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-[#0F172A] transition-colors">
                     <X size={22} />
                 </button>
 
@@ -107,7 +108,6 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                     </p>
                 </div>
 
-                {/* LIST SECTION */}
                 <div className="mb-8 border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/30">
                     <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Database Registry</span>
@@ -135,7 +135,6 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                                             <span className={`text-[7px] font-black uppercase px-2 py-0.5 rounded-md border ${sub.isActive ? "text-green-600 bg-green-50 border-green-100" : "text-red-500 bg-red-50 border-red-100"}`}>
                                                 {sub.isActive ? "Active" : "Blocked"}
                                             </span>
-                                            {/* Show applied offer badge if exists */}
                                             {sub.offerId && (
                                                 <span className="text-[7px] font-black uppercase px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center gap-1">
                                                     <Percent size={8} /> {sub.offerId?.title || 'Promo'}
@@ -145,6 +144,7 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <button
+                                            type="button"
                                             onClick={() => { 
                                                 setEditItem(sub); 
                                                 reset({ 
@@ -159,6 +159,7 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                                         </button>
 
                                         <button
+                                            type="button"
                                             onClick={() => toggleSubCategoryStatus(sub)}
                                             className={`p-2 rounded-lg transition-all shadow-sm border ${sub.isActive
                                                     ? "text-slate-400 hover:text-red-500 hover:bg-white border-transparent hover:border-red-100"
@@ -175,25 +176,27 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                     </div>
                 </div>
 
-                {/* FORM SECTION */}
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-2 border-t border-slate-100">
                     <div className="grid grid-cols-2 gap-3">
-                        {/* Name Input */}
                         <div className="space-y-1.5">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1">
                                 {editItem ? "Refine segment" : "Add segment"}
                             </label>
                             <input
                                 {...register("name", {
-                                    required: "Required",
-                                    validate: (val) => val.trim().length > 0 || "Void"
+                                    required: "Name is required",
+                                    minLength: { value: 3, message: "Min 3 characters" },
+                                    maxLength: { value: 25, message: "Max 25 characters" },
+                                    validate: {
+                                        notEmpty: (val) => val.trim().length > 0 || "Cannot be empty",
+                                        validChars: (val) => /^[A-Za-z0-9\s&-]+$/.test(val) || "Invalid characters"
+                                    }
                                 })}
-                                placeholder="Name..."
+                                placeholder="e.g. Footwear"
                                 className={inputStyle}
                             />
                         </div>
 
-                        {/* Offer Selector */}
                         <div className="space-y-1.5">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1">
                                 Link Offer rule
@@ -203,7 +206,7 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                                     {...register("offerId")}
                                     className="w-full px-4 py-3 bg-slate-50 rounded-xl text-sm font-bold border-2 border-transparent outline-none focus:border-[#7a6af6]/20 focus:bg-white transition-all appearance-none pr-8"
                                 >
-                                    <option value="">None</option>
+                                    <option value="">Standard Pricing (None)</option>
                                     {subCatOffers.map(offer => (
                                         <option key={offer._id} value={offer._id}>
                                             {offer.title} ({offer.discountValue}%)
@@ -216,8 +219,8 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                     </div>
 
                     {errors.name && (
-                        <p className="text-[9px] font-black text-red-500 uppercase px-1">
-                             Identifier Error: {errors.name.message}
+                        <p className="text-[9px] font-black text-red-500 uppercase px-1 flex items-center gap-1">
+                            <Info size={10} /> Validation Error: {errors.name.message}
                         </p>
                     )}
 
@@ -225,7 +228,7 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.25em] shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${editItem
+                            className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.25em] shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed ${editItem
                                     ? "bg-[#7a6af6] text-white hover:bg-[#6858e0] shadow-purple-200"
                                     : "bg-[#0F172A] text-white hover:bg-black shadow-slate-200"
                                 }`}
@@ -244,7 +247,7 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                              <button
                                 type="button"
                                 onClick={() => { setEditItem(null); reset({ name: "", offerId: "" }); }}
-                                className="px-4 bg-slate-100 text-slate-400 rounded-xl hover:bg-slate-200 transition-all"
+                                className="px-4 bg-slate-100 text-slate-400 rounded-xl hover:bg-slate-200 transition-all border border-transparent hover:border-slate-300"
                                 title="Cancel Edit"
                             >
                                 <RotateCcw size={16} />

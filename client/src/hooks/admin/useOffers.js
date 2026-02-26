@@ -15,14 +15,12 @@ export const useOffers = (id = null) => {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
-    // Fetch All Offers
     const { data: offersData, isLoading } = useQuery({
         queryKey: ["admin-offers"],
         queryFn: getOffersApi,
         enabled: !id
     });
 
-    // Fetch Single Offer for Editing
     const { data: detailData, isLoading: isLoadingDetail } = useQuery({
         queryKey: ["admin-offer", id],
         queryFn: () => getOfferByIdApi(id),
@@ -58,16 +56,14 @@ export const useOffers = (id = null) => {
     });
 
     return {
-        // DATA - Fixed mapping
+
         offers: offersData?.offers || [],
         offerDetail: detailData?.offer,
 
-        // STATUS
         isLoading,
         isLoadingDetail,
         isPending: createMutation.isPending || updateMutation.isPending,
 
-        // ACTIONS
         createOffer: createMutation.mutateAsync,
         updateOffer: updateMutation.mutateAsync,
         deleteOffer: deleteMutation.mutateAsync

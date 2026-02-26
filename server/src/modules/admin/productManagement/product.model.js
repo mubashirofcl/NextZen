@@ -23,11 +23,11 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/* INDEXES */
+
 productSchema.index({ createdAt: -1 });
 productSchema.index({ name: 1 });
 productSchema.index({ categoryId: 1 });
 productSchema.index({ subcategoryId: 1 });
-productSchema.index({ offerId: 1 }); // Index for performance
+productSchema.index({ offerId: 1 });
 
 export default mongoose.model("Product", productSchema);

@@ -1,6 +1,5 @@
 import cloudinary from "../config/cloudinary.js";
 
-/* Upload ONE image */
 export const uploadProductImage = async ({
     base64,
     productId,
@@ -26,7 +25,6 @@ export const uploadProductImage = async ({
     return res.secure_url;
 };
 
-/* Upload ALL variant images */
 export const processVariantImages = async ({
     variants,
     productId,
@@ -39,7 +37,6 @@ export const processVariantImages = async ({
         for (let i = 0; i < variant.images.length; i++) {
             const img = variant.images[i];
 
-            // Keep existing URLs
             if (typeof img === "string" && img.startsWith("http")) {
                 uploadedImages.push(img);
                 continue;

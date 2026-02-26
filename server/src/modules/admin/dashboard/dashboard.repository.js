@@ -26,7 +26,6 @@ export const getDashboardAnalytics = async () => {
                     { $project: { orderId: "$orderNumber", customer: "$userId", productName: "$prod.name", reason: { $arrayElemAt: ["$items.returnReason", 0] }, date: "$updatedAt" } }
                 ],
 
-                // 🟢 TOP PRODUCTS (Fixing Image by looking up Variants)
                 "topProducts": [
                     { $unwind: "$items" },
                     { $match: { "items.status": { $nin: ["Cancelled", "Returned"] } } },
@@ -49,7 +48,6 @@ export const getDashboardAnalytics = async () => {
                     },
                     { $unwind: "$productInfo" },
                     {
-                        // 🟢 JOIN WITH VARIANTS TO GET IMAGES
                         $lookup: {
                             from: "variants",
                             localField: "_id",
@@ -60,7 +58,7 @@ export const getDashboardAnalytics = async () => {
                     {
                         $project: {
                             name: "$productInfo.name",
-                            // Take the first image of the first variant found
+   
                             thumbnail: { $arrayElemAt: [{ $arrayElemAt: ["$variants.images", 0] }, 0] },
                             totalSold: 1,
                             revenue: 1
@@ -68,7 +66,6 @@ export const getDashboardAnalytics = async () => {
                     }
                 ],
 
-                // 🟢 TOP BRANDS (Fixing Brand Name via brandId)
                 "topBrands": [
                     { $unwind: "$items" },
                     { $match: { "items.status": { $nin: ["Cancelled", "Returned"] } } },
@@ -84,7 +81,7 @@ export const getDashboardAnalytics = async () => {
                     {
                         $lookup: {
                             from: "brands",
-                            localField: "product.brandId", // 🟢 Using brandId from your schema
+                            localField: "product.brandId",
                             foreignField: "_id",
                             as: "brandInfo"
                         }

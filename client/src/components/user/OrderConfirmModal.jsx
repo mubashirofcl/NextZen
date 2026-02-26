@@ -24,7 +24,7 @@ const OrderConfirmModal = ({
                 <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
                     style={{ backgroundImage: 'radial-gradient(#000 1.5px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
-                {/* Header */}
+
                 <div className="flex justify-between items-center mb-8 relative z-10">
                     <div className="space-y-1">
                         <p className={`text-[10px] font-black uppercase tracking-[0.3em] italic ${inventoryConflict ? 'text-red-500' : 'text-[#7a6af6]'}`}>
@@ -53,7 +53,7 @@ const OrderConfirmModal = ({
                     </div>
                 ) : (
                     <>
-                        {/* Tip Section */}
+     
                         <div className="bg-slate-50 border border-slate-100 p-5 rounded-2xl flex items-center gap-4 mb-8 relative z-10">
                             <div className="p-2 bg-white rounded-lg shadow-sm">
                                 {paymentMethod === 'wallet' ? <WalletIcon size={18} className="text-green-500" /> : <Truck size={18} className="text-[#7a6af6]" />}
@@ -65,21 +65,19 @@ const OrderConfirmModal = ({
                             </p>
                         </div>
 
-                        {/* Breakdown Section */}
                         <div className="space-y-4 mb-10 relative z-10 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
                             <div className="flex justify-between text-[11px] font-bold uppercase text-slate-400 tracking-tighter">
                                 <span>Order Base</span>
                                 <span className="text-zinc-900 font-black">₹{(totals.subtotal || 0).toLocaleString()}</span>
                             </div>
 
-                            {/* 🟢 FIXED: Check totals.couponDiscount instead of totals.couponSavings */}
                             {totals.couponDiscount > 0 && (
                                 <div className="flex justify-between text-[11px] font-bold uppercase text-indigo-600 tracking-tighter italic">
                                     <span className="flex items-center gap-1">
                                         <Tag size={10} /> 
                                         <span>Coupon {couponCode ? `(${couponCode})` : ''}</span>
                                     </span>
-                                    {/* 🟢 FIXED: Display totals.couponDiscount */}
+
                                     <span className="font-black">- ₹{(totals.couponDiscount).toLocaleString()}</span>
                                 </div>
                             )}

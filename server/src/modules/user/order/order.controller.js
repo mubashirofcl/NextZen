@@ -7,7 +7,6 @@ import mongoose from "mongoose";
 import { getWalletByUserId, updateWalletBalance } from "../wallet/wallet.service.js";
 import couponModel from "../../admin/couponManagemen/coupon.model.js";
 
-// 🟢 GLOBAL HELPER: Fixes JS floating point precision issues
 const fixNum = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 
 export const placeOrder = async (req, res, next) => {
@@ -19,7 +18,6 @@ export const placeOrder = async (req, res, next) => {
 
         const orderStatus = status || 'pending';
 
-        // 🟢 FIX: Sanitize subtotal
         const subTotal = fixNum(items.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0));
         const deliveryCharge = fixNum(totals.deliveryCharge || 0);
 
@@ -30,7 +28,6 @@ export const placeOrder = async (req, res, next) => {
                 const now = new Date();
                 if (coupon.endDate >= now && subTotal >= coupon.minPurchaseAmt) {
                     if (coupon.discountType === 'PERCENT') {
-                        // 🟢 FIX: Sanitize percentage discount
                         discountAmount = fixNum((subTotal * coupon.discountValue) / 100);
                         if (coupon.maxDiscount) discountAmount = Math.min(discountAmount, coupon.maxDiscount);
                     } else {
@@ -40,7 +37,6 @@ export const placeOrder = async (req, res, next) => {
             }
         }
 
-        // 🟢 FIX: Sanitize final total
         const finalTotalValue = Math.max(0, fixNum((subTotal + deliveryCharge) - discountAmount));
 
         let initialPaymentStatus = (orderStatus === 'payment_failed') ? 'Failed' : 'Pending';
@@ -58,7 +54,7 @@ export const placeOrder = async (req, res, next) => {
         const processedItems = items.map(item => ({
             ...item,
             price: item.price,
-            totalAmount: fixNum(item.price * item.quantity), // 🟢 FIX: Item total
+            totalAmount: fixNum(item.price * item.quantity),
             status: "Placed"
         }));
 
@@ -165,15 +161,12 @@ export const cancelOrderItem = async (req, res, next) => {
         const item = order.items.id(itemId);
         if (!item || item.status === 'Cancelled') return res.status(400).json({ success: false, message: "Item already cancelled." });
 
-        // 🛡️ BLOCK LOGIC: Check Coupon Threshold
         if (order.couponCode) {
             const coupon = await couponModel.findOne({ code: order.couponCode });
             if (coupon && coupon.minPurchaseAmt) {
-                // Calculate what the subtotal would be after this specific cancellation
                 const activeItems = order.items.filter(i => i.status !== 'Cancelled' && i._id.toString() !== itemId);
                 const potentialSubTotal = fixNum(activeItems.reduce((acc, curr) => acc + curr.totalAmount, 0));
 
-                // If items remain but don't meet the minimum, block the cancellation
                 if (activeItems.length > 0 && potentialSubTotal < coupon.minPurchaseAmt) {
                     await session.abortTransaction();
                     return res.status(400).json({
@@ -187,7 +180,6 @@ export const cancelOrderItem = async (req, res, next) => {
         const safeSubTotal = fixNum(order.subTotal || 0);
         const actualCouponDiscount = fixNum(order.couponDiscount || 0);
 
-        // 🟢 PROPORTIONAL REFUND LOGIC (Existing code preserved)
         let itemDiscountShare = 0;
         if (actualCouponDiscount > 0 && safeSubTotal > 0) {
             itemDiscountShare = fixNum((item.totalAmount / safeSubTotal) * actualCouponDiscount);
@@ -248,7 +240,6 @@ export const finalizeReturnRefund = async (req, res, next) => {
         const safeSubTotal = fixNum(order.subTotal || 0);
         const actualCouponDiscount = fixNum(order.couponDiscount || 0);
 
-        // 🟢 PROPORTIONAL RETURN LOGIC
         let itemDiscountShare = 0;
         if (actualCouponDiscount > 0 && safeSubTotal > 0) {
             itemDiscountShare = fixNum((item.totalAmount / safeSubTotal) * actualCouponDiscount);
@@ -261,7 +252,6 @@ export const finalizeReturnRefund = async (req, res, next) => {
         item.status = 'Returned';
         item.actionDate = new Date();
 
-        // 🟢 SYNC TOTALS
         order.totalAmount = fixNum(Math.max(0, order.totalAmount - netRefund));
         order.subTotal = fixNum(Math.max(0, order.subTotal - item.totalAmount));
         if (order.couponDiscount) order.couponDiscount = fixNum(Math.max(0, order.couponDiscount - itemDiscountShare));
@@ -288,7 +278,7 @@ export const cancelFullOrder = async (req, res, next) => {
         const isShipped = ['shipped', 'out_for_delivery'].includes(order.status.toLowerCase());
 
         let refundTotal = fixNum(order.totalAmount);
-        // Do not refund delivery if already shipped
+
         if (isShipped && order.deliveryCharge > 0) {
             refundTotal = fixNum(Math.max(0, refundTotal - order.deliveryCharge));
         }

@@ -26,6 +26,7 @@ const UserLogin = () => {
         handleSubmit,
         formState: { errors, isSubmitting },
     } = useForm({
+        mode: "onBlur",
         defaultValues: { email: "", password: "" },
     });
 
@@ -82,7 +83,7 @@ const UserLogin = () => {
                 navigate(from, { replace: true });
                 nxToast.success(
                     "Welcome Back!",
-                    "Successfully signed in. Happy shopping at NEXTZEN!"
+                    "You have signed in successfully. Enjoy your shopping!"
                 );
             }
         } catch (loginErr) {
@@ -92,7 +93,9 @@ const UserLogin = () => {
                 setShowBlockedModal(true);
                 return;
             }
-            setApiError(res?.data?.message || "Invalid email or password");
+            const errorMsg = res?.data?.message || "Please check your email and password.";
+            setApiError(errorMsg);
+            nxToast.error("Login Failed", errorMsg);
         }
     };
 
@@ -150,23 +153,36 @@ const UserLogin = () => {
                                     <input
                                         type="email"
                                         placeholder="Enter your email"
-                                        {...register("email", { required: "Email required", pattern: /^\S+@\S+$/i })}
-                                        className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
+                                        {...register("email", { 
+                                            required: "Email address is required", 
+                                            pattern: {
+                                                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                                message: "Please enter a valid email address"
+                                            },
+                                            maxLength: {
+                                                value: 50,
+                                                message: "Email cannot exceed 50 characters"
+                                            }
+                                        })}
+                                        className={`w-full px-4 py-3 bg-gray-50 border rounded-xl text-xs outline-none transition-all focus:ring-1 ${errors.email ? 'border-red-300 focus:ring-red-200' : 'border-none focus:ring-gray-300'}`}
                                     />
-                                    {errors.email && <p className="text-[9px] text-red-500 font-medium uppercase mt-1">{errors.email.message}</p>}
+                                    {errors.email && <p className="text-[9px] text-red-500 font-medium uppercase mt-1">! {errors.email.message}</p>}
                                 </div>
 
                                 <div className="space-y-1.5 relative">
                                     <div className="flex justify-between items-center">
                                         <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Password</label>
-
                                     </div>
                                     <div className="relative">
                                         <input
                                             type={showPass ? "text" : "password"}
                                             placeholder="••••••••"
-                                            {...register("password", { required: "Password is required", minLength: { value: 6, message: "Min 6 chars" } })}
-                                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
+                                            {...register("password", { 
+                                                required: "Password is required", 
+                                                minLength: { value: 6, message: "Password must be at least 6 characters" },
+                                                maxLength: { value: 25, message: "Password cannot exceed 25 characters" }
+                                            })}
+                                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl text-xs outline-none transition-all focus:ring-1 ${errors.password ? 'border-red-300 focus:ring-red-200' : 'border-none focus:ring-gray-300'}`}
                                         />
                                         <button
                                             type="button"
@@ -176,7 +192,7 @@ const UserLogin = () => {
                                             {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
                                         </button>
                                     </div>
-                                    {errors.password && <p className="text-[9px] text-red-500 font-medium uppercase mt-1">{errors.password.message}</p>}
+                                    {errors.password && <p className="text-[9px] text-red-500 font-medium uppercase mt-1">! {errors.password.message}</p>}
                                 </div>
 
                                 <button

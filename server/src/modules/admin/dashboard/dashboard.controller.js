@@ -16,7 +16,7 @@ export const getAdminDashboardStats = async (req, res, next) => {
         const stats = await dashboardService.getDashboardStats();
         res.status(200).json({
             success: true,
-            data: stats // This matches response.data.data in your frontend
+            data: stats 
         });
     } catch (error) {
         console.error("Dashboard Stats Controller Error:", error.message);
@@ -24,12 +24,10 @@ export const getAdminDashboardStats = async (req, res, next) => {
     }
 };
 
-// In your order controller file
 export const getOrderDetails = async (req, res, next) => {
     try {
         const { id } = req.params;
 
-        // 🟢 FIX: Detect if ID is a custom ORD string or a MongoDB ObjectId
         const query = id.startsWith("ORD-") 
             ? { orderNumber: id } 
             : { _id: id };

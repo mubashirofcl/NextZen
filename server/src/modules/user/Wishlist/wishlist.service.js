@@ -5,11 +5,9 @@ import mongoose from "mongoose";
 export const toggleWishlist = async (userId, productId, variantId) => {
     if (!productId) throw new Error("Product ID is required.");
 
-    // If no variantId is provided (Shop page), find the first available one
     if (!variantId || variantId === productId) {
         const Product = mongoose.model("Product");
         const productData = await Product.findById(productId);
-        // Note: Make sure your Product model has a variants array or use Variant model to find
         const Variant = mongoose.model("Variant");
         const firstVariant = await Variant.findOne({ productId, isDeleted: false });
         variantId = firstVariant?._id || null;
@@ -58,14 +56,12 @@ export const getUserWishlist = async (userId) => {
 
     if (!wishlist) return [];
 
-    // Filter out items where the product or variant was deleted
     const validItems = wishlist.products.filter(item =>
         item.productId &&
         !item.productId.isDeleted &&
         (!item.variantId || !item.variantId.isDeleted)
     );
 
-    // Filter duplicates
     const unique = [];
     const seen = new Set();
     validItems.forEach(item => {

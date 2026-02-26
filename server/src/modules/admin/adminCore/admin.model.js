@@ -1,5 +1,3 @@
-/// → Database schema
-
 
 import mongoose from "mongoose";
 

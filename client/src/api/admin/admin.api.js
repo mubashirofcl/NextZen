@@ -7,7 +7,7 @@ export const adminLogin = async (payload) => {
 
 export const getAdminMe = async () => {
   const res = await adminAxios.get("/admin/me");
-  return res.data; // { success, admin }
+  return res.data; 
 };
 
 export const refreshAdminToken = async () => {

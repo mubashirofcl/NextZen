@@ -1,6 +1,5 @@
 import cloudinary from "../config/cloudinary.js";
 
-/* Upload ONE brand logo */
 export const uploadBrandLogo = async ({ base64, brandName }) => {
     const res = await cloudinary.uploader.upload(base64, {
         folder: "nextzen/brands",

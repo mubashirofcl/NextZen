@@ -5,7 +5,6 @@ import {
     toggleAdminBrandStatus,
 } from "../../api/admin/brands.api";
 
-/* ================= CREATE ================= */
 
 export const useCreateBrand = () => {
     const qc = useQueryClient();
@@ -18,7 +17,6 @@ export const useCreateBrand = () => {
     });
 };
 
-/* ================= UPDATE ================= */
 
 export const useUpdateBrand = () => {
     const qc = useQueryClient();
@@ -31,7 +29,6 @@ export const useUpdateBrand = () => {
     });
 };
 
-/* ================= TOGGLE ACTIVE ================= */
 
 export const useToggleBrandStatus = () => {
     const qc = useQueryClient();

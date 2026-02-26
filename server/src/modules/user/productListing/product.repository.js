@@ -135,7 +135,6 @@ export const getProductsRepository = async (filters) => {
             _id: "$_id",
             name: { $first: "$name" },
             thumbnail: { $first: { $arrayElemAt: ["$variantDocs.images", 0] } },
-            // 🟢 FIX: Map subcategory specifically for the Header Dropdown
             subcategory: { $first: { $arrayElemAt: ["$subcategoryInfo", 0] } }, 
             brand: { $first: "$brandDoc" },
             minSalePrice: { $min: "$calculatedSalePrice" },

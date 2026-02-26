@@ -36,7 +36,7 @@ export const findCategoriesWithSubCount = async (filter, skip, limit) => {
     { $match: filter },
     {
       $lookup: {
-        from: "offers", // Lookup from offers collection
+        from: "offers", 
         localField: "offerId",
         foreignField: "_id",
         as: "offerDetails",

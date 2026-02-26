@@ -93,7 +93,7 @@ const OTPVerification = () => {
                 navigate('/login');
 
             } else if (flow === 'forgot_password') {
-                // 🟢 ADD THIS BACK: This was missing in your last version
+
                 await verifyForgotPasswordOTP({
                     email,
                     otp: otpString,
@@ -104,7 +104,7 @@ const OTPVerification = () => {
                 navigate('/reset-password', { state: { email, otp: otpString } });
 
             } else if (flow === 'email_change') {
-                // 🟢 ADD THIS BACK: For profile email updates
+   
                 response = await verifyEmailChange({
                     email,
                     otp: otpString,

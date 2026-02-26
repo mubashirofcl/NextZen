@@ -1,5 +1,5 @@
 import React, { useState, useDeferredValue, useEffect } from "react";
-import { useSearchParams } from "react-router-dom"; // Import this
+import { useSearchParams } from "react-router-dom"; 
 import { Search, Filter, Users, UserCheck, ShieldAlert, List, Ban, CheckCircle } from "lucide-react";
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
@@ -10,8 +10,7 @@ import { useAdminUsers, useBlockUser, useUnblockUser } from "../../hooks/admin/u
 
 const UserManagement = () => {
     const [searchParams, setSearchParams] = useSearchParams();
-    
-    // 1. Initialize state strictly from URL (Source of Truth)
+
     const [searchTerm, setSearchTerm] = useState(() => searchParams.get("search") || "");
     const [statusFilter, setStatusFilter] = useState("");
     const [page, setPage] = useState(1);
@@ -19,7 +18,6 @@ const UserManagement = () => {
 
     const deferredSearch = useDeferredValue(searchTerm);
 
-    // 2. Sync Input -> URL (Only update URL if input changes)
     useEffect(() => {
         const currentUrlSearch = searchParams.get("search") || "";
         if (searchTerm !== currentUrlSearch) {
@@ -66,7 +64,7 @@ const UserManagement = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        {/* SEARCH INPUT */}
+
                         <div className="relative group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                             <input
@@ -75,7 +73,7 @@ const UserManagement = () => {
                                 value={searchTerm}
                                 onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
                                 className="pl-9 pr-8 py-2 bg-slate-100/50 focus:bg-white rounded-xl text-xs w-64 outline-none transition-all focus:ring-1 focus:ring-[#7a6af6]"
-                                autoFocus={!!searchParams.get("search")} // Auto-focus if redirected with search
+                                autoFocus={!!searchParams.get("search")}
                             />
                         </div>
                         <div className="relative">

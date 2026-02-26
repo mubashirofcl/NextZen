@@ -36,16 +36,13 @@ const loginLimiter = rateLimit({
 
 // ==================== PUBLIC AUTH ROUTES ====================
 
-// signup
 router.post("/signup/request-otp", emailValidator, requestSignupOTP);
 router.post("/signup/resend-otp", emailValidator, resendSignupOTP);
 router.post("/signup/verify-otp", verifyOTPValidator, verifySignupOTP);
 
-// login
 router.post("/login", loginLimiter, loginUser);
 router.post("/refresh", refreshUserToken);
 
-// forgot password
 router.post("/forgot-password/request-otp", emailValidator, requestForgotPasswordOTP);
 router.post("/forgot-password/resend-otp", emailValidator, resendForgotPasswordOTP);
 router.post(

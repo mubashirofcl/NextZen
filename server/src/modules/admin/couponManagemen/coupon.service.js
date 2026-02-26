@@ -1,7 +1,6 @@
 import * as couponRepo from './coupon.repository.js';
 import Order from '../../user/order/order.model.js';
 
-// Basic Repo Wrappers
 export const saveCoupon = async (data) => { return await couponRepo.saveCoupon(data); };
 export const findAll = async () => { return await couponRepo.findAll(); };
 export const findById = async (id) => { return await couponRepo.findById(id); };
@@ -11,7 +10,6 @@ export const removeById = async (id) => { return await couponRepo.removeById(id)
 export const incrementUsage = async (id) => { return await couponRepo.incrementUsage(id); };
 export const findActiveCoupons = async () => { return await couponRepo.findActiveCoupons(); };
 
-// 🟢 ADMIN SPECIFIC LOGIC
 export const createCoupon = async (couponData) => {
     const existingCoupon = await couponRepo.findByCode(couponData.code);
     if (existingCoupon) throw new Error("Coupon code already exists.");
@@ -28,7 +26,6 @@ export const getCouponById = async (id) => { return await couponRepo.findById(id
 export const updateExistingCoupon = async (id, updateData) => { return await couponRepo.updateById(id, updateData); };
 export const purgeCoupon = async (id) => { return await couponRepo.removeById(id); };
 
-// 🟢 USER SPECIFIC LOGIC (Validation limits)
 export const validateCouponForUser = async (code, subtotal, userId) => {
     const coupon = await couponRepo.findByCode(code);
 
@@ -44,12 +41,10 @@ export const validateCouponForUser = async (code, subtotal, userId) => {
         throw new Error(`Minimum purchase of ₹${coupon.minPurchaseAmt} required.`);
     }
 
-    // Validation 1: Store-wide Limit
     if (coupon.usedCount >= coupon.usageLimit) {
         throw new Error("This coupon's overall store usage limit has been reached.");
     }
 
-    // Validation 2: Individual User Limit
     if (userId) {
         const userUsageCount = await Order.countDocuments({
             userId: userId,
@@ -70,6 +65,5 @@ export const toggleCouponStatus = async (id) => {
     if (!coupon) {
         throw new Error("Coupon not found.");
     }
-    // Flip the current boolean value
     return await couponRepo.updateById(id, { isActive: !coupon.isActive });
 };

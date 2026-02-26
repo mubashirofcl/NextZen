@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { X, Camera, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Camera, AlertCircle, Loader2, Info } from 'lucide-react';
 import { nxToast } from '../../utils/userToast';
 
 const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
@@ -45,13 +45,15 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
 
         const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
         if (!validTypes.includes(file.type)) {
-            setBackendError("Invalid file type. Use JPG, PNG or WebP.");
+            setBackendError("Please use a standard image format (JPG, PNG, or WebP).");
+            nxToast.error("Format Error", "The selected file type is not supported.");
             e.target.value = null;
             return;
         }
 
-        if (file.size > 5 * 1024 * 1024) {
-            setBackendError("Image must be under 5MB.");
+        if (file.size > 2 * 1024 * 1024) {
+            setBackendError("The image is too large. Please select a file smaller than 2MB.");
+            nxToast.warn("File Size Alert", "Profile images should be under 2MB for best performance.");
             e.target.value = null;
             return;
         }
@@ -60,6 +62,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
         const reader = new FileReader();
         reader.onload = () => setPreviewImage(reader.result);
         reader.readAsDataURL(file);
+        nxToast.success("Success", "Photo prepared for update.");
     };
 
     const onSubmit = async (data) => {
@@ -76,49 +79,52 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
             }
 
             await onUpdate(payload);
+            nxToast.success("Update Complete", "Your profile details have been saved.");
         } catch (err) {
-            nxToast.security("Profile update failed");
-            setBackendError(err.response?.data?.message || "Update failed");
+            const msg = err.response?.data?.message || "Internal system error. Please try again later.";
+            setBackendError(msg);
+            nxToast.error("Update Blocked", msg);
         }
     };
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm text-black">
-            <div className="bg-white w-full max-w-[400px] rounded-2xl shadow-2xl p-8 relative">
+            <div className="bg-white w-full max-w-[400px] rounded-2xl shadow-2xl p-8 relative animate-in zoom-in duration-300">
 
-                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-black">
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-black transition-colors">
                     <X size={20} />
                 </button>
 
                 <div className="mb-6">
-                    <h3 className="text-xl font-black uppercase">Edit Profile</h3>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                        {isGoogleAccount ? 'Google Managed Account' : 'NEXTZEN Account'}
+                    <h3 className="text-xl font-black uppercase tracking-tight">Edit Profile</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                        {isGoogleAccount ? 'Google Managed Account' : 'NEXTZEN Security Protocol'}
                     </p>
                 </div>
 
                 {backendError && (
                     <div className="mb-6 p-3 bg-red-50 border-l-4 border-red-500 flex items-center gap-3">
-                        <AlertCircle size={16} className="text-red-500" />
-                        <p className="text-[9px] font-black text-red-700 uppercase">{backendError}</p>
+                        <AlertCircle size={16} className="text-red-500 shrink-0" />
+                        <p className="text-[9px] font-black text-red-700 uppercase leading-tight">{backendError}</p>
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                    {/* Avatar */}
-                    <div className="flex justify-center text-black">
+                    <div className="flex justify-center">
                         <div
                             className="relative cursor-pointer group"
                             onClick={() => fileInputRef.current.click()}
                         >
-                            <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100">
+                            <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-50 shadow-inner group-hover:border-[#7a6af6] transition-all">
                                 <img
                                     src={previewImage || "https://avatar.iran.liara.run/public/boy"}
                                     alt="Preview"
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover transition-transform group-hover:scale-110"
                                 />
                             </div>
-                            <Camera className="absolute inset-0 m-auto text-white opacity-0 group-hover:opacity-100" />
+                            <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Camera size={20} />
+                            </div>
                             <input
                                 ref={fileInputRef}
                                 type="file"
@@ -129,57 +135,65 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
                         </div>
                     </div>
 
-                    {/* Name */}
                     <div>
-                        <label className="text-[10px] font-bold uppercase text-slate-400">Name</label>
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1 block">Full Name</label>
                         <input
                             {...register("name", {
-                                required: "Name is required",
-                                minLength: { value: 2, message: "Too short" }
+                                required: "Please enter your name",
+                                minLength: { value: 3, message: "Name must be at least 3 characters" },
+                                maxLength: { value: 30, message: "Name cannot exceed 30 characters" },
+                                pattern: { value: /^[a-zA-Z\s]*$/, message: "Only letters and spaces are allowed" }
                             })}
-                            className="w-full px-4 py-3 text-black bg-slate-50 rounded-xl font-bold"
+                            placeholder="e.g. John Doe"
+                            className={`w-full px-4 py-3 text-black bg-slate-50 border-2 rounded-xl text-sm font-bold outline-none transition-all ${errors.name ? 'border-red-300' : 'border-transparent focus:border-[#7a6af6]/20 focus:bg-white'}`}
                         />
-                        {errors.name && <p className="text-[9px] text-red-500">{errors.name.message}</p>}
+                        {errors.name && <p className="text-[9px] text-red-500 font-bold uppercase mt-1 ml-1 flex items-center gap-1"><Info size={10}/> {errors.name.message}</p>}
                     </div>
 
-                    {/* Email */}
-                    {isGoogleAccount ? (
+                    {!isGoogleAccount ? (
                         <div>
-                            <label className="text-[10px] font-bold uppercase text-slate-400">Email</label>
-                            <div className="px-4 py-3 bg-slate-100 rounded-xl text-slate-400 font-bold italic">
-                                {user.email}
-                            </div>
+                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1 block">Email Address</label>
+                            <input
+                                {...register("email", { 
+                                    required: "Email is required",
+                                    pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: "Invalid email format" },
+                                    maxLength: { value: 50, message: "Email too long" }
+                                })}
+                                placeholder="john@example.com"
+                                className={`w-full px-4 py-3 text-black bg-slate-50 border-2 rounded-xl text-sm font-bold outline-none transition-all ${errors.email ? 'border-red-300' : 'border-transparent focus:border-[#7a6af6]/20 focus:bg-white'}`}
+                            />
+                            {errors.email && <p className="text-[9px] text-red-500 font-bold uppercase mt-1 ml-1 flex items-center gap-1"><Info size={10}/> {errors.email.message}</p>}
                         </div>
                     ) : (
                         <div>
-                            <label className="text-[10px] font-bold uppercase text-slate-400">Email</label>
-                            <input
-                                {...register("email", { required: "Email required" })}
-                                className="w-full px-4 py-3 bg-slate-50 rounded-xl font-bold"
-                            />
-                            {errors.email && <p className="text-[9px] text-red-500">{errors.email.message}</p>}
+                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1 block">Primary Email</label>
+                            <div className="px-4 py-3 bg-slate-100 rounded-xl text-slate-400 text-sm font-bold italic border-2 border-transparent">
+                                {user.email}
+                            </div>
+                            <p className="text-[7px] text-slate-400 uppercase font-black tracking-tighter mt-1.5 ml-1 italic">Managed via your Google identity settings</p>
                         </div>
                     )}
 
-                    {/* Phone */}
                     <div>
-                        <label className="text-[10px] font-bold uppercase text-slate-400">Phone</label>
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1 block">Mobile Number</label>
                         <input
                             {...register("phone", {
-                                required: "Phone required",
-                                pattern: { value: /^[6-9]\d{9}$/, message: "Invalid phone" }
+                                required: "Phone number is required",
+                                pattern: { value: /^[6-9]\d{9}$/, message: "Please enter a valid 10-digit number" }
                             })}
-                            className="w-full px-4 py-3 text-black bg-slate-50 rounded-xl font-bold"
+                            placeholder="10-digit number"
+                            type="tel"
+                            className={`w-full px-4 py-3 text-black bg-slate-50 border-2 rounded-xl text-sm font-bold outline-none transition-all ${errors.phone ? 'border-red-300' : 'border-transparent focus:border-[#7a6af6]/20 focus:bg-white'}`}
                         />
-                        {errors.phone && <p className="text-[9px] text-red-500">{errors.phone.message}</p>}
+                        {errors.phone && <p className="text-[9px] text-red-500 font-bold uppercase mt-1 ml-1 flex items-center gap-1"><Info size={10}/> {errors.phone.message}</p>}
                     </div>
 
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-full py-4 bg-black text-white rounded-xl font-black uppercase"
+                        className="w-full py-4 bg-[#0F172A] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                     >
-                        {isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : "Save Changes"}
+                        {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : "Save Profile Details"}
                     </button>
                 </form>
             </div>

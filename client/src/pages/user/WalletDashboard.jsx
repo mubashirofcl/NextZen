@@ -46,6 +46,14 @@ const WalletDashboard = () => {
         });
     }, [wallet?.transactions]);
 
+    // Helper to fix floating point precision to 2 digits
+    const formatCurrency = (amount) => {
+        return Number(Math.round(amount + "e2") + "e-2").toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    };
+
     if (isLoading) return (
         <div className="h-[400px] flex flex-col items-center justify-center gap-4">
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
@@ -77,7 +85,7 @@ const WalletDashboard = () => {
                             <div className="space-y-1">
                                 <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 italic">Available Balance</p>
                                 <h2 className="text-6xl font-black italic tracking-tighter">
-                                    ₹{wallet?.balance?.toLocaleString() || '0'}
+                                    ₹{formatCurrency(wallet?.balance || 0)}
                                 </h2>
                             </div>
 
@@ -168,7 +176,7 @@ const WalletDashboard = () => {
                                             <span className={`text-sm font-black italic tracking-tighter ${
                                                 tx.type === 'credit' ? 'text-green-400' : 'text-white'
                                             }`}>
-                                                {tx.type === 'credit' ? '+' : '-'} ₹{tx.amount.toLocaleString()}
+                                                {tx.type === 'credit' ? '+' : '-'} ₹{formatCurrency(tx.amount || 0)}
                                             </span>
                                         </td>
                                     </tr>

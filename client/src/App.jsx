@@ -17,6 +17,18 @@ import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import UserManagement from "./pages/admin/userManagement.jsx";
 import CategoryManagement from "./pages/admin/CategoryManagement.jsx";
+import CouponManagement from "./pages/admin/CouponManagement.jsx";
+import CouponForm from "./pages/admin/CouponForm.jsx";
+import OfferManagement from "./pages/admin/OfferManagement.jsx";
+import OfferForm from "./pages/admin/OfferForm.jsx";
+import SalesReportPage from "./pages/admin/SalesReportPage.jsx";
+import ProductManagement from "./pages/admin/ProductManagement.jsx";
+import ProductForm from "./pages/admin/ProductForm.jsx";
+import BrandManagement from "./pages/admin/BrandManagement.jsx";
+import AdminOrderListing from "./pages/admin/AdminOrderManagement.jsx";
+import AdminOrderDetail from "./pages/admin/AdminOrderDetail.jsx";
+import AdminReturnRequests from "./pages/admin/AdminReturnRequests.jsx";
+
 
 // ===== USER =====
 import UserSignup from "./pages/user/UserSignup";
@@ -26,16 +38,11 @@ import Home from "./pages/user/Home";
 import ForgotPassword from "./pages/user/ForgotPassword";
 import ResetPassword from "./pages/user/ResetPassword";
 import GoogleAuthSuccess from "./pages/GoogleAuthSuccess";
-
-// ===== USER PROFILE =====
 import ProfileLayout from "./pages/user/ProfileLayout.jsx";
 import PersonalInfo from "./components/user/PersonalInfo.jsx";
 import ChangePasswordModal from "./components/user/ChangePasswordModal.jsx";
 import Addresses from "./components/user/Addresses.jsx";
 import MainLayout from "./components/user/MainLayout.jsx";
-import ProductManagement from "./pages/admin/ProductManagement.jsx";
-import ProductForm from "./pages/admin/ProductForm.jsx";
-import BrandManagement from "./pages/admin/BrandManagement.jsx";
 import Shop from "./pages/user/Shop.jsx";
 import ProductDetails from "./pages/user/ProductDetails.jsx";
 import CartPage from "./pages/user/CartPage.jsx";
@@ -43,16 +50,9 @@ import WishlistPage from "./pages/user/WishlistPage.jsx";
 import CheckoutPage from './pages/user/CheckoutPage';
 import OrderHistory from "./pages/user/OrderHistory.jsx";
 import OrderDetailPage from "./pages/user/OrderDetailPage.jsx";
-import AdminOrderListing from "./pages/admin/AdminOrderManagement.jsx";
-import AdminOrderDetail from "./pages/admin/AdminOrderDetail.jsx";
-import AdminReturnRequests from "./pages/admin/AdminReturnRequests.jsx";
 import OrderStatusPage from "./components/user/OrderStatusPage.jsx";
 import WalletDashboard from "./pages/user/WalletDashboard.jsx";
-import CouponManagement from "./pages/admin/CouponManagement.jsx";
-import CouponForm from "./pages/admin/CouponForm.jsx";
-import OfferManagement from "./pages/admin/OfferManagement.jsx";
-import OfferForm from "./pages/admin/OfferForm.jsx";
-import SalesReportPage from "./pages/admin/SalesReportPage.jsx";
+
 
 
 
@@ -66,21 +66,17 @@ export const App = () => {
 
   const isAdminPath = location.pathname.startsWith("/admin");
 
-  // 1. INITIAL SESSION FETCH
   useEffect(() => {
-    // Fetch User session if not already loaded
     if (userAuth.loading) {
       dispatch(fetchUser());
     }
 
-    // Fetch Admin session only if on admin path and not already loaded
     if (isAdminPath && adminAuth.loading) {
       dispatch(fetchAdmin());
     }
-  }, [dispatch, isAdminPath]); // Minimal dependencies to prevent re-fetch loops
+  }, [dispatch, isAdminPath]); 
   
 
-  // 2. GLOBAL AUTH EVENT LISTENERS
   useEffect(() => {
     const handleAdminLogout = () => {
       dispatch(clearAdmin());
@@ -93,7 +89,6 @@ export const App = () => {
     return () => window.removeEventListener("ADMIN_LOGOUT", handleAdminLogout);
   }, [dispatch, navigate, location.pathname]);
 
-  // 3. GLOBAL LOADING STATE (STOPS THE "STUCK" ISSUE)
   if (isAdminPath && adminAuth.loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
@@ -142,14 +137,12 @@ export const App = () => {
             <Route path="offers/add" element={<OfferForm />} />
             <Route path="offers/edit/:id" element={<OfferForm />} />
 
-            {/* PRODUCTS */}
             <Route path="products">
               <Route index element={<ProductManagement />} />
               <Route path="add" element={<ProductForm />} />
               <Route path="edit/:id" element={<ProductForm />} />
             </Route>
 
-            {/* --- 📦 ORDER MANAGEMENT --- */}
             <Route path="orders">
               <Route index element={<AdminOrderListing />} />
               <Route path=":id" element={<AdminOrderDetail />} />
@@ -162,6 +155,7 @@ export const App = () => {
         </Routes>
 
       ) : (
+
         /* ================= USER SIDE ================= */
         <MainLayout>
           <Routes>

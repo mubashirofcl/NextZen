@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { X, Plus, Tag, Loader2, CheckCircle2, ShieldAlert, Percent } from "lucide-react";
+import { X, Plus, Tag, Loader2, CheckCircle2, ShieldAlert, Percent, Info } from "lucide-react";
 import { adminToast } from "../../utils/adminToast";
-import { useOffers } from "../../hooks/admin/useOffers"; // Import your offer hook
+import { useOffers } from "../../hooks/admin/useOffers";
 
 const CategoryModal = ({
     isOpen,
@@ -12,10 +12,11 @@ const CategoryModal = ({
     mode = "add",
     initialData = null,
 }) => {
-    const { register, handleSubmit, reset, clearErrors, formState: { isSubmitting, errors } } = useForm();
+    const { register, handleSubmit, reset, clearErrors, watch, formState: { isSubmitting, errors } } = useForm({
+        mode: "onBlur"
+    });
     const [backendError, setBackendError] = useState("");
 
-    // Fetch available Category-level offers
     const { offers } = useOffers();
     const categoryOffers = offers.filter(o => o.applyFor === "CATEGORY" && o.isActive);
 
@@ -23,7 +24,6 @@ const CategoryModal = ({
         if (!isOpen) return;
 
         if (mode === "edit" && initialData) {
-            // Logic: If offerId is an object, take the _id. If it's already a string, use it.
             const currentOfferId = initialData.offerId?._id || initialData.offerId || "";
 
             reset({
@@ -45,14 +45,16 @@ const CategoryModal = ({
         setBackendError("");
         try {
             const payload = mode === "add"
-                ? { ...data, level: 1, parentId: null }
-                : { ...data, id: initialData._id };
+                ? { ...data, name: data.name.trim(), level: 1, parentId: null }
+                : { ...data, name: data.name.trim(), id: initialData._id };
 
             await onSubmit(payload);
-            adminToast.success(mode === "add" ? "Category Created" : "Category Updated");
+            adminToast.success("Success", `Category ${mode === "add" ? "created" : "updated"} successfully`);
             onClose();
         } catch (err) {
-            setBackendError(err?.response?.data?.message || err?.message || "Operation failed");
+            const msg = err?.response?.data?.message || err?.message || "Operation failed";
+            setBackendError(msg);
+            adminToast.error("Execution Error", msg);
         }
     };
 
@@ -62,7 +64,11 @@ const CategoryModal = ({
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white w-full max-w-[400px] rounded-[24px] shadow-2xl p-8 relative animate-in zoom-in duration-300">
-                <button onClick={onClose} className="absolute top-5 right-5 text-slate-400 hover:text-[#0F172A] transition-colors">
+                <button 
+                    type="button"
+                    onClick={onClose} 
+                    className="absolute top-5 right-5 text-slate-400 hover:text-[#0F172A] transition-colors"
+                >
                     <X size={20} />
                 </button>
 
@@ -87,44 +93,50 @@ const CategoryModal = ({
                 )}
 
                 <form onSubmit={handleSubmit(submitHandler)} className="space-y-4">
-                    {/* --- NAME FIELD --- */}
                     <div>
                         <label className={labelStyle}>Category Name *</label>
                         <input
                             {...register("name", {
                                 required: "Name is required",
+                                minLength: { value: 3, message: "Minimum 3 characters required" },
+                                maxLength: { value: 20, message: "Maximum 20 characters allowed" },
                                 validate: {
                                     notEmpty: (val) => val.trim().length > 0 || "Name cannot be empty",
-                                    noLeadingSpace: (val) => !/^\s/.test(val) || "Name cannot start with a space",
-                                    notOnlySpecialChars: (val) => /[A-Za-z0-9]/.test(val) || "Name must contain meaningful text",
-                                    allowedCharacters: (val) => /^[A-Za-z0-9 .,()\-\/&]+$/.test(val) || "Name contains invalid characters",
+                                    noLeadingSpace: (val) => !/^\s/.test(val) || "Cannot start with a space",
+                                    validChars: (val) => /^[A-Za-z0-9\s&-]+$/.test(val) || "Use only letters, numbers, and &"
                                 }
                             })}
                             placeholder="e.g., Apparel"
                             className={`${inputStyle} ${errors.name ? "border-red-500 bg-red-50" : ""}`}
                         />
-                        {errors.name && <p className="text-[9px] font-black text-red-500 uppercase ml-2 mt-1">{errors.name.message}</p>}
+                        {errors.name && (
+                            <p className="text-[9px] font-black text-red-500 uppercase ml-2 mt-1 flex items-center gap-1">
+                                <Info size={10} /> {errors.name.message}
+                            </p>
+                        )}
                     </div>
 
-                    {/* --- DESCRIPTION FIELD --- */}
                     <div>
-                        <label className={labelStyle}>Description</label>
+                        <label className={labelStyle}>Description *</label>
                         <textarea
                             {...register("description", {
                                 required: "Description is required",
+                                minLength: { value: 10, message: "Please provide a more detailed description" },
+                                maxLength: { value: 100, message: "Description too long (max 100 chars)" },
                                 validate: {
                                     notEmpty: (val) => val.trim().length > 0 || "Description cannot be empty",
-                                    noLeadingSpace: (val) => !/^\s/.test(val) || "Description cannot start with a space",
-                                    notOnlySpecialChars: (val) => /[A-Za-z0-9]/.test(val) || "Description must contain meaningful text",
                                 }
                             })}
                             placeholder="Brief details about this segment..."
                             className={`${inputStyle} h-24 resize-none py-3 ${errors.description ? "border-red-500 bg-red-50" : ""}`}
                         />
-                        {errors.description && <p className="text-[9px] font-black text-red-500 uppercase ml-2 mt-1">{errors.description.message}</p>}
+                        {errors.description && (
+                            <p className="text-[9px] font-black text-red-500 uppercase ml-2 mt-1 flex items-center gap-1">
+                                <Info size={10} /> {errors.description.message}
+                            </p>
+                        )}
                     </div>
 
-                    {/* --- OFFER SELECTION (NEW) --- */}
                     <div>
                         <label className={labelStyle}>Campaign / Offer Rule</label>
                         <div className="relative">
@@ -141,11 +153,10 @@ const CategoryModal = ({
                             </select>
                             <Percent size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                         </div>
-                        <p className="text-[7px] text-slate-400 font-bold uppercase mt-1 ml-1 tracking-widest italic">Applied to all products in this category</p>
+                        <p className="text-[7px] text-slate-400 font-bold uppercase mt-1 ml-1 tracking-widest italic">Applies to all products in this segment</p>
                     </div>
 
-                    {/* --- STATUS TOGGLE --- */}
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Active Status</span>
                         <input
                             type="checkbox"
@@ -158,7 +169,7 @@ const CategoryModal = ({
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full py-4 bg-[#0F172A] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-2"
+                            className="w-full py-4 bg-[#0F172A] text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSubmitting ? (
                                 <Loader2 className="animate-spin" size={16} />
