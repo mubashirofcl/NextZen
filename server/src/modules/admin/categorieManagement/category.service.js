@@ -1,4 +1,6 @@
+import mongoose from "mongoose";
 import User from "../../user/userCore/user.model.js";
+import { updateProductsStatusByCategory } from "../productManagement/product.repository.js";
 import {
     findById,
     createCategory,
@@ -8,6 +10,8 @@ import {
     findCategoriesWithSubCount,
     findCategoryByName,
     findSubCategoryByNameAndParent,
+    updateSubCategoriesStatus,
+    getSubCategoryIds,
 } from "./category.repository.js";
 
 export const createCategoryService = async ({ name, level, parentId, description, offerId }) => {
@@ -99,53 +103,81 @@ export const getAllCategoriesForSelectionService = async ({ level, parentId, adm
     return await findCategories(filter, 0, 0);
 };
 
+
 export const updateCategoryService = async (id, payload) => {
     if (!id) throw new Error("Category ID missing");
 
-    const category = await findById(id);
-    if (!category) throw new Error("Category not found");
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    if ("offerId" in payload && payload.offerId === "") {
-        payload.offerId = null;
-    }
+    try {
+        const category = await findById(id).session(session);
+        if (!category) throw new Error("Category not found");
 
-    if ("level" in payload || "parentId" in payload) {
-        throw new Error("Hierarchy (level or parent) cannot be modified");
-    }
+        const isStatusToggled = "isActive" in payload && payload.isActive !== category.isActive;
 
-    if (payload.name) {
-        const newName = payload.name.trim();
-
-        if (newName.toLowerCase() !== category.name.toLowerCase()) {
-
-            if (category.level === 1) {
-
-                const existing = await findCategoryByName({
-                    name: newName,
-                    level: 1
-                });
-
-                if (existing && existing._id.toString() !== id) {
-                    throw new Error("Category name already exists!");
-                }
-            }
-            else if (category.level === 2) {
-
-                const existing = await findSubCategoryByNameAndParent({
-                    name: newName,
-                    parentId: category.parentId
-                });
-
-                if (existing && existing._id.toString() !== id) {
-                    throw new Error("Sub-category name already exists under this parent!");
-                }
+        if (isStatusToggled && payload.isActive === true && category.level === 2) {
+            const parent = await findById(category.parentId).session(session);
+            if (parent && !parent.isActive) {
+                throw new Error("Cannot unblock sub-category while parent category is blocked.");
             }
         }
 
-        payload.name = newName;
-    }
+        if ("offerId" in payload && (payload.offerId === "" || payload.offerId === null)) {
+            payload.offerId = null;
+        }
 
-    return updateCategoryById(id, payload);
+        if ("level" in payload || "parentId" in payload) {
+            throw new Error("Hierarchy (level or parent) cannot be modified");
+        }
+
+        if (payload.name) {
+            const newName = payload.name.trim();
+            if (newName.toLowerCase() !== category.name.toLowerCase()) {
+                if (category.level === 1) {
+                    const existing = await findCategoryByName({ name: newName, level: 1 });
+                    if (existing && existing._id.toString() !== id) {
+                        throw new Error("Category name already exists!");
+                    }
+                } else if (category.level === 2) {
+                    const existing = await findSubCategoryByNameAndParent({
+                        name: newName,
+                        parentId: category.parentId
+                    });
+                    if (existing && existing._id.toString() !== id) {
+                        throw new Error("Sub-category name already exists under this parent!");
+                    }
+                }
+            }
+            payload.name = newName;
+        }
+
+        const updatedCategory = await updateCategoryById(id, payload, { session });
+
+        if (isStatusToggled) {
+            const newStatus = payload.isActive;
+
+            if (category.level === 1) {
+                await updateSubCategoriesStatus(id, newStatus, { session });
+                const subCategoryIds = await getSubCategoryIds(id);
+                const allTargetIds = [id, ...subCategoryIds];
+
+                await updateProductsStatusByCategory(allTargetIds, newStatus, { session });
+            }
+            else if (category.level === 2) {
+                await updateProductsStatusByCategory([id], newStatus, { session });
+            }
+        }
+
+        await session.commitTransaction();
+        return updatedCategory;
+
+    } catch (error) {
+        await session.abortTransaction();
+        throw error;
+    } finally {
+        session.endSession();
+    }
 };
 
 export const deleteCategoryService = async (id) => {

@@ -1,5 +1,5 @@
 import React, { useState, useDeferredValue } from "react";
-import { Search, Plus, Filter, Edit3, Box, Download, ShieldAlert, Layout, Layers, Ban, CheckCircle, Percent, Tag, Zap } from "lucide-react";
+import { Search, Plus, Filter, Edit3, Box, Download, ShieldAlert, Layout, Layers, Ban, CheckCircle, Percent, Tag, Zap, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
@@ -53,14 +53,34 @@ const ProductManagement = () => {
 
                     <div className="flex items-center gap-3">
                         <div className="relative group">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                            <Search
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#7a6af6] transition-colors"
+                                size={14}
+                            />
                             <input
                                 type="text"
                                 placeholder="Search inventory..."
                                 value={searchTerm}
-                                onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-                                className="pl-9 pr-8 py-2 bg-slate-200/50 focus:bg-white rounded-xl text-xs w-64 outline-none transition-all"
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="pl-9 pr-10 py-2 bg-slate-200/50 focus:bg-white rounded-xl text-xs w-64 outline-none transition-all border border-transparent focus:border-slate-200"
                             />
+
+                            {/* Clear Button */}
+                            {searchTerm && (
+                                <button
+                                    onClick={() => {
+                                        setSearchTerm("");
+                                        setPage(1);
+                                    }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-100 transition-all"
+                                    type="button"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
                         </div>
                         <button className="bg-[#0F172A] text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-black transition-all shadow-lg active:scale-95" onClick={() => navigate('/admin/products/add')}>
                             <Plus size={14} strokeWidth={3} /> Add Product
@@ -83,7 +103,7 @@ const ProductManagement = () => {
                             pagination={pagination}
                             onPageChange={setPage}
                             renderRow={(product) => {
-       
+
                                 const activeDiscount = Number(product.discountValue || product.resolvedDiscountValue || product.appliedDiscount || 0);
                                 const hasOffer = activeDiscount > 0;
 
@@ -134,7 +154,7 @@ const ProductManagement = () => {
                                                         </div>
                                                     )}
                                                 </div>
-                                                
+
                                                 {hasOffer ? (
                                                     <p className="text-[7px] text-slate-400 font-bold uppercase tracking-widest line-through italic opacity-60">
                                                         MRP: ₹{product.minOriginalPrice?.toLocaleString("en-IN")}

@@ -135,7 +135,7 @@ export const getProductsRepository = async (filters) => {
             _id: "$_id",
             name: { $first: "$name" },
             thumbnail: { $first: { $arrayElemAt: ["$variantDocs.images", 0] } },
-            subcategory: { $first: { $arrayElemAt: ["$subcategoryInfo", 0] } }, 
+            subcategory: { $first: { $arrayElemAt: ["$subcategoryInfo", 0] } },
             brand: { $first: "$brandDoc" },
             minSalePrice: { $min: "$calculatedSalePrice" },
             minOriginalPrice: { $min: "$variantDocs.sizes.originalPrice" },
@@ -156,7 +156,7 @@ export const getProductsRepository = async (filters) => {
     let sortObj = { createdAt: -1 };
     if (sort === "price_asc") sortObj = { minSalePrice: 1 };
     else if (sort === "price_desc") sortObj = { minSalePrice: -1 };
-    
+
     pipeline.push({ $sort: sortObj });
 
     pipeline.push({

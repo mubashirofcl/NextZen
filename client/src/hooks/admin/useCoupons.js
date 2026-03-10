@@ -33,7 +33,9 @@ export const useCoupons = (id = null) => {
             nxToast.success(res.message || "Coupon Deployed");
             navigate("/admin/coupons");
         },
-        onError: (err) => nxToast.error(err.response?.data?.message || "Deployment failed")
+        onError: (err) => {
+            nxToast.security(err.response?.data?.message || "Deployment failed");
+        }
     });
 
     const updateMutation = useMutation({
@@ -44,7 +46,7 @@ export const useCoupons = (id = null) => {
             nxToast.success(res.message || "Coupon Updated");
             navigate("/admin/coupons");
         },
-        onError: (err) => nxToast.error(err.response?.data?.message || "Update failed")
+        onError: (err) => nxToast.security(err.response?.data?.message || "Update failed")
     });
 
     const deleteMutation = useMutation({
@@ -53,12 +55,12 @@ export const useCoupons = (id = null) => {
             queryClient.invalidateQueries({ queryKey: ["admin-coupons"] });
             nxToast.success("Coupon Purged");
         },
-        onError: (err) => nxToast.error(err.response?.data?.message || "Purge failed")
+        onError: (err) => nxToast.security(err.response?.data?.message || "Purge failed")
     });
 
     return {
         coupons: coupons?.coupons || [],
-        couponDetail: couponDetail?.coupon, 
+        couponDetail: couponDetail?.coupon,
 
         isLoading,
         isLoadingDetail,
@@ -97,7 +99,7 @@ export const useToggleCoupon = () => {
 
         onError: (err, newTodo, context) => {
             queryClient.setQueryData(["admin-coupons"], context.previousCoupons);
-            nxToast.error("Update Failed", err.response?.data?.message || "Could not change status.");
+            nxToast.security("Update Failed", err.response?.data?.message || "Could not change status.");
         },
 
         onSuccess: (data) => {

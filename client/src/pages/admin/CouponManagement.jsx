@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Plus, Edit3, Ticket, List, Search,
-    Trash2, Calendar, ShieldCheck, ShieldAlert, Loader2
+    Trash2, Calendar, ShieldCheck, ShieldAlert, Loader2,
+    X
 } from "lucide-react";
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
@@ -43,7 +44,7 @@ const CouponManagement = () => {
                 try {
                     await deleteCoupon(id);
                 } catch {
-                    adminToast.error("Purge Failed");
+                    adminToast.warn("Purge Failed");
                 }
             }
         );
@@ -77,7 +78,7 @@ const CouponManagement = () => {
                                     onClick={() => setSearchTerm("")}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"
                                 >
-                                    ✕
+                                    <X size={14} />
                                 </button>
                             )}
                         </div>

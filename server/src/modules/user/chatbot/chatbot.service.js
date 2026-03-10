@@ -46,7 +46,7 @@ export const generateAIResponse = async (productId, userMessage, history = [], u
     CONTEXT DATA: ${JSON.stringify(productSnapshot)}
 
     STRICT OPERATING RULES:
-    1. DATA LIMIT: Only state product facts (price, stock, size) found in the CONTEXT DATA. 
+    1. DATA LIMIT: Only state product facts (price, stock, size) found in the CONTEXT DATA Don't replay the hex code. 
     2. STYLING ASSISTANCE: You ARE allowed to give styling advice. 
        - If asked about "matching", suggest complementary colors (e.g., this item matches well with white, black, or denim).
        - If asked about "skin tone", provide inclusive, positive fashion suggestions (e.g., "This vibrant shade looks stunning on deeper skin tones").

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Edit3, Award, Search, BanIcon, CheckCircle2, Globe, Hash, List, Percent } from "lucide-react";
+import { Plus, Edit3, Award, Search, BanIcon, CheckCircle2, Globe, Hash, List, Percent, X } from "lucide-react";
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import DataTable from "../../tables/admin/DataTable";
@@ -78,13 +78,32 @@ const BrandManagement = () => {
 
                     <div className="flex items-center gap-3">
                         <div className="relative group">
-                            <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#7a6af6] transition-colors" />
+                            <Search
+                                size={12}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#7a6af6] transition-colors"
+                            />
                             <input
                                 value={searchTerm}
-                                onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setPage(1);
+                                }}
                                 placeholder="Search brands..."
-                                className="pl-9 pr-4 py-2 bg-slate-50 border-2 border-slate-100 rounded-xl text-[10px] font-bold text-[#0F172A] w-56 outline-none focus:bg-white focus:border-[#7a6af6] focus:ring-4 focus:ring-purple-50 transition-all shadow-inner"
+                                className="pl-9 pr-10 py-2 bg-slate-50 border-2 border-slate-100 rounded-xl text-[10px] font-bold text-[#0F172A] w-56 outline-none focus:bg-white focus:border-[#7a6af6] focus:ring-4 focus:ring-purple-50 transition-all shadow-inner"
                             />
+
+                            {searchTerm && (
+                                <button
+                                    onClick={() => {
+                                        setSearchTerm("");
+                                        setPage(1);
+                                    }}
+                                    type="button"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors p-0.5"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
                         </div>
 
                         <button

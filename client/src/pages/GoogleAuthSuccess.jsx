@@ -21,7 +21,7 @@ const GoogleAuthSuccess = () => {
                 navigate('/', { replace: true });
             } catch (err) {
                 console.error("Google Sync Failed:", err);
-                navigate('/login?error=sync_failed');
+                navigate('/login?error=sync_failed', { replace: true });
             }
         };
         finalizeAuth();

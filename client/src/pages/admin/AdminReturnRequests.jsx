@@ -1,15 +1,16 @@
 import React, { useState, useDeferredValue } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-    Search, 
-    RotateCcw, 
-    AlertTriangle, 
-    CheckCircle, 
-    XCircle, 
+import {
+    Search,
+    RotateCcw,
+    AlertTriangle,
+    CheckCircle,
+    XCircle,
     Eye,
     Filter,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    X
 } from "lucide-react";
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
@@ -18,15 +19,15 @@ import { useAdminOrders } from "../../hooks/admin/useAdminOrders";
 
 const AdminReturnRequests = () => {
     const navigate = useNavigate();
- 
+
     const [page, setPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState("");
-    
+
     const deferredSearch = useDeferredValue(searchTerm);
 
-    const { data, isLoading: loading } = useAdminOrders({ 
-        page, 
-        limit: 6, 
+    const { data, isLoading: loading } = useAdminOrders({
+        page,
+        limit: 6,
         status: 'returns',
         search: deferredSearch
     });
@@ -39,7 +40,7 @@ const AdminReturnRequests = () => {
     };
 
     const getReturnSummary = (order) => {
-        return order.items.filter(i => 
+        return order.items.filter(i =>
             ['Return Requested', 'Return Approved', 'Returned', 'Return Rejected'].includes(i.status)
         );
     };
@@ -61,7 +62,13 @@ const AdminReturnRequests = () => {
 
                     <div className="flex items-center gap-3">
                         <div className="relative group">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#7a6af6] transition-colors" size={14} />
+                            {/* Search Icon */}
+                            <Search
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#7a6af6] transition-colors"
+                                size={14}
+                            />
+
+                            {/* Input Field */}
                             <input
                                 type="text"
                                 placeholder="Search Order ID..."
@@ -70,8 +77,21 @@ const AdminReturnRequests = () => {
                                     setSearchTerm(e.target.value);
                                     setPage(1);
                                 }}
-                                className="pl-9 pr-8 py-2 bg-slate-100 focus:bg-white rounded-xl text-xs w-64 outline-none transition-all border border-transparent focus:border-slate-200 shadow-inner focus:shadow-sm"
+                                className="pl-9 pr-10 py-2 bg-slate-100 focus:bg-white rounded-xl text-xs w-64 outline-none transition-all border border-transparent focus:border-slate-200 shadow-inner focus:shadow-sm"
                             />
+
+                            {searchTerm && (
+                                <button
+                                    onClick={() => {
+                                        setSearchTerm("");
+                                        setPage(1);
+                                    }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition-colors"
+                                    title="Clear search"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
                         </div>
                         <div className="w-8 h-8 flex items-center justify-center bg-slate-50 border border-slate-200 rounded-xl text-slate-400 cursor-pointer hover:bg-[#0F172A] hover:text-white transition-all">
                             <Filter size={14} />
@@ -95,7 +115,7 @@ const AdminReturnRequests = () => {
                                 columns={["Manifest ID", "Customer Entity", "Return Summary", "Protocol Status", "Timestamp", "Trace"]}
                                 data={orders}
                                 loading={loading}
-                                pagination={null} 
+                                pagination={null}
                                 emptyText="No return protocols active."
                                 renderRow={(order) => {
                                     const returnItems = getReturnSummary(order);
@@ -103,7 +123,7 @@ const AdminReturnRequests = () => {
 
                                     return (
                                         <tr key={order._id} className="group hover:bg-slate-50/50 transition-colors border-b border-slate-50 last:border-none">
-                                            
+
                                             {/* ID */}
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
@@ -173,7 +193,7 @@ const AdminReturnRequests = () => {
 
                                             {/* Action */}
                                             <td className="px-6 py-4 text-right">
-                                                <button 
+                                                <button
                                                     onClick={() => navigate(`/admin/orders/${order._id}`)}
                                                     className="p-2 text-slate-300 hover:text-white hover:bg-[#0F172A] rounded-xl transition-all shadow-sm active:scale-90"
                                                 >
@@ -190,11 +210,11 @@ const AdminReturnRequests = () => {
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                 Showing {orders.length} of {pagination.total} requests
                             </p>
-                            
-                            <SmartPagination 
-                                currentPage={pagination.page} 
-                                totalPages={pagination.pages} 
-                                onPageChange={setPage} 
+
+                            <SmartPagination
+                                currentPage={pagination.page}
+                                totalPages={pagination.pages}
+                                onPageChange={setPage}
                             />
                         </div>
 
@@ -228,7 +248,7 @@ const SmartPagination = ({ currentPage, totalPages, onPageChange }) => {
 
     return (
         <div className="flex items-center gap-2">
-            <button 
+            <button
                 onClick={() => onPageChange(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
                 className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-[#0F172A] hover:text-white hover:border-[#0F172A] transition-all disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-slate-500"
@@ -241,19 +261,18 @@ const SmartPagination = ({ currentPage, totalPages, onPageChange }) => {
                     key={i}
                     onClick={() => typeof p === 'number' && onPageChange(p)}
                     disabled={p === '...'}
-                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-[10px] font-bold transition-all ${
-                        p === currentPage 
-                            ? 'bg-[#0F172A] text-white shadow-lg shadow-slate-200' 
-                            : p === '...' 
-                                ? 'bg-transparent text-slate-400 cursor-default' 
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-[10px] font-bold transition-all ${p === currentPage
+                            ? 'bg-[#0F172A] text-white shadow-lg shadow-slate-200'
+                            : p === '...'
+                                ? 'bg-transparent text-slate-400 cursor-default'
                                 : 'bg-white border border-slate-200 text-slate-500 hover:border-[#0F172A] hover:text-[#0F172A]'
-                    }`}
+                        }`}
                 >
                     {p}
                 </button>
             ))}
 
-            <button 
+            <button
                 onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
                 className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-[#0F172A] hover:text-white hover:border-[#0F172A] transition-all disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-slate-500"
@@ -265,11 +284,11 @@ const SmartPagination = ({ currentPage, totalPages, onPageChange }) => {
 };
 
 const StatsCard = ({ title, value, icon, color }) => {
-    const colors = { 
-        blue: "bg-blue-50 text-blue-600 border-blue-100", 
-        orange: "bg-orange-50 text-orange-600 border-orange-100", 
-        green: "bg-green-50 text-green-600 border-green-100", 
-        red: "bg-red-50 text-red-600 border-red-100" 
+    const colors = {
+        blue: "bg-blue-50 text-blue-600 border-blue-100",
+        orange: "bg-orange-50 text-orange-600 border-orange-100",
+        green: "bg-green-50 text-green-600 border-green-100",
+        red: "bg-red-50 text-red-600 border-red-100"
     };
     return (
         <div className="bg-white rounded-[20px] p-5 border border-slate-200 shadow-sm transition-all hover:shadow-md flex items-center justify-between">

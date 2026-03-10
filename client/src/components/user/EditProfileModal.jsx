@@ -14,6 +14,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
         register,
         handleSubmit,
         reset,
+        setError,
         formState: { errors, isSubmitting }
     } = useForm({ mode: "onBlur" });
 
@@ -79,13 +80,33 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
             }
 
             await onUpdate(payload);
-            nxToast.success("Update Complete", "Your profile details have been saved.");
+
+            nxToast.success("Update Complete");
+            onClose();
         } catch (err) {
-            const msg = err.response?.data?.message || "Internal system error. Please try again later.";
-            setBackendError(msg);
-            nxToast.error("Update Blocked", msg);
+            const serverMessage = err.response?.data?.message || err.message || "Internal system error.";
+
+            console.log("Captured Message:", serverMessage); 
+
+            setBackendError(serverMessage);
+
+            const lowerMsg = serverMessage.toLowerCase();
+
+            if (lowerMsg.includes("email")) {
+                setError("email", {
+                    type: "manual",
+                    message: serverMessage
+                }, { shouldFocus: true });
+            }
+            else if (lowerMsg.includes("phone")) {
+                setError("phone", {
+                    type: "manual",
+                    message: serverMessage
+                }, { shouldFocus: true });
+            }
+            nxToast.error("Update Blocked", serverMessage);
         }
-    };
+    }
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm text-black">
@@ -128,6 +149,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
                             <input
                                 ref={fileInputRef}
                                 type="file"
+                                name="profileImage"
                                 accept="image/*"
                                 onChange={handleImageChange}
                                 className="hidden"
@@ -145,24 +167,24 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
                                 pattern: { value: /^[a-zA-Z\s]*$/, message: "Only letters and spaces are allowed" }
                             })}
                             placeholder="e.g. John Doe"
-                            className={`w-full px-4 py-3 text-black bg-slate-50 border-2 rounded-xl text-sm font-bold outline-none transition-all ${errors.name ? 'border-red-300' : 'border-transparent focus:border-[#7a6af6]/20 focus:bg-white'}`}
+                            className={`w-full px-4 py-3 text-black bg-slate-50 border-2 rounded-xl text-sm font-bold outline-none transition-all ${errors.name ? 'border-red-500 focus:border-red-500' : 'border-transparent focus:border-[#7a6af6]/20 focus:bg-white'}`}
                         />
-                        {errors.name && <p className="text-[9px] text-red-500 font-bold uppercase mt-1 ml-1 flex items-center gap-1"><Info size={10}/> {errors.name.message}</p>}
+                        {errors.name && <p className="text-[9px] text-red-500 font-bold uppercase mt-1 ml-1 flex items-center gap-1"><Info size={10} /> {errors.name.message}</p>}
                     </div>
 
                     {!isGoogleAccount ? (
                         <div>
                             <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1 block">Email Address</label>
                             <input
-                                {...register("email", { 
+                                {...register("email", {
                                     required: "Email is required",
                                     pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: "Invalid email format" },
                                     maxLength: { value: 50, message: "Email too long" }
                                 })}
                                 placeholder="john@example.com"
-                                className={`w-full px-4 py-3 text-black bg-slate-50 border-2 rounded-xl text-sm font-bold outline-none transition-all ${errors.email ? 'border-red-300' : 'border-transparent focus:border-[#7a6af6]/20 focus:bg-white'}`}
+                                className={`w-full px-4 py-3 text-black bg-slate-50 border-2 rounded-xl text-sm font-bold outline-none transition-all ${errors.email ? 'border-red-500 focus:border-red-500' : 'border-transparent focus:border-[#7a6af6]/20 focus:bg-white'}`}
                             />
-                            {errors.email && <p className="text-[9px] text-red-500 font-bold uppercase mt-1 ml-1 flex items-center gap-1"><Info size={10}/> {errors.email.message}</p>}
+                            {errors.email && <p className="text-[9px] text-red-500 font-bold uppercase mt-1 ml-1 flex items-center gap-1"><Info size={10} /> {errors.email.message}</p>}
                         </div>
                     ) : (
                         <div>
@@ -183,9 +205,9 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
                             })}
                             placeholder="10-digit number"
                             type="tel"
-                            className={`w-full px-4 py-3 text-black bg-slate-50 border-2 rounded-xl text-sm font-bold outline-none transition-all ${errors.phone ? 'border-red-300' : 'border-transparent focus:border-[#7a6af6]/20 focus:bg-white'}`}
+                            className={`w-full px-4 py-3 text-black bg-slate-50 border-2 rounded-xl text-sm font-bold outline-none transition-all ${errors.phone ? 'border-red-500 focus:border-red-500' : 'border-transparent focus:border-[#7a6af6]/20 focus:bg-white'}`}
                         />
-                        {errors.phone && <p className="text-[9px] text-red-500 font-bold uppercase mt-1 ml-1 flex items-center gap-1"><Info size={10}/> {errors.phone.message}</p>}
+                        {errors.phone && <p className="text-[9px] text-red-500 font-bold uppercase mt-1 ml-1 flex items-center gap-1"><Info size={10} /> {errors.phone.message}</p>}
                     </div>
 
                     <button

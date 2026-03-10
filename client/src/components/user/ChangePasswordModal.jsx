@@ -41,7 +41,7 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
             onClose();
         } catch (err) {
             const msg = err.response?.data?.message || "Verification failed. Please check your current password.";
-            nxToast.error("Update Denied", msg);
+            nxToast.security("Update Denied", msg);
             setBackendError(msg);
         }
     };

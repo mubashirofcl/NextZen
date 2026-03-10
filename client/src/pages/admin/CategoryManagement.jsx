@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Edit3, Tag, Layers, List, Search, Ban, CheckCircle, Trash2, Percent } from "lucide-react"; 
+import { Plus, Edit3, Tag, Layers, List, Search, Ban, CheckCircle, Trash2, Percent, X } from "lucide-react"; 
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import DataTable from "../../tables/admin/DataTable";
@@ -110,7 +110,7 @@ const CategoryManagement = () => {
                                     onClick={() => { setSearchTerm(""); setPage(1); }}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
                                 >
-                                    ✕
+                                    <X size={14} />
                                 </button>
                             )}
                         </div>

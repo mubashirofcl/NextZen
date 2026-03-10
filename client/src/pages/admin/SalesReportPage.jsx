@@ -7,7 +7,9 @@ import {
 } from 'recharts';
 import {
     FileDown, FileSpreadsheet, Filter, ShoppingBag,
-    Banknote, Tag, Percent, ArrowRight, Calendar, Loader2, TrendingUp
+    Banknote, Tag, Percent, ArrowRight, Calendar, Loader2, TrendingUp,
+    Truck,
+    Box
 } from 'lucide-react';
 import { downloadPDF, downloadExcel } from '../../utils/reportGenerator';
 import AdminSidebar from "../../components/admin/AdminSidebar";
@@ -28,9 +30,12 @@ const SalesReportPage = () => {
                 params.endDate = customDates.end;
             }
             const { data } = await getSalesReport(params);
+            
             return data.data[0] || {
                 salesCount: 0,
                 totalOrderAmount: 0,
+                productRevenue: 0,
+                totalDeliveryFees: 0,
                 productDiscount: 0,
                 couponDiscount: 0,
                 recentOrders: [],
@@ -42,8 +47,14 @@ const SalesReportPage = () => {
     });
 
     const report = response || {
-        salesCount: 0, totalOrderAmount: 0, productDiscount: 0,
-        couponDiscount: 0, recentOrders: [], chartData: []
+        salesCount: 0, 
+        totalOrderAmount: 0, 
+        productRevenue: 0, 
+        totalDeliveryFees: 0,
+        productDiscount: 0, 
+        couponDiscount: 0, 
+        recentOrders: [], 
+        chartData: []
     };
 
     if (isLoading) return (
@@ -82,13 +93,13 @@ const SalesReportPage = () => {
                         )}
 
                         <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1">
-                            {['today', 'thisWeek', 'thisMonth', 'custom'].map((f) => (
+                            {['today', 'thisWeek', 'thisMonth', 'thisYear', 'custom'].map((f) => (
                                 <button
                                     key={f}
                                     onClick={() => setFilter(f)}
                                     className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-white text-[#7a6af6] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
                                 >
-                                    {f === 'today' ? 'Today' : f === 'thisWeek' ? 'Weekly' : f === 'thisMonth' ? 'Monthly' : 'Custom'}
+                                    {f === 'today' ? 'Today' : f === 'thisWeek' ? 'Weekly' : f === 'thisMonth' ? 'Monthly' : f === 'thisYear' ? 'Yearly' : 'Custom'}
                                 </button>
                             ))}
                         </div>
@@ -96,11 +107,47 @@ const SalesReportPage = () => {
                 </header>
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4 pb-10">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <StatCard title="Total Orders" value={report.salesCount} sub="Completed" icon={<ShoppingBag size={18} />} color="text-purple-600 bg-purple-50" />
-                        <StatCard title="Total Revenue" value={report.totalOrderAmount} sub="Net Earnings" isPrice icon={<Banknote size={18} />} color="text-green-600 bg-green-50" />
-                        <StatCard title="Item Savings" value={report.productDiscount} sub="Product Offers" isPrice icon={<Tag size={18} />} color="text-orange-600 bg-orange-50" />
-                        <StatCard title="Coupon Savings" value={report.couponDiscount} sub="Discount Codes" isPrice icon={<Percent size={18} />} color="text-red-600 bg-red-50" />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <StatCard 
+                            title="Total Orders" 
+                            value={report.salesCount} 
+                            sub="Paid Transactions" 
+                            icon={<ShoppingBag size={18} />} 
+                            color="text-purple-600 bg-purple-50" 
+                        />
+                        <StatCard 
+                            title="Product Sales" 
+                            value={report.productRevenue} 
+                            sub="Goods Revenue" 
+                            isPrice 
+                            icon={<Box size={18} />} 
+                            color="text-blue-600 bg-blue-50" 
+                        />
+                        <StatCard 
+                            title="Shipping Fees" 
+                            value={report.totalDeliveryFees} 
+                            sub="Logistics Income" 
+                            isPrice 
+                            icon={<Truck size={18} />} 
+                            color="text-amber-600 bg-amber-50" 
+                        />
+                        <StatCard 
+                            title="Net Revenue" 
+                            value={report.totalOrderAmount} 
+                            sub="Total Earnings" 
+                            isPrice 
+                            icon={<Banknote size={18} />} 
+                            color="text-green-600 bg-green-50" 
+                        />
+                        <StatCard 
+                            title="Total Savings" 
+                            value={report.productDiscount + report.couponDiscount} 
+                            sub="Price Deductions" 
+                            isPrice 
+                            icon={<Tag size={18} />} 
+                            color="text-red-600 bg-red-50" 
+                        />
                     </div>
 
                     <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
@@ -159,8 +206,8 @@ const SalesReportPage = () => {
 
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                         <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-700">Recent Completed Orders</h3>
-                            <span className="text-[8px] font-black bg-slate-800 text-white px-3 py-1 rounded-full uppercase italic tracking-widest">Live View</span>
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-700">Financial Audit Logs</h3>
+                            <span className="text-[8px] font-black bg-slate-800 text-white px-3 py-1 rounded-full uppercase italic tracking-widest">Real-time</span>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left min-w-[700px]">
@@ -168,7 +215,7 @@ const SalesReportPage = () => {
                                     <tr>
                                         <th className="px-8 py-4">Receipt #</th>
                                         <th className="px-8 py-4">Customer</th>
-                                        <th className="px-8 py-4">Amount Paid</th>
+                                        <th className="px-8 py-4">Settled Amount</th>
                                         <th className="px-8 py-4">Date</th>
                                         <th className="px-8 py-4 text-center">Status</th>
                                         <th className="px-8 py-4 text-right">Details</th>
@@ -176,24 +223,26 @@ const SalesReportPage = () => {
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {report.recentOrders.length > 0 ? report.recentOrders.map((order) => (
-                                        <tr key={order.orderId} className="hover:bg-slate-50/50 transition-all group">
+                                        <tr key={order.mongoId} className="hover:bg-slate-50/50 transition-all group">
                                             <td className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-tighter italic">#{order.orderNumber}</td>
-                                            <td className="px-8 py-5 text-[11px] font-black text-slate-800 uppercase tracking-tight">{order.customer || "Guest User"}</td>
+                                            <td className="px-8 py-5 text-[11px] font-black text-slate-800 uppercase tracking-tight">{order.customer}</td>
                                             <td className="px-8 py-5 text-[11px] font-black text-slate-900 tracking-tight italic">
                                                 ₹{Number(order.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(order.date).toLocaleDateString()}</td>
                                             <td className="px-8 py-5 text-center">
-                                                <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter border ${order.status?.toLowerCase() === 'delivered'
-                                                    ? 'bg-green-50 text-green-600 border-green-100'
-                                                    : 'bg-[#7a6af6]/5 text-[#7a6af6] border-[#7a6af6]/20'
+                                                <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter border ${order.status?.toLowerCase() === 'returned'
+                                                    ? 'bg-red-50 text-red-600 border-red-100'
+                                                    : order.status?.toLowerCase() === 'cancelled'
+                                                    ? 'bg-slate-50 text-slate-400 border-slate-200'
+                                                    : 'bg-green-50 text-green-600 border-green-100'
                                                     }`}>
                                                     {order.status}
                                                 </span>
                                             </td>
                                             <td className="px-8 py-5 text-right">
                                                 <button
-                                                    onClick={() => navigate(`/admin/orders/${order.orderId}`)}
+                                                    onClick={() => navigate(`/admin/orders/${order.mongoId}`)}
                                                     className="p-2 bg-slate-50 rounded-lg hover:bg-[#7a6af6] hover:text-white transition-all text-slate-400 border border-slate-100 shadow-sm"
                                                 >
                                                     <ArrowRight size={14} />

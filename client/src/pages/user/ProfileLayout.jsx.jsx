@@ -78,12 +78,11 @@ const ProfileLayout = () => {
                             </p>
                         </div>
 
-                        <nav className="bg-white/[0.03] backdrop-blur-md border border-white/5 rounded-[2rem] p-4 space-y-2 shrink-0">
+                        <nav className="bg-white/[0.03] backdrop-blur-md border py-12 border-white/5 rounded-[2rem] p-4 space-y-2 shrink-0">
                             <ProfileNavLink to="info" icon={<User size={16} />} label="Profile" />
                             <ProfileNavLink to="address" icon={<MapPin size={16} />} label="Addresses" />
                             <ProfileNavLink to="orders" icon={<ShoppingBag size={16} />} label="Orders" />
                             <ProfileNavLink to="wallet" icon={<Wallet size={16} />} label="Wallet" />
-                            <ProfileNavLink to="referrals" icon={<Gift size={16} />} label="Referrals" />
 
                             <div className="pt-4 mt-2 border-t border-white/5">
                                 <button

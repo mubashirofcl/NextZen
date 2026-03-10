@@ -1,7 +1,7 @@
 import * as couponService from './coupon.service.js';
 import Coupon from './coupon.model.js';
 
-// 🟢 ADMIN: Get all coupons for listing
+
 export const getAllCoupons = async (req, res, next) => {
     try {
         const coupons = await couponService.listAllCoupons();
@@ -11,7 +11,7 @@ export const getAllCoupons = async (req, res, next) => {
     }
 };
 
-// 🟢 ADMIN: Create new coupon
+
 export const createCoupon = async (req, res, next) => {
     try {
         const coupon = await couponService.createCoupon(req.body);
@@ -21,11 +21,18 @@ export const createCoupon = async (req, res, next) => {
             coupon
         });
     } catch (error) {
+        if (error.code === 11000 || error.message.includes('E11000')) {
+            return res.status(409).json({
+                success: false,
+                message: "This coupon code already exists. Please choose a different one."
+            });
+        }
+
         res.status(400).json({ success: false, message: error.message });
     }
 };
 
-// 🟢 ADMIN: Get single coupon for editing
+
 export const getCouponById = async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -47,18 +54,24 @@ export const updateCoupon = async (req, res, next) => {
         const updatedCoupon = await couponService.updateExistingCoupon(id, req.body);
 
         if (!updatedCoupon) {
-            return res.status(404).json({ success: false, message: "Target coupon not found for update" });
+            return res.status(404).json({ success: false, message: "Target coupon not found" });
         }
-
         res.status(200).json({
             success: true,
             message: "Promotion parameters updated",
             coupon: updatedCoupon
         });
     } catch (error) {
+        if (error.code === 11000 || error.message.includes('E11000')) {
+            return res.status(409).json({
+                success: false,
+                message: "This coupon code is already taken by another promotion."
+            });
+        }
         next(error);
     }
 };
+
 
 export const deleteCoupon = async (req, res, next) => {
     try {
@@ -72,7 +85,7 @@ export const deleteCoupon = async (req, res, next) => {
 export const validateUserCoupon = async (req, res, next) => {
     try {
         const { code, subtotal } = req.body;
-        const userId = req.user?.userId; 
+        const userId = req.user?.userId;
 
         if (!userId) {
             return res.status(401).json({ success: false, message: "Unauthorized: User identification missing." });
@@ -80,18 +93,18 @@ export const validateUserCoupon = async (req, res, next) => {
 
         const coupon = await couponService.validateCouponForUser(code, subtotal, userId);
 
-        res.status(200).json({ 
-            success: true, 
+        res.status(200).json({
+            success: true,
             coupon: {
                 code: coupon.code,
                 discountType: coupon.discountType,
                 discountValue: coupon.discountValue,
                 maxDiscount: coupon.maxDiscount,
                 minPurchaseAmt: coupon.minPurchaseAmt
-            } 
+            }
         });
-    } catch (error) { 
-        res.status(400).json({ success: false, message: error.message }); 
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 
@@ -105,10 +118,10 @@ export const getActiveCoupons = async (req, res, next) => {
             endDate: { $gte: now },
             $expr: { $lt: ["$usedCount", "$usageLimit"] }
         }).select('code discountType discountValue description minPurchaseAmt maxDiscount');
-        
+
         res.status(200).json({ success: true, coupons });
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+        next(error);
     }
 };
 

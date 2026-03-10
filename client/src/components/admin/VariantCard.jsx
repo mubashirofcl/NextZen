@@ -15,7 +15,10 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
 
     const [cropSrc, setCropSrc] = useState(null);
 
-    const imageError = errors?.variants?.[index]?.images;
+    // 🟢 Deep extraction of error paths
+    const variantErrors = errors?.variants?.[index];
+    const imageError = variantErrors?.images;
+    const colorError = variantErrors?.color;
 
     const handleFiles = (e) => {
         const file = e.target.files[0];
@@ -33,12 +36,13 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
     const hasValue = (v) => v !== "" && v !== null && v !== undefined;
 
     return (
-        <div className={`bg-white rounded-[24px] p-6 shadow-xl border relative mt-3 animate-in zoom-in-95 ${imageError ? 'border-red-200 ring-4 ring-red-50' : 'border-slate-100'}`}>
+        <div className={`bg-white rounded-[24px] p-6 shadow-xl border relative mt-3 animate-in zoom-in-95 transition-all duration-300 ${imageError || variantErrors ? 'border-red-200 ring-4 ring-red-50/50' : 'border-slate-100'}`}>
 
+            {/* Hidden field for image array validation */}
             <input
                 type="hidden"
                 {...register(`variants.${index}.images`, {
-                    validate: (val) => val?.length >= MIN_IMAGES || `A minimum of ${MIN_IMAGES} images are required for this variant.`
+                    validate: (val) => val?.length >= MIN_IMAGES || `Min ${MIN_IMAGES} images required.`
                 })}
             />
             <input type="hidden" {...register(`variants.${index}._id`)} />
@@ -51,27 +55,27 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
                         const b64 = await cropAndResizeImage(cropSrc, p);
                         setValue(`variants.${index}.images`, [...images, b64], { shouldValidate: true });
                         setCropSrc(null);
-                        adminToast.success("Asset Ready", "Image cropped and added to gallery.");
+                        adminToast.success("Asset Ready", "Image added to gallery.");
                     }}
                 />
             )}
 
-            <button type="button" onClick={onRemove} className="absolute top-6 right-6 p-1.5 text-slate-300 hover:text-red-500 rounded-lg transition-all"><Trash2 size={16} /></button>
+            <button type="button" onClick={onRemove} className="absolute top-6 right-6 p-1.5 text-slate-300 hover:text-red-500 rounded-lg transition-all" title="Remove Variant"><Trash2 size={16} /></button>
 
             <div className="flex flex-col lg:flex-row lg:items-center gap-6 mb-6 pb-6 border-b border-slate-50">
-                <div className="w-20 h-20 rounded-[12px] shadow-lg border-4 border-white flex-shrink-0" style={{ backgroundColor: hexColor }} />
+                <div className="w-20 h-20 rounded-[12px] shadow-lg border-4 border-white flex-shrink-0 transition-colors duration-500" style={{ backgroundColor: hexColor }} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
                     <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Color Name</label>
                         <input
                             {...register(`variants.${index}.color`, {
-                                required: "Color name is required",
-                                maxLength: { value: 20, message: "Color name must be under 20 characters" }
+                                required: "Required",
+                                maxLength: { value: 20, message: "Max 20 chars" }
                             })}
-                            className="w-full bg-white border-2 border-slate-100 focus:border-[#7a6af6] rounded-xl px-4 py-2 text-xs font-bold text-[#0F172A] outline-none shadow-sm"
+                            className={`w-full bg-white border-2 rounded-xl px-4 py-2 text-xs font-bold outline-none shadow-sm transition-all ${colorError ? 'border-red-400 bg-red-50' : 'border-slate-100 focus:border-[#7a6af6]'}`}
                             placeholder="e.g. Midnight Blue"
                         />
-                        {errors?.variants?.[index]?.color && <p className="text-[8px] font-bold text-red-500 uppercase mt-1 ml-1">{errors.variants[index].color.message}</p>}
+                        {colorError && <p className="text-[8px] font-bold text-red-500 uppercase mt-1 ml-1 flex items-center gap-1"><AlertCircle size={8}/> {colorError.message}</p>}
                     </div>
                     <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-500 uppercase ml-1">Hex Code</label>
@@ -101,61 +105,61 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
                             const wRetail = watch(`${path}.salePrice`);
 
                             const isRowActive = hasValue(wStock) || hasValue(wMarket) || hasValue(wRetail);
-                            const sizeError = errors?.variants?.[index]?.sizes?.[sIdx];
+                            const sizeError = variantErrors?.sizes?.[sIdx];
 
                             return (
-                                <tr key={sIdx} className="hover:bg-slate-50/50">
+                                <tr key={sIdx} className="hover:bg-slate-50/50 group">
                                     <td className="px-4 py-3 text-center bg-slate-50/50 border-r border-slate-100">
                                         <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-[10px] font-black text-[#0F172A] mx-auto shadow-sm">{s.size}</div>
                                     </td>
 
-                                    <td className="px-4 py-3 text-center border-r border-slate-100">
+                                    <td className="px-4 py-3 text-center border-r border-slate-100 relative">
                                         <input
                                             type="number"
                                             {...register(`${path}.stock`, {
                                                 validate: (val) => {
                                                     if (!isRowActive) return true;
-                                                    if (!hasValue(val)) return "Required";
+                                                    if (!hasValue(val)) return "Req";
                                                     if (Number(val) < 0) return "Min 0";
                                                     return true;
                                                 }
                                             })}
                                             className={`w-20 bg-white border-2 rounded-lg px-2 py-1.5 text-center text-xs font-bold outline-none transition-colors ${sizeError?.stock ? 'border-red-500 bg-red-50 text-red-600' : 'border-slate-100 focus:border-[#7a6af6]'}`}
                                         />
+                                        {sizeError?.stock && <span className="absolute bottom-0 left-0 w-full text-[7px] text-red-500 font-bold uppercase">{sizeError.stock.message}</span>}
                                     </td>
 
-                                    <td className="px-4 py-3 text-center border-r border-slate-100">
+                                    <td className="px-4 py-3 text-center border-r border-slate-100 relative">
                                         <input
                                             type="number"
                                             {...register(`${path}.originalPrice`, {
                                                 validate: (val) => {
                                                     if (!isRowActive && !hasValue(wStock)) return true;
-                                                    if (Number(wStock) >= 0 && !hasValue(val)) return "Price required";
-                                                    if (Number(val) <= 0) return "Must be > 0";
+                                                    if (hasValue(wStock) && !hasValue(val)) return "Req";
+                                                    if (Number(val) <= 0) return "> 0";
                                                     return true;
                                                 }
                                             })}
                                             className={`w-24 bg-white border-2 rounded-lg px-2 py-1.5 text-center text-xs font-bold outline-none transition-colors ${sizeError?.originalPrice ? 'border-red-500 bg-red-50 text-red-600' : 'border-slate-100 focus:border-[#7a6af6]'}`}
                                         />
+                                        {sizeError?.originalPrice && <span className="absolute bottom-0 left-0 w-full text-[7px] text-red-500 font-bold uppercase">{sizeError.originalPrice.message}</span>}
                                     </td>
 
-                                    <td className="px-4 py-3 text-center">
+                                    <td className="px-4 py-3 text-center relative">
                                         <input
                                             type="number"
                                             {...register(`${path}.salePrice`, {
                                                 validate: (val) => {
                                                     if (!isRowActive && !hasValue(wStock)) return true;
-                                                    if (Number(wStock) >= 0 && !hasValue(val)) return "Price required";
-                                                    if (Number(val) <= 0) return "Must be > 0";
-                                                    if (hasValue(wMarket) && Number(val) > Number(wMarket)) {
-                                                        adminToast.warn("Pricing Error", `Sale price for size ${s.size} cannot exceed Market price.`);
-                                                        return "Cannot exceed Market";
-                                                    }
+                                                    if (hasValue(wStock) && !hasValue(val)) return "Req";
+                                                    if (Number(val) <= 0) return "> 0";
+                                                    if (hasValue(wMarket) && Number(val) > Number(wMarket)) return "Exceeds Mkt";
                                                     return true;
                                                 }
                                             })}
                                             className={`w-24 bg-white border-2 rounded-lg px-2 py-1.5 text-center text-xs font-bold outline-none transition-colors ${sizeError?.salePrice ? 'border-red-500 bg-red-50 text-red-600' : 'border-slate-100 text-[#7a6af6] focus:border-[#7a6af6]'}`}
                                         />
+                                        {sizeError?.salePrice && <span className="absolute bottom-0 left-0 w-full text-[7px] text-red-500 font-bold uppercase">{sizeError.salePrice.message}</span>}
                                     </td>
                                     <input type="hidden" {...register(`${path}.size`)} value={s.size} />
                                 </tr>
@@ -167,9 +171,11 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
 
             <div className="mt-6 pt-6 border-t border-slate-50">
                 <div className="flex justify-between items-center mb-3 px-1">
-                    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Variant Gallery (Min 3)</label>
+                    <label className={`text-[9px] font-black uppercase tracking-widest ${imageError ? 'text-red-500' : 'text-slate-500'}`}>
+                        Variant Gallery (Min {MIN_IMAGES})
+                    </label>
                     {imageError && (
-                        <span className="flex items-center gap-1 text-[9px] font-black text-red-500 uppercase animate-pulse">
+                        <span className="flex items-center gap-1 text-[9px] font-black text-red-500 uppercase animate-bounce">
                             <AlertCircle size={10} /> {imageError.message}
                         </span>
                     )}
@@ -184,7 +190,7 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
                                 onClick={() => {
                                     const filtered = images.filter((_, idx) => idx !== i);
                                     setValue(`variants.${index}.images`, filtered, { shouldValidate: true });
-                                    adminToast.info("Removed", "Asset removed from gallery.");
+                                    adminToast.info("Removed", "Asset removed.");
                                 }}
                                 className="absolute inset-0 bg-red-500/80 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
                             >

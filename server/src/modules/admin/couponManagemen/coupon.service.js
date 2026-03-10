@@ -11,19 +11,45 @@ export const incrementUsage = async (id) => { return await couponRepo.incrementU
 export const findActiveCoupons = async () => { return await couponRepo.findActiveCoupons(); };
 
 export const createCoupon = async (couponData) => {
-    const existingCoupon = await couponRepo.findByCode(couponData.code);
-    if (existingCoupon) throw new Error("Coupon code already exists.");
+    const codeToCreate = couponData.code.trim().toUpperCase();
+
+    const existingCoupon = await couponRepo.findByCode(codeToCreate);
+    if (existingCoupon) {
+        throw new Error("Coupon code already exists.");
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (new Date(couponData.endDate) < today) throw new Error("Expiry date cannot be in the past.");
+    if (new Date(couponData.endDate) < today) {
+        throw new Error("Expiry date cannot be in the past.");
+    }
 
-    return await couponRepo.saveCoupon({ ...couponData, code: couponData.code.toUpperCase() });
+    // 4. Save with cleaned data
+    return await couponRepo.saveCoupon({
+        ...couponData,
+        code: codeToCreate
+    });
 };
+
+
 
 export const listAllCoupons = async () => { return await couponRepo.findAll(); };
 export const getCouponById = async (id) => { return await couponRepo.findById(id); };
-export const updateExistingCoupon = async (id, updateData) => { return await couponRepo.updateById(id, updateData); };
+
+export const updateExistingCoupon = async (id, updateData) => {
+    if (updateData.code) {
+        const normalizedCode = updateData.code.trim().toUpperCase();
+        const conflict = await couponRepo.findByCode(normalizedCode);
+
+        if (conflict && conflict._id.toString() !== id) {
+            throw new Error("Coupon code already exists.");
+        }
+        updateData.code = normalizedCode;
+    }
+
+    return await couponRepo.updateById(id, updateData);
+};
+
 export const purgeCoupon = async (id) => { return await couponRepo.removeById(id); };
 
 export const validateCouponForUser = async (code, subtotal, userId) => {

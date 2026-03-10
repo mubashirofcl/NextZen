@@ -245,7 +245,7 @@ const AdminOrderDetail = () => {
                                                                 <option value="Placed" disabled={itemStatusRank[item.status] > 1}>Confirmed {itemStatusRank[item.status] > 1 && "✓"}</option>
                                                                 <option value="Shipped" disabled={itemStatusRank[item.status] > 2}>Shipped {itemStatusRank[item.status] > 2 && "✓"}</option>
                                                                 <option value="Delivered" disabled={itemStatusRank[item.status] > 3}>Delivered {itemStatusRank[item.status] > 3 && "✓"}</option>
-                                                                <option value="Cancelled">Cancel Item</option>
+                                                                <option value="Cancelled">Refund</option>
                                                                 {item.status === 'Return Approved' && <option value="Returned">Issue Refund</option>}
                                                             </select>
                                                         )}

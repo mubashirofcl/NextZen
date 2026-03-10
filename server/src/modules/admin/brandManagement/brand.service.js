@@ -1,6 +1,6 @@
 import * as brandRepo from "./brand.repository.js";
 import { uploadBrandLogo } from "../../../utils/brandImageUpload.js";
-import { deactivateProductsByBrand } from "../productManagement/product.repository.js";
+import { activateProductsByBrand, deactivateProductsByBrand } from "../productManagement/product.repository.js";
 
 export const createBrandService = async (data) => {
   const existing = await brandRepo.findBrandByName({ name: data.name });
@@ -20,7 +20,7 @@ export const createBrandService = async (data) => {
   return brandRepo.createBrand({
     ...data,
     logo: logoUrl,
-    offerId: data.offerId || null, 
+    offerId: data.offerId || null,
   });
 };
 
@@ -63,6 +63,8 @@ export const toggleBrandStatusService = async (id) => {
 
   if (newStatus === false) {
     await deactivateProductsByBrand(id);
+  } else {
+    await activateProductsByBrand(id);
   }
 
   return updatedBrand;

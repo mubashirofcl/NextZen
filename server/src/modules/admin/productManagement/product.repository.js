@@ -13,10 +13,10 @@ export const findProductById = (id) =>
 export const updateProductById = (id, data) =>
     productModel.findOneAndUpdate(
         { _id: id, isDeleted: false },
-        { $set: data }, 
+        { $set: data },
         {
-            new: true,           
-            runValidators: true  
+            new: true,
+            runValidators: true
         }
     );
 
@@ -160,7 +160,6 @@ export const getAdminProductsRepo = async ({ page, limit, search }) => {
             }
         },
 
-        // 7. Pagination (Always after sorting)
         { $skip: skip },
         { $limit: limit },
     ];
@@ -179,8 +178,33 @@ export const getAdminProductsRepo = async ({ page, limit, search }) => {
 };
 
 export const deactivateProductsByBrand = async (brandId) => {
-    return productModel.updateMany(
-        { brandId, isDeleted: false },
+    return await productModel.updateMany(
+        { brandId: brandId },
         { $set: { isActive: false } }
+    );
+};
+
+export const activateProductsByBrand = async (brandId) => {
+    return await productModel.updateMany(
+        { brandId: brandId },
+        { $set: { isActive: true } }
+    );
+};
+
+export const updateProductsStatusByCategory = async (categoryIds, isActive, { session } = {}) => {
+    const idArray = Array.isArray(categoryIds) ? categoryIds : [categoryIds];
+
+    const filter = {
+        $or: [
+            { categoryId: { $in: idArray } }, 
+            { subCategoryId: { $in: idArray } }, 
+            { subcategoryId: { $in: idArray } }  
+        ]
+    };
+
+    return await productModel.updateMany(
+        filter,
+        { $set: { isActive } },
+        { session }
     );
 };

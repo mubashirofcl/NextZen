@@ -36,9 +36,9 @@ export const resetPassword = (data) =>
 export const getUserMe = () =>
   userAxios.get("/users/profile/me", { withCredentials: true });
 
-export const updateProfile = (data) =>
-  userAxios.put("/users/profile/update", data);
-
+export const updateProfile = async (data) => {
+  return await userAxios.put("/users/profile/update", data);
+};
 export const verifyEmailChange = async (data) => {
   return await userAxios.post("/users/profile/verify-email-change", data);
 };

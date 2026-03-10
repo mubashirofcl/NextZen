@@ -58,6 +58,17 @@ const OrderDetailPage = () => {
     const hasPaid = ['Paid', 'Refunded'].includes(order?.paymentStatus);
     const isActualRefund = isPrepaid && hasPaid;
 
+    const isReturnExpired = useMemo(() => {
+        if (!order || order.status !== 'delivered') return false;
+
+        const deliveryDate = new Date(order.updatedAt);
+        const now = new Date();
+        const diffTime = Math.abs(now - deliveryDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        return diffDays > 7;
+    }, [order]);
+
     const financials = useMemo(() => {
         if (!order) return { initialSubtotal: 0, delivery: 0, totalRefunded: 0, net: 0, savings: 0, couponSavings: 0 };
 
@@ -101,7 +112,7 @@ const OrderDetailPage = () => {
         try {
             setIsRetrying(true);
             if (!order?._id) return nxToast.error("Manifest missing.");
-            
+
             const isLoaded = await loadRazorpayScript();
             if (!isLoaded) return nxToast.security("Gateway error.");
 
@@ -117,13 +128,13 @@ const OrderDetailPage = () => {
 
             if (sessionData.payableAmount && sessionData.payableAmount !== order.totalAmount) {
                 nxToast.security("Policy Alert", "Promotion expired. Manifest adjusted to standard price.");
-                queryClient.setQueryData(["order", orderId], (old) => 
-                    old ? { 
-                        ...old, 
-                        totalAmount: sessionData.payableAmount, 
-                        couponCode: null, 
+                queryClient.setQueryData(["order", orderId], (old) =>
+                    old ? {
+                        ...old,
+                        totalAmount: sessionData.payableAmount,
+                        couponCode: null,
                         couponDiscount: 0,
-                        couponExpired: true 
+                        couponExpired: true
                     } : old
                 );
             }
@@ -187,6 +198,14 @@ const OrderDetailPage = () => {
     })();
 
     const openModal = async (type, item = null) => {
+        // 🟢 Added check for return expiration
+        if (type === 'return' && isReturnExpired) {
+            return nxToast.info(
+                "Window Closed",
+                "The 7-day return period for this manifest has expired."
+            );
+        }
+
         if (type === 'cancel' && item && order.couponCode) {
             try {
                 const { data: couponRes } = await userAxios.get(`/user/coupons/check/${order.couponCode}`);
@@ -293,8 +312,14 @@ const OrderDetailPage = () => {
                                             {['pending', 'processing', 'confirmed'].includes(order.status.toLowerCase()) && item.status?.toLowerCase() === 'placed' && (
                                                 <button onClick={() => openModal('cancel', item)} className="text-[7px] font-black uppercase text-red-500 hover:text-red-400 flex items-center gap-1 transition-all"><XCircle size={10} /> Cancel</button>
                                             )}
+                                            {/* 🟢 Return button with 7-day logic */}
                                             {order.status.toLowerCase() === 'delivered' && item.status?.toLowerCase() === 'delivered' && (
-                                                <button onClick={() => openModal('return', item)} className="text-[7px] font-black uppercase text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-all"><RotateCcw size={10} /> Return</button>
+                                                <button
+                                                    onClick={() => openModal('return', item)}
+                                                    className={`text-[7px] font-black uppercase flex items-center gap-1 transition-all ${isReturnExpired ? 'text-white/20 grayscale cursor-not-allowed' : 'text-amber-500 hover:text-amber-400'}`}
+                                                >
+                                                    <RotateCcw size={10} /> {isReturnExpired ? "Return Window Closed" : "Return"}
+                                                </button>
                                             )}
                                         </div>
                                     </div>
@@ -357,8 +382,8 @@ const OrderDetailPage = () => {
                         </div>
 
                         {order.status === 'payment_failed' && (
-                            <button 
-                                onClick={handleRetryPayment} 
+                            <button
+                                onClick={handleRetryPayment}
                                 disabled={isRetrying}
                                 className="w-full mt-10 py-5 bg-red-600 text-white rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                             >

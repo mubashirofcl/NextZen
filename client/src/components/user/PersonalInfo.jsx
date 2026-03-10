@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { 
-    Edit2, ShieldCheck, Mail, Phone, User, Wallet, 
-    Users, Lock, ArrowRight, Copy, Share2, Check, 
+import {
+    Edit2, ShieldCheck, Mail, Phone, User, Wallet,
+    Users, Lock, ArrowRight, Copy, Share2, Check,
     Tag, Gift, Info
 } from 'lucide-react';
 
@@ -41,19 +41,20 @@ const PersonalInfo = () => {
         currency: 'INR',
     }).format(user?.walletBalance ?? user?.wallet?.balance ?? 0);
 
-    const referralLink = user?.referralCode 
+    const referralLink = user?.referralCode
         ? `${window.location.origin}/signup?ref=${user.referralCode}`
         : "Generating your link...";
 
     const copyToClipboard = (text) => {
         if (!user?.referralCode) return nxToast.error("Wait...", "Generating your unique code.");
-        
+
         navigator.clipboard.writeText(text);
         setCopied(true);
         nxToast.success("Link Copied", "Share it with your friends to earn rewards.");
         setTimeout(() => setCopied(false), 2000);
     };
 
+    // Inside PersonalInfo.jsx
     const handleUpdateProfile = async (data) => {
         try {
             const response = await updateProfile(data);
@@ -68,7 +69,10 @@ const PersonalInfo = () => {
                 setIsEditModalOpen(false);
             }
         } catch (error) {
-            nxToast.error("Update Failed", "Could not update profile information.");
+            if (error.response?.status !== 400) {
+                nxToast.error("Update Failed", "Could not update profile information.");
+            }
+            throw error;
         }
     };
 
@@ -112,7 +116,7 @@ const PersonalInfo = () => {
                             <h3 className="text-2xl font-black uppercase italic text-white tracking-tighter">Refer & Earn</h3>
                             <p className="text-[9px] text-[#7a6af6] font-black uppercase tracking-[0.4em] mt-1">Grow the community, reap the rewards</p>
                         </div>
-                        
+
 
                         <div className="flex gap-4">
                             <div className="bg-white/5 border border-white/10 px-5 py-3 rounded-2xl">
@@ -140,14 +144,14 @@ const PersonalInfo = () => {
                     <div className="flex flex-col lg:flex-row gap-4">
                         <div className="flex-1 bg-black/20 border border-white/5 p-4 rounded-2xl flex justify-between items-center group/link hover:border-white/20 transition-all">
                             <code className="text-[10px] text-white/60 truncate mr-4 select-all">{referralLink}</code>
-                            <button 
+                            <button
                                 onClick={() => copyToClipboard(referralLink)}
                                 className="p-2 text-[#7a6af6] hover:bg-[#7a6af6] hover:text-white rounded-xl transition-all flex-shrink-0"
                             >
                                 {copied ? <Check size={16} /> : <Copy size={16} />}
                             </button>
                         </div>
-                        <button 
+                        <button
                             onClick={() => copyToClipboard(user?.referralCode)}
                             className="bg-[#7a6af6] text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#7a6af6]/20"
                         >

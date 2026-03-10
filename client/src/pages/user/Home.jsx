@@ -12,7 +12,7 @@ import userAxios from '../../api/baseAxios';
 
 const NewCollectionRib = ({ rotation, top, text = "NEW ARRIVALS" }) => (
     <div
-        className="absolute w-[200%] py-4 md:py-6 bg-[#8676ff] flex overflow-hidden whitespace-nowrap border-y border-black/20 z-20 shadow-[0_20px_50px_rgba(0,0,0,0.4)] select-none pointer-events-none"
+        className="absolute w-[200%] py-4 md:py-4 bg-[#8676ff] flex overflow-hidden whitespace-nowrap border-y border-black/20 z-20 shadow-[0_20px_50px_rgba(0,0,0,0.4)] select-none pointer-events-none"
         style={{ transform: `rotate(${rotation}deg)`, top: top, left: '-50%' }}
     >
         <div className="animate-marquee-slow flex items-center">
@@ -58,7 +58,7 @@ const Home = () => {
     };
 
     return (
-        <div className="relative min-h-screen font-sans text-white  selection:bg-[#7a6af6]/20 overflow-x-hidden">
+        <div className="relative min-h-screen font-sans text-white selection:bg-[#7a6af6]/20 overflow-x-hidden">
             <Header />
 
             <section className="relative h-[75vh] md:h-[95vh] mt-16 flex items-center justify-center mb-32 overflow-hidden px-4">
@@ -68,12 +68,24 @@ const Home = () => {
                 </div>
 
                 <div className="absolute inset-x-2 md:inset-x-10 inset-y-4 md:inset-y-6 rounded-[2rem] md:rounded-[4.5rem] overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(122,106,246,0.15)] bg-[#111] z-10">
+                    <video
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover scale-105 z-0"
+                    >
+                        <source src="/bg_promo2.mp4" type="video/mp4" />
+                    </video>
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[8px] z-[1]" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40 z-[1]" />
+
                     <img
                         src={adminHeroBanner}
                         alt="Main Hero"
-                        className="w-full h-full object-cover object-center scale-105 animate-slow-zoom"
+                        className="relative z-[2] w-full h-full object-cover object-center scale-105 animate-slow-zoom"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent z-[3]" />
                 </div>
 
                 <div className="relative z-30 text-center px-4 mt-20">
@@ -174,10 +186,10 @@ const Home = () => {
                             className="absolute inset-0 w-full h-full object-cover grayscale mix-blend-overlay group-hover:scale-105 transition-transform duration-[3s]"
                             alt="Promotion"
                         />
-                        
+
                         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-center p-8 md:p-12">
                             <div className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.4em] mb-8 flex items-center gap-2">
-                                <Sparkles size={12} className="text-[#7a6af6]" /> 
+                                <Sparkles size={12} className="text-[#7a6af6]" />
                                 Limited Protocol
                             </div>
 
@@ -191,20 +203,20 @@ const Home = () => {
                                     <p className="text-[11px] md:text-[13px] font-black uppercase tracking-[0.6em] text-white/60 mb-10 italic">
                                         MINIMUM PURCHASE: ₹{latestCoupon.minPurchaseAmt} // WINTER 2026
                                     </p>
-                                    
+
                                     <div className="flex flex-col items-center gap-6">
                                         <div className="bg-white/5 border border-white/10 backdrop-blur-xl p-1 rounded-2xl flex items-center gap-4 pr-6 group/code">
                                             <div className="bg-white text-black px-6 py-3 rounded-xl font-black text-xl tracking-tighter italic">
                                                 {latestCoupon.code}
                                             </div>
-                                            <button 
+                                            <button
                                                 onClick={() => copyCode(latestCoupon.code)}
                                                 className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-[#7a6af6] transition-colors"
                                             >
                                                 <Ticket size={14} /> Copy Code
                                             </button>
                                         </div>
-                                        <button 
+                                        <button
                                             onClick={() => navigate('/shop')}
                                             className="bg-[#7a6af6] text-white px-14 py-5 rounded-full font-black uppercase text-[12px] tracking-[0.2em] hover:bg-white hover:text-black transition-all shadow-xl active:scale-95"
                                         >

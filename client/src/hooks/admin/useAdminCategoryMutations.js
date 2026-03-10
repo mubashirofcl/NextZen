@@ -6,7 +6,6 @@ import {
   fetchAdminSubCategories,
 } from "../../api/admin/category.api";
 
-
 export const useCreateCategory = () => {
   const qc = useQueryClient();
 
@@ -15,11 +14,11 @@ export const useCreateCategory = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-categories"] });
       qc.invalidateQueries({ queryKey: ["admin-subcategories"] });
+      qc.invalidateQueries({ queryKey: ["categories-dropdown"] }); 
       qc.invalidateQueries({ queryKey: ["categories-selection"] });
     },
   });
 };
-
 
 export const useUpdateCategory = () => {
   const qc = useQueryClient();
@@ -31,11 +30,10 @@ export const useUpdateCategory = () => {
       qc.invalidateQueries({ queryKey: ["admin-subcategories"] });
       qc.invalidateQueries({ queryKey: ["categories-dropdown"] });
       qc.invalidateQueries({ queryKey: ["categories-selection"] });
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
     },
   });
 };
-
-
 
 export const useDeleteCategory = () => {
   const qc = useQueryClient();
@@ -45,16 +43,16 @@ export const useDeleteCategory = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-categories"] });
       qc.invalidateQueries({ queryKey: ["admin-subcategories"] });
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
     },
   });
 };
 
-
-export const useAdminSubCategories = (params) => {
+export const useAdminSubCategoriesMutationQuery = (params) => {
   return useQuery({
-    queryKey: ["admin-subcategories", params?.parentId],
+    queryKey: ["admin-subcategories", params?.parentId, params?.isForSelection],
     queryFn: () => fetchAdminSubCategories(params),
-    enabled: !!params?.parentId, 
-    staleTime: 5 * 60 * 1000, 
+    enabled: !!params?.parentId,
+    staleTime: 5 * 60 * 1000,
   });
 };

@@ -34,12 +34,12 @@ export const getCategories = async (req, res) => {
 
 export const getSubCategories = async (req, res) => {
     try {
-        const { parentId, level } = req.query;
+        const { parentId, isForSelection } = req.query;
 
         const data = await getAllCategoriesForSelectionService({
-            level: level ? Number(level) : 2,
+            level: 2,
             parentId: parentId || null,
-            adminMode: true
+            adminMode: isForSelection === "true" ? false : true 
         });
 
         res.status(200).json(data);

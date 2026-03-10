@@ -25,7 +25,7 @@ export const addItemToCart = async (userId, { productId, variantId, size, quanti
             variantId,
             size,
             quantity,
-            unitPrice: sizeData.salePrice 
+            unitPrice: sizeData.salePrice
         });
     }
     return await cart.save();
@@ -137,7 +137,7 @@ export const getUserCart = async (userId) => {
                             disc: "$items.bestDiscount"
                         },
                         in: {
-                            mrp: "$$sizeData.originalPrice", 
+                            mrp: "$$sizeData.originalPrice",
                             manual: "$$sizeData.salePrice",
                             campaign: {
                                 $round: [{
@@ -146,7 +146,7 @@ export const getUserCart = async (userId) => {
                                         { $multiply: ["$$sizeData.originalPrice", { $divide: ["$$disc", 100] }] }
                                     ]
                                 }, 0]
-                            } 
+                            }
                         }
                     }
                 }

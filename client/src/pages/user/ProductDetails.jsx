@@ -45,7 +45,14 @@ const ProductDetails = () => {
     const [showNudge, setShowNudge] = useState(false);
 
     const currentVariant = activeVariants[selectedVariantIdx];
-    const isOutOfStock = !selectedSize || selectedSize.stock === 0;
+
+    // 🟢 LOGIC FIX: Check if the entire variant is out of stock across all sizes
+    const isVariantEmpty = useMemo(() => {
+        return currentVariant?.sizes.every(s => s.stock === 0);
+    }, [currentVariant]);
+
+    // 🟢 LOGIC FIX: Only show 'Sold Out' if the variant is truly empty, otherwise wait for size selection
+    const isOutOfStock = selectedSize ? selectedSize.stock === 0 : isVariantEmpty;
 
     const isAlreadyInCart = cart?.items?.some(item =>
         (item.productId?._id === id || item.productId === id) &&
@@ -69,14 +76,14 @@ const ProductDetails = () => {
         if (error || (product && product.isActive === false)) navigate('/shop', { replace: true });
     }, [product, error, navigate]);
 
+    // 🟢 FIX: Reset selectedSize to null when switching variants to force selection
     useEffect(() => {
         if (currentVariant) {
             setActiveImg(currentVariant.images[0]);
-            const autoSize = currentVariant.sizes.find(s => s.stock > 0) || currentVariant.sizes[0];
-            setSelectedSize(autoSize);
+            setSelectedSize(null); 
             setQty(1);
         }
-    }, [selectedVariantIdx, product]);
+    }, [selectedVariantIdx, id]);
 
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -105,7 +112,12 @@ const ProductDetails = () => {
 
     const handleAddToCart = async () => {
         if (!isAuthenticated) return nxToast.security("Access Denied", "Please login to sync this item.");
-        if (!selectedSize) return nxToast.security("Selection Required", "Choose a dimension.");
+        
+        // 🟢 FIX: Trigger Toast if no size is selected
+        if (!selectedSize) {
+            return nxToast.security("Selection Required", "Please select a Dimension/Size before adding to archive.");
+        }
+
         if (isAlreadyInCart) return nxToast.security("Already Archived", "Item in manifest.");
         if (qty > selectedSize.stock) return nxToast.security("Warehouse Limit", `Only ${selectedSize.stock} units left.`);
 
@@ -126,6 +138,11 @@ const ProductDetails = () => {
 
     const handleWishlistToggle = () => {
         if (!isAuthenticated) return nxToast.security("Access Denied", "Please login.");
+
+        // 🟢 FIX: Trigger Toast if no size is selected for wishlist
+        if (!selectedSize) {
+            return nxToast.security("Selection Required", "Select a dimension to wishlist this specific spec.");
+        }
         toggleWishlist(id, currentVariant._id);
     };
 
@@ -174,14 +191,16 @@ const ProductDetails = () => {
     if (isLoading) return <div className="h-screen flex items-center justify-center text-[10px] font-black uppercase tracking-[0.5em] text-white/20 animate-pulse">Initialising Archive...</div>;
     if (!product || activeVariants.length === 0) return null;
 
-    const salePrice = selectedSize?.salePrice || 0;
-    const originalPrice = selectedSize?.originalPrice || 0;
+    // 🟢 UI FIX: Use starting price if no size is selected
+    const salePrice = selectedSize?.salePrice || Math.min(...currentVariant.sizes.map(s => s.salePrice));
+    const originalPrice = selectedSize?.originalPrice || Math.min(...currentVariant.sizes.map(s => s.originalPrice));
     const discount = originalPrice > salePrice ? Math.round(((originalPrice - salePrice) / originalPrice) * 100) : 0;
 
     return (
         <div className="relative min-h-screen font-sans text-white pt-16 selection:bg-[#7a6af6]/30 overflow-x-hidden">
             <Header />
 
+            {/* Chatbot UI */}
             <div className={`fixed inset-y-0 right-0 w-full sm:w-[420px] z-[110] transform transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${isChatOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="h-[96vh] my-[2vh] mr-[1vw] w-full bg-black/40 backdrop-blur-2xl border border-white/10 flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.5)] rounded-[2.5rem] overflow-hidden">
                     <div className="p-6 border-b border-white/10 bg-white/[0.02] flex items-center justify-between">
@@ -263,6 +282,7 @@ const ProductDetails = () => {
                 </div>
             </div>
 
+            {/* AI Nudge */}
             {showNudge && !isChatOpen && chatHistory.length === 0 && (
                 <div className="fixed bottom-28 right-10 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-700">
                     <div className="relative group">
@@ -292,14 +312,12 @@ const ProductDetails = () => {
                 onClick={() => setIsChatOpen(true)}
                 className={`fixed bottom-8 right-8 z-[90] flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 pl-6 pr-4 py-4 rounded-2xl shadow-xl hover:bg-white/10 transition-all duration-500 group active:scale-95 ${isChatOpen ? 'opacity-0 scale-50 pointer-events-none' : 'opacity-100 scale-100'}`}
             >
-
                 {showNudge && (
                     <span className="absolute -top-1 -left-1 flex h-3 w-3">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7a6af6] opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-3 w-3 bg-[#7a6af6]"></span>
                     </span>
                 )}
-
                 <div className="flex flex-col items-end">
                     <span className="text-[11px] font-bold uppercase text-white/90">Style Assistant</span>
                     <div className="flex items-center gap-1.5 mt-1">
@@ -337,10 +355,10 @@ const ProductDetails = () => {
                             <img
                                 src={activeImg || currentVariant?.images[0]}
                                 alt={product.name}
-                                className={`w-full h-full object-cover transition-transform duration-300 pointer-events-none ${zoomPos.show ? 'scale-[2]' : 'scale-100'} ${isOutOfStock ? 'grayscale opacity-40' : ''}`}
+                                className={`w-full h-full object-cover transition-transform duration-300 pointer-events-none ${zoomPos.show ? 'scale-[2]' : 'scale-100'} ${isVariantEmpty ? 'grayscale opacity-40' : ''}`}
                                 style={zoomPos.show ? { transformOrigin: `${zoomPos.x}% ${zoomPos.y}%` } : {}}
                             />
-                            {isOutOfStock ? (
+                            {isVariantEmpty ? (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="bg-red-600 px-6 py-2 rounded font-black text-[10px] tracking-[0.3em] uppercase italic shadow-2xl border border-white/10">Sold Out</div>
                                 </div>
@@ -369,8 +387,8 @@ const ProductDetails = () => {
                                 </div>
                                 <h1 className="text-3xl font-black uppercase tracking-tight italic">{product.name}</h1>
                                 <div className="flex items-baseline gap-4">
-                                    <span className={`text-4xl font-black italic ${isOutOfStock ? 'text-white/10' : ''}`}>₹{salePrice.toLocaleString()}</span>
-                                    {originalPrice > salePrice && !isOutOfStock && (
+                                    <span className={`text-4xl font-black italic ${isVariantEmpty ? 'text-white/10' : ''}`}>₹{salePrice.toLocaleString()}</span>
+                                    {originalPrice > salePrice && !isVariantEmpty && (
                                         <span className="text-sm text-white/20 line-through font-bold italic opacity-50">₹{originalPrice.toLocaleString()}</span>
                                     )}
                                 </div>
@@ -394,7 +412,7 @@ const ProductDetails = () => {
                                     <div className="flex justify-between items-center">
                                         <p className="text-[9px] font-black uppercase tracking-widest text-white/30 italic">Dimensions</p>
                                         <span className={`text-[8px] uppercase font-black ${selectedSize?.stock === 0 ? 'text-red-500' : 'text-[#7a6af6]'}`}>
-                                            {selectedSize?.stock === 0 ? 'Depleted' : `${selectedSize?.stock} Units`}
+                                            {selectedSize ? (selectedSize.stock === 0 ? 'Depleted' : `${selectedSize.stock} Units`) : 'Select size'}
                                         </span>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
@@ -425,17 +443,17 @@ const ProductDetails = () => {
 
                             <div className="space-y-4 pt-4">
                                 <div className="flex gap-2 h-12">
-                                    <div className={`flex items-center bg-white/[0.03] border border-white/5 rounded-lg px-4 gap-4 ${isOutOfStock || isAlreadyInCart ? 'opacity-10 pointer-events-none' : ''}`}>
+                                    <div className={`flex items-center bg-white/[0.03] border border-white/5 rounded-lg px-4 gap-4 ${isVariantEmpty || isAlreadyInCart ? 'opacity-10 pointer-events-none' : ''}`}>
                                         <button onClick={() => setQty(q => Math.max(1, q - 1))} className="text-white/20 hover:text-white transition-colors"><Minus size={14} /></button>
                                         <span className="text-[10px] font-black w-3 text-center italic">{qty}</span>
                                         <button onClick={() => setQty(q => Math.min(selectedSize?.stock || 1, Math.min(5, q + 1)))} className="text-white/20 hover:text-white transition-colors"><Plus size={14} /></button>
                                     </div>
                                     <button
                                         onClick={handleAddToCart}
-                                        disabled={isOutOfStock || addToCart.isPending}
-                                        className={`flex-1 rounded-lg font-black uppercase tracking-[0.1em] text-[10px] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg ${isOutOfStock ? 'bg-red-500/10 text-red-500 border border-red-500/20' : isAlreadyInCart ? 'bg-zinc-800 text-white/40 border border-white/5' : 'bg-[#7a6af6] text-white hover:bg-[#6858e0] shadow-[#7a6af6]/10'}`}
+                                        disabled={isVariantEmpty || addToCart.isPending}
+                                        className={`flex-1 rounded-lg font-black uppercase tracking-[0.1em] text-[10px] transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg ${isVariantEmpty ? 'bg-red-500/10 text-red-500 border border-red-500/20' : isAlreadyInCart ? 'bg-zinc-800 text-white/40 border border-white/5' : 'bg-[#7a6af6] text-white hover:bg-[#6858e0] shadow-[#7a6af6]/10'}`}
                                     >
-                                        {addToCart.isPending ? <Loader2 size={16} className="animate-spin" /> : isOutOfStock ? "Archive Empty" : isAlreadyInCart ? <><ShieldCheck size={16} /> In Archive</> : <><ShoppingBag size={16} /> Commit To Archive</>}
+                                        {addToCart.isPending ? <Loader2 size={16} className="animate-spin" /> : isVariantEmpty ? "Archive Empty" : isAlreadyInCart ? <><ShieldCheck size={16} /> In Archive</> : <><ShoppingBag size={16} /> Commit To Archive</>}
                                     </button>
                                     <button
                                         onClick={handleWishlistToggle}
@@ -461,6 +479,7 @@ const ProductDetails = () => {
                     </div>
                 </div>
 
+                {/* Related Section */}
                 <section className="mt-20 space-y-10">
                     <div className="flex justify-between items-end border-b border-white/5 pb-4 px-1">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic">Related Archive</h2>

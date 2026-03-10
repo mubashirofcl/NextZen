@@ -19,12 +19,13 @@ const ResetPassword = () => {
         watch,
         formState: { errors, isSubmitting }
     } = useForm({
+        mode: "onBlur",
         defaultValues: { password: "", confirmPassword: "" }
     });
 
     useEffect(() => {
         if (!state?.email || !state?.otp) {
-            navigate("/forgot-password");
+            navigate("/login", { replace: true });
         }
     }, [state, navigate]);
 
@@ -36,14 +37,16 @@ const ResetPassword = () => {
                 password: data.password,
             });
 
-            navigate("/login", {
-                state: { message: "Security updated. Please sign in." },
-            });
-
             nxToast.success(
                 "Password Updated Successfully.",
-                "Please Sing in Using New Password"
+                "Please Sign in Using New Password"
             );
+
+            navigate("/login", {
+                replace: true,
+                state: { message: "Security updated. Please sign in." }
+            });
+
         } catch (err) {
             nxToast.security(err.response?.data?.message || "Failed to update password.");
         }
@@ -71,8 +74,12 @@ const ResetPassword = () => {
                                 <input
                                     type={showPass ? "text" : "password"}
                                     placeholder="••••••••"
-                                    {...register("password", { required: "Required", minLength: { value: 6, message: "Min 6 chars" } })}
-                                    className="w-full h-14 px-5 text-black bg-gray-50 border-none rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
+                                    {...register("password", {
+                                        required: "Password is required",
+                                        minLength: { value: 6, message: "Min 6 chars" },
+                                        maxLength: { value: 12, message: "Max 12 chars" }
+                                    })}
+                                    className={`w-full h-14 px-5 text-black bg-gray-50 border-2 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all ${errors.password ? 'border-red-100' : 'border-transparent'}`}
                                 />
                                 <button
                                     type="button"
@@ -82,22 +89,29 @@ const ResetPassword = () => {
                                     {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
+                            {errors.password && (
+                                <p className="text-red-500 text-[9px] font-bold mt-1 ml-1 uppercase italic tracking-tighter">
+                                    {errors.password.message}
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 ml-1">Confirm Password</label>
                             <div className="relative">
                                 <input
-                                    type={showConfirmPass ? "text" : "password"} 
+                                    type={showConfirmPass ? "text" : "password"}
                                     placeholder="••••••••"
                                     {...register("confirmPassword", {
+                                        required: "Please confirm your password",
+                                        maxLength: { value: 12, message: "Max 12 chars" },
                                         validate: v => v === watch('password') || "Passwords do not match"
                                     })}
-                                    className="w-full h-14 px-5 text-black bg-gray-50 border-none rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
+                                    className={`w-full h-14 px-5 text-black bg-gray-50 border-2 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all ${errors.confirmPassword ? 'border-red-100' : 'border-transparent'}`}
                                 />
                                 <button
                                     type="button"
-                                    onClick={() => setShowConfirmPass(!showConfirmPass)} 
+                                    onClick={() => setShowConfirmPass(!showConfirmPass)}
                                     className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#7a6af6]"
                                 >
                                     {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -113,10 +127,10 @@ const ResetPassword = () => {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full h-14 bg-[#0F172A] text-white rounded-xl text-[10px] uppercase tracking-[0.3em] font-black shadow-lg hover:bg-black transition-all active:scale-[0.98] disabled:bg-gray-200 mt-2"
+                            className="w-full h-14 bg-[#0F172A] text-white rounded-xl text-[10px] uppercase tracking-[0.3em] font-black shadow-lg hover:bg-black transition-all active:scale-[0.98] disabled:bg-gray-200 mt-2 flex items-center justify-center"
                         >
                             {isSubmitting ? (
-                                <Loader2 className="animate-spin w-4 h-4 mx-auto" />
+                                <Loader2 className="animate-spin w-5 h-5" />
                             ) : (
                                 "Update Password"
                             )}

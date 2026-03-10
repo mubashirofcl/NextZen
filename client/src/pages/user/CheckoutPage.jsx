@@ -4,7 +4,8 @@ import { useCart } from '../../hooks/user/useCart';
 import { useAddress } from '../../hooks/user/useAddress';
 import { useOrder } from '../../hooks/user/useOrder';
 import { useWallet } from '../../hooks/user/useWallet';
-import { updateAddress } from '../../api/user/address.api';
+
+import { updateAddress, createAddress } from '../../api/user/address.api'; 
 import userAxios from '../../api/baseAxios';
 
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -110,7 +111,6 @@ const CheckoutPage = () => {
             finalTotal, 
             totalDiscount, 
             couponDiscount,
-            // 🟢 Aliasing for modal consistency
             subTotal: subtotal,
             totalAmount: finalTotal 
         };
@@ -165,7 +165,6 @@ const CheckoutPage = () => {
             const isLoaded = await loadRazorpayScript();
             if (!isLoaded) return nxToast.security("Payment gateway offline");
             
-            // 🟢 Send the calculated finalTotal (which has coupon discount already removed)
             const { data } = await userAxios.post("/user/payment/create-order", {
                 amount: financials.finalTotal,
                 items: cart.items,
@@ -230,7 +229,6 @@ const CheckoutPage = () => {
         if (paymentMethod === 'wallet' && (wallet?.balance || 0) < financials.finalTotal) {
             return nxToast.security("Insufficient wallet balance");
         }
-        // 🟢 Pass the live financials object to be frozen in the modal state
         setFrozenTotals({ ...financials });
         setIsConfirmModalOpen(true);
     };
@@ -249,7 +247,7 @@ const CheckoutPage = () => {
                 totalAmount: item.currentPrice * item.quantity
             })),
             paymentMethod,
-            totals: frozenTotals, // 🟢 Send the frozen totals containing the discount
+            totals: frozenTotals, 
             couponCode: appliedCoupon?.code || null
         };
 
@@ -265,6 +263,12 @@ const CheckoutPage = () => {
         }
     };
 
+    // 🟢 New function to open modal for Adding
+    const handleAddNewAddress = () => {
+        setAddressToEdit(null);
+        setIsAddressModalOpen(true);
+    };
+
     const handleEditAddress = (e, addr) => {
         e.stopPropagation();
         setAddressToEdit(addr);
@@ -274,16 +278,22 @@ const CheckoutPage = () => {
     const handleAddressMutation = async (data) => {
         try {
             setIsProcessing(true);
-            await updateAddress(addressToEdit._id, data);
+            if (addressToEdit) {
+                await updateAddress(addressToEdit._id, data);
+                nxToast.success("Address updated successfully");
+            } else {
+
+                await createAddress(data);
+                nxToast.success("New address added successfully");
+            }
 
             await queryClient.invalidateQueries({ queryKey: ["addresses"] });
             await refetchAddresses();
 
             setIsAddressModalOpen(false);
             setAddressToEdit(null);
-            nxToast.success("Address updated successfully");
         } catch (err) {
-            nxToast.error("Failed to update address");
+            nxToast.error(err.response?.data?.message || "Failed to save address");
         } finally {
             setIsProcessing(false);
         }
@@ -322,7 +332,21 @@ const CheckoutPage = () => {
                         <section className={`${glassStyle} p-10 ${hasInventoryConflict ? 'opacity-30 pointer-events-none' : ''}`}>
                             <div className="flex justify-between items-center mb-8">
                                 <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.4em] flex items-center gap-2"><MapPin size={14} /> 01 // Shipping Address</h2>
-                                <button onClick={() => navigate('/profile/address')} className="text-[8px] font-black uppercase px-5 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-[#7a6af6] transition-all">Manage Addresses</button>
+                                <div className="flex gap-2">
+                                    {/* 🟢 Direct Modal Trigger for adding address */}
+                                    <button 
+                                        onClick={handleAddNewAddress} 
+                                        className="text-[8px] font-black uppercase px-5 py-2 rounded-xl border border-[#7a6af6]/30 bg-[#7a6af6]/10 text-[#7a6af6] hover:bg-[#7a6af6] hover:text-white transition-all"
+                                    >
+                                        + Add New
+                                    </button>
+                                    <button 
+                                        onClick={() => navigate('/profile/address')} 
+                                        className="text-[8px] font-black uppercase px-5 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-white/40"
+                                    >
+                                        Manage
+                                    </button>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {addressData?.map((addr) => (
@@ -342,6 +366,15 @@ const CheckoutPage = () => {
                                         <p className="text-[10px] text-white/30 uppercase mt-1 leading-relaxed">{addr.addressLine}, {addr.city}</p>
                                     </div>
                                 ))}
+                                {addressData?.length === 0 && (
+                                     <div 
+                                        onClick={handleAddNewAddress}
+                                        className="border-2 border-dashed border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center gap-3 hover:border-[#7a6af6]/50 cursor-pointer transition-all group"
+                                     >
+                                        <MapPin className="text-white/10 group-hover:text-[#7a6af6]" size={24} />
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-white/20 group-hover:text-white">No address found. Click to add.</p>
+                                     </div>
+                                )}
                             </div>
                         </section>
 
@@ -448,7 +481,20 @@ const CheckoutPage = () => {
                 </div>
             </main>
             <OrderConfirmModal couponCode={appliedCoupon?.code} isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} onConfirm={handleFinalOrderPlacement} isPending={placeOrder.isPending} totals={frozenTotals} inventoryConflict={hasInventoryConflict} paymentMethod={paymentMethod} />
-            {isAddressModalOpen && <AddressModal isOpen={isAddressModalOpen} onClose={() => setIsAddressModalOpen(false)} mode="edit" initialData={addressToEdit} onSubmit={handleAddressMutation} />}
+            
+            {/* 🟢 Modal handles both 'add' and 'edit' now */}
+            {isAddressModalOpen && (
+                <AddressModal 
+                    isOpen={isAddressModalOpen} 
+                    onClose={() => {
+                        setIsAddressModalOpen(false);
+                        setAddressToEdit(null);
+                    }} 
+                    mode={addressToEdit ? "edit" : "add"} 
+                    initialData={addressToEdit} 
+                    onSubmit={handleAddressMutation} 
+                />
+            )}
             <Footer />
         </div>
     );

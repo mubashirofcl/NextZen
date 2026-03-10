@@ -5,14 +5,13 @@ export const findById = (id) => {
 };
 
 export const findCategories = (filter, skip, limit) => {
-  const query = Category.find(filter)
+  const query = Category.find({ ...filter, isDeleted: false })
     .populate("offerId")
     .sort({ createdAt: -1 });
 
   if (limit > 0) {
     query.skip(skip).limit(limit);
   }
-
   return query;
 };
 
@@ -36,7 +35,7 @@ export const findCategoriesWithSubCount = async (filter, skip, limit) => {
     { $match: filter },
     {
       $lookup: {
-        from: "offers", 
+        from: "offers",
         localField: "offerId",
         foreignField: "_id",
         as: "offerDetails",
@@ -52,7 +51,7 @@ export const findCategoriesWithSubCount = async (filter, skip, limit) => {
     },
     {
       $addFields: {
-        offerId: { $arrayElemAt: ["$offerDetails", 0] }, 
+        offerId: { $arrayElemAt: ["$offerDetails", 0] },
         subCategoryCount: {
           $size: {
             $filter: {
@@ -93,4 +92,17 @@ export const findSubCategoryByNameAndParent = ({ name, parentId }) => {
     level: 2,
     isDeleted: false,
   });
+};
+
+
+export const updateSubCategoriesStatus = async (parentId, isActive) => {
+  return await Category.updateMany(
+    { parentId, isDeleted: false },
+    { $set: { isActive } }
+  );
+};
+
+export const getSubCategoryIds = async (parentId) => {
+  const subs = await Category.find({ parentId, isDeleted: false }, "_id");
+  return subs.map(s => s._id);
 };

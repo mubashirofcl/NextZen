@@ -18,7 +18,6 @@ export const generateInvoice = (order) => {
     const margin = 15;
     let cursorY = 20;
 
-    // --- HEADER ---
     doc.setFontSize(8);
     doc.setTextColor(...theme.accent);
     doc.setFont("helvetica", "bold");
@@ -54,15 +53,13 @@ export const generateInvoice = (order) => {
 
     cursorY += 28;
 
-    // --- ENTITY DETAILS ---
     doc.setDrawColor(...theme.border);
     doc.setLineWidth(0.1);
     doc.line(margin, cursorY, 195, cursorY);
     cursorY += 10;
 
     const colWidth = 95;
-    
-    // Left: Customer
+ 
     doc.setTextColor(...theme.muted);
     doc.setFontSize(7);
     doc.text("CUSTOMER ENTITY", margin, cursorY);
@@ -73,7 +70,6 @@ export const generateInvoice = (order) => {
     doc.setFontSize(8);
     doc.text(order.userId?.email || "", margin, cursorY + 9);
 
-    // Right: Shipping
     doc.setTextColor(...theme.muted);
     doc.setFontSize(7);
     doc.text("SHIPPING DESTINATION", margin + colWidth, cursorY);
@@ -92,15 +88,14 @@ export const generateInvoice = (order) => {
 
     cursorY += 30;
 
-    // --- MATHEMATICAL ENGINE ---
     const finalTotalValue = Math.round(Number(order.totalAmount || 0)); 
     const shippingCost = Number(order.deliveryCharge || 0);
     const couponDiscount = Number(order.couponDiscount || 0);
     
-    // 1. Gross Subtotal
+  
     const tableSubtotal = order.items.reduce((acc, item) => acc + (Number(item.price) * Number(item.quantity)), 0);
 
-    // 2. Refund Calculation
+
     let totalRefunded = 0;
     let cancelledItemsCount = 0;
     const isShippedOrBeyond = ['shipped', 'out_for_delivery', 'delivered', 'returned'].includes((order.status || '').toLowerCase());
@@ -120,14 +115,12 @@ export const generateInvoice = (order) => {
         totalRefunded += shippingCost;
     }
 
-    // --- ITEM TABLE ---
     const tableBody = order.items.map((item, index) => {
         const unitPrice = Number(item.price);
         const qty = Number(item.quantity);
         const lineTotal = unitPrice * qty;
         const isVoided = ['Cancelled', 'Returned'].includes(item.status);
 
-        // Append status if returned or cancelled
         let description = `${item.productId?.name || "Archive Asset"}\nSIZE: ${item.size}`;
         if (isVoided) {
             description += `   [${item.status.toUpperCase()}]`;
@@ -152,7 +145,6 @@ export const generateInvoice = (order) => {
         columnStyles: { 0: { cellWidth: 8, halign: 'center' }, 3: { halign: 'center' }, 4: { cellWidth: 35, halign: 'right' } },
     });
 
-    // --- SUMMARY SECTION ---
     let finalY = doc.lastAutoTable.finalY + 8;
     const summaryX = 130; 
 
@@ -166,7 +158,6 @@ export const generateInvoice = (order) => {
         finalY += 5;
     };
     
-    // Logical Invoice Flow: Subtotal -> Coupon -> Shipping -> Refund -> Total
     addSummaryRow("Order Subtotal", `INR ${tableSubtotal.toLocaleString('en-IN')}`);
     
     if (couponDiscount > 0) {
@@ -179,8 +170,7 @@ export const generateInvoice = (order) => {
     }
 
     addSummaryRow("Logistics & Shipping", shippingCost === 0 ? "FREE" : `INR ${shippingCost.toLocaleString('en-IN')}`);
-    
-    //  Display Refunds if any items were cancelled or returned
+ 
     if (totalRefunded > 0) {
         addSummaryRow(
             "Processed Refunds / Cancellations", 

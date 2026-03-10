@@ -14,11 +14,17 @@ export const findById = async (id) => {
 };
 
 export const findByCode = async (code) => {
-    return await Coupon.findOne({ code: code.toUpperCase() });
+    return await Coupon.findOne({ code: code.trim().toUpperCase() });
 };
 
 
 export const updateById = async (id, data) => {
+    if (data._id) delete data._id;
+    
+    if (data.code) {
+        data.code = data.code.trim().toUpperCase();
+    }
+
     return await Coupon.findByIdAndUpdate(
         id,
         { $set: data },
@@ -50,6 +56,6 @@ export const findActiveCoupons = async () => {
         isActive: true,
         startDate: { $lte: now },
         endDate: { $gte: now },
-        $expr: { $lt: ["$usedCount", "$usageLimit"] } 
+        $expr: { $lt: ["$usedCount", "$usageLimit"] }
     }).sort({ createdAt: -1 });
 };

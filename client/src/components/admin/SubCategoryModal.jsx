@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { X, Layers, Edit3, Loader2, Plus, CheckCircle2, Ban, RotateCcw, Percent, Info } from "lucide-react";
+import { X, Layers, Edit3, Loader2, Plus, CheckCircle2, Ban, RotateCcw, Percent, Info, AlertTriangle } from "lucide-react";
 
 import {
     useCreateCategory,
@@ -43,16 +43,27 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
 
     if (!isOpen || !parentCategory?._id) return null;
 
+    // 🟢 FIXED: Toggle logic with Parent Status Guard
     const toggleSubCategoryStatus = async (sub) => {
         try {
             const newStatus = !sub.isActive;
+
+            // Prevent unblocking if Parent is Restricted
+            if (newStatus === true && !parentCategory.isActive) {
+                return adminToast.error(
+                    "Action Restricted", 
+                    `Cannot activate ${sub.name} because the parent category (${parentCategory.name}) is restricted.`
+                );
+            }
+
             await updateCategory({
                 id: sub._id,
                 isActive: newStatus,
             });
             adminToast.success("Registry Updated", `Segment has been successfully ${newStatus ? 'activated' : 'restricted'}.`);
         } catch (err) {
-            adminToast.error("Update Failed", "System was unable to modify the segment status.");
+            const serverMsg = err.response?.data?.message || "System was unable to modify the segment status.";
+            adminToast.error("Update Failed", serverMsg);
         }
     };
 
@@ -96,7 +107,7 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                     <X size={22} />
                 </button>
 
-                <div className="mb-8">
+                <div className="mb-6">
                     <div className="flex items-center gap-3 mb-1">
                         <div className="p-2 bg-slate-100 rounded-lg">
                             <Layers size={18} className="text-[#0F172A]" />
@@ -107,6 +118,16 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                         Parent: <span className="text-[#7a6af6]">{parentCategory.name}</span>
                     </p>
                 </div>
+
+                {/* 🟢 NEW: Parent Restricted Warning Banner */}
+                {!parentCategory.isActive && (
+                    <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 animate-pulse">
+                        <AlertTriangle size={18} className="text-amber-500 shrink-0" />
+                        <p className="text-[9px] font-black text-amber-700 uppercase tracking-tight leading-tight">
+                            Parent Category is Restricted. Sub-segments cannot be activated until the parent is restored.
+                        </p>
+                    </div>
+                )}
 
                 <div className="mb-8 border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/30">
                     <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
@@ -161,11 +182,12 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                                         <button
                                             type="button"
                                             onClick={() => toggleSubCategoryStatus(sub)}
+                                            disabled={!parentCategory.isActive && !sub.isActive}
                                             className={`p-2 rounded-lg transition-all shadow-sm border ${sub.isActive
                                                     ? "text-slate-400 hover:text-red-500 hover:bg-white border-transparent hover:border-red-100"
-                                                    : "text-[#7a6af6] bg-white border-slate-200 hover:text-green-500 hover:border-green-100"
+                                                    : (!parentCategory.isActive ? "text-slate-200 bg-slate-50 border-slate-100 cursor-not-allowed" : "text-[#7a6af6] bg-white border-slate-200 hover:text-green-500 hover:border-green-100")
                                                 }`}
-                                            title={sub.isActive ? "Block Subcategory" : "Unblock Subcategory"}
+                                            title={!parentCategory.isActive && !sub.isActive ? "Restore Parent first" : (sub.isActive ? "Block" : "Unblock")}
                                         >
                                             {sub.isActive ? <Ban size={14} strokeWidth={2.5} /> : <RotateCcw size={14} strokeWidth={2.5} />}
                                         </button>

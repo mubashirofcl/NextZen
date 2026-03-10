@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
     Plus, Tag, Search, List, Trash2, Box, Calendar, 
-    Edit3, Layers, Award, ShieldCheck, ShieldAlert, Loader2 
+    Edit3, Layers, Award, ShieldCheck, ShieldAlert, Loader2, 
+    X
 } from "lucide-react";
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
@@ -77,7 +78,7 @@ const OfferManagement = () => {
                                     onClick={() => setSearchTerm("")}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"
                                 >
-                                    ✕
+                                    <X size={14} />
                                 </button>
                             )}
                         </div>

@@ -23,22 +23,21 @@ export const useAdminCategories = ({
   });
 };
 
-
-export const useAdminCategoriesSelection = ({ level = 1, parentId = null } = {}) => {
+export const useAdminCategoriesSelection = ({ level = 1, parentId = null, isForSelection = false } = {}) => {
   return useQuery({
-    queryKey: ["categories-dropdown", level, parentId],
-    queryFn: () => fetchCategoriesSelection({ level, parentId }),
+    queryKey: ["categories-dropdown", level, parentId, isForSelection],
+    queryFn: () => fetchCategoriesSelection({ level, parentId, isForSelection }),
     staleTime: 5 * 60_000,
     select: (data) => data ?? [],
   });
 };
 
-export const useAdminSubCategories = ({ parentId }) => {
+export const useAdminSubCategories = ({ parentId, isForSelection = false }) => {
   return useQuery({
-    queryKey: ["admin-subcategories", parentId],
-    queryFn: () => fetchAdminSubCategories({ parentId }), 
-    enabled: !!parentId, 
-    staleTime: 0,  
-    gcTime: 0      
+    queryKey: ["admin-subcategories", parentId, isForSelection],
+    queryFn: () => fetchAdminSubCategories({ parentId, isForSelection }),
+    enabled: !!parentId,
+    staleTime: 0,
+    gcTime: 0
   });
 };

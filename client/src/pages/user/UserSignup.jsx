@@ -57,7 +57,7 @@ const UserSignup = () => {
             });
 
             nxToast.success("Verification Sent", "A fresh security code is waiting in your inbox.");
-            
+
             navigate("/verify-otp", {
                 state: {
                     flow: "signup",
@@ -65,7 +65,8 @@ const UserSignup = () => {
                     email: data.email,
                     password: data.password,
                     referralCode: data.referralCode || localStorage.getItem("pending_referral")
-                }
+                },
+                replace: true
             });
         } catch (err) {
             const errorMsg = err.response?.data?.message || "We encountered a problem. Please try again.";
@@ -126,8 +127,8 @@ const UserSignup = () => {
                                     <input
                                         type="text"
                                         placeholder="Enter your name"
-                                        {...register("name", { 
-                                            required: "Name is required", 
+                                        {...register("name", {
+                                            required: "Name is required",
                                             minLength: { value: 3, message: "Name is too short" },
                                             maxLength: { value: 30, message: "Name is too long" },
                                             pattern: { value: /^[a-zA-Z\s]*$/, message: "Only letters allowed" }
@@ -142,8 +143,8 @@ const UserSignup = () => {
                                     <input
                                         type="email"
                                         placeholder="john@example.com"
-                                        {...register("email", { 
-                                            required: "Email is required", 
+                                        {...register("email", {
+                                            required: "Email is required",
                                             pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: "Invalid email format" },
                                             maxLength: { value: 50, message: "Email is too long" }
                                         })}
@@ -159,8 +160,8 @@ const UserSignup = () => {
                                             <input
                                                 type={showPass ? "text" : "password"}
                                                 placeholder="••••••••"
-                                                {...register("password", { 
-                                                    required: "Required", 
+                                                {...register("password", {
+                                                    required: "Required",
                                                     minLength: { value: 6, message: "Min 6 chars" },
                                                     maxLength: { value: 20, message: "Max 20 chars" }
                                                 })}

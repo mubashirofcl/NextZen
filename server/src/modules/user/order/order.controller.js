@@ -380,13 +380,33 @@ export const returnOrderItem = async (req, res, next) => {
     try {
         const { orderId, itemId } = req.params;
         const order = await orderModel.findOne({ _id: orderId, userId: req.user.userId });
-        if (!order || order.status.toLowerCase() !== 'delivered') return res.status(400).json({ success: false, message: "Invalid request." });
+
+        if (!order || order.status.toLowerCase() !== 'delivered') {
+            return res.status(400).json({ success: false, message: "Only delivered orders can be returned." });
+        }
+
+        const deliveryDate = new Date(order.updatedAt);
+        const now = new Date();
+        const diffTime = Math.abs(now - deliveryDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays > 7) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Return period expired. Items can only be returned within 7 days of delivery." 
+            });
+        }
 
         await orderModel.updateOne(
             { _id: orderId, "items._id": itemId },
-            { $set: { "items.$.status": "Return Requested", "items.$.returnReason": req.body.reason, "items.$.requestDate": new Date() } }
+            { $set: { 
+                "items.$.status": "Return Requested", 
+                "items.$.returnReason": req.body.reason, 
+                "items.$.requestDate": new Date() 
+            }}
         );
-        res.status(200).json({ success: true, message: "Return requested." });
+        
+        res.status(200).json({ success: true, message: "Return requested successfully." });
     } catch (error) { next(error); }
 };
 

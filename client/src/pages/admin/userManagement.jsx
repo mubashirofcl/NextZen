@@ -1,6 +1,6 @@
 import React, { useState, useDeferredValue, useEffect } from "react";
-import { useSearchParams } from "react-router-dom"; 
-import { Search, Filter, Users, UserCheck, ShieldAlert, List, Ban, CheckCircle } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Search, Filter, Users, UserCheck, ShieldAlert, List, Ban, CheckCircle, X } from "lucide-react";
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import BlockModal from "../../components/admin/BlockUserModal";
@@ -66,15 +66,33 @@ const UserManagement = () => {
                     <div className="flex items-center gap-3">
 
                         <div className="relative group">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                            {/* Search Icon */}
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#7a6af6] transition-colors" size={14} />
+
                             <input
                                 type="text"
                                 placeholder="Search customers..."
                                 value={searchTerm}
-                                onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-                                className="pl-9 pr-8 py-2 bg-slate-100/50 focus:bg-white rounded-xl text-xs w-64 outline-none transition-all focus:ring-1 focus:ring-[#7a6af6]"
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="pl-9 pr-10 py-2 bg-slate-100/50 focus:bg-white rounded-xl text-xs w-64 outline-none transition-all focus:ring-1 focus:ring-[#7a6af6]"
                                 autoFocus={!!searchParams.get("search")}
                             />
+
+                            {searchTerm && (
+                                <button
+                                    onClick={() => {
+                                        setSearchTerm("");
+                                        setPage(1);
+                                    }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition-colors"
+                                    title="Clear search"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
                         </div>
                         <div className="relative">
                             <select

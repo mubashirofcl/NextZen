@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
     ChevronLeft, Save, ListChecks, Loader2, Layout,
@@ -35,7 +35,25 @@ const ProductForm = () => {
     const { data: brandOptions } = useAdminBrandsSelection();
 
     const { offers } = useOffers();
-    const productOffers = offers?.filter(o => o.applyFor === "PRODUCT" && o.isActive) || [];
+
+    const productOffers = useMemo(() => {
+        if (!offers) return [];
+
+        const now = new Date();
+
+        return offers.filter(o => {
+            const startDate = new Date(o.startDate);
+            const endDate = new Date(o.endDate);
+
+            return (
+                o.applyFor === "PRODUCT" &&
+                o.isActive &&
+                startDate <= now &&
+                endDate >= now      
+            );
+        });
+    }, [offers]);
+
 
     const createMutation = useCreateProduct();
     const updateMutation = useUpdateProduct();
@@ -56,8 +74,12 @@ const ProductForm = () => {
 
     const selectedCategoryId = watch("categoryId");
     const sizeType = watch("sizeType");
-    const { data: subCategoryData, isLoading: isSubLoading } = useAdminSubCategories({ parentId: selectedCategoryId, isActive: true });
 
+
+    const { data: subCategoryData, isLoading: isSubLoading } = useAdminSubCategories({
+        parentId: selectedCategoryId,
+        isForSelection: true
+    });
     const isInitialized = useRef(false);
 
     useEffect(() => {
@@ -191,35 +213,35 @@ const ProductForm = () => {
                                 <h3 className="text-[10px] font-black text-[#0F172A] uppercase tracking-widest">Primary Identity</h3>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <InputField 
-                                    label="Product Name *" 
-                                    register={register("name", { 
+                                <InputField
+                                    label="Product Name *"
+                                    register={register("name", {
                                         required: "Please provide a name for the product",
                                         minLength: { value: 3, message: "Product name must be at least 3 characters" },
                                         maxLength: { value: 60, message: "Product name must be under 60 characters" }
-                                    })} 
-                                    error={errors.name} 
+                                    })}
+                                    error={errors.name}
                                 />
-                                <SelectField 
-                                    label="Authority Brand *" 
-                                    register={register("brandId", { required: "Please select an associated brand" })} 
-                                    options={brandOptions?.items || brandOptions || []} 
-                                    placeholder="Select Brand" 
-                                    error={errors.brandId} 
+                                <SelectField
+                                    label="Authority Brand *"
+                                    register={register("brandId", { required: "Please select an associated brand" })}
+                                    options={brandOptions?.items || brandOptions || []}
+                                    placeholder="Select Brand"
+                                    error={errors.brandId}
                                 />
                                 <div className="grid grid-cols-2 gap-3 md:col-span-2">
-                                    <SelectField 
-                                        label="Core Category *" 
-                                        register={register("categoryId", { required: "A core category is mandatory" })} 
-                                        options={categoryOptions?.items || categoryOptions || []} 
-                                        placeholder="Select Category" 
+                                    <SelectField
+                                        label="Core Category *"
+                                        register={register("categoryId", { required: "A core category is mandatory" })}
+                                        options={categoryOptions?.items || categoryOptions || []}
+                                        placeholder="Select Category"
                                         error={errors.categoryId}
                                     />
                                     <div className="space-y-1.5">
                                         <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Sub-Category *</label>
-                                        <select 
-                                            {...register("subcategoryId", { required: "A sub-category is required" })} 
-                                            disabled={!selectedCategoryId || isSubLoading} 
+                                        <select
+                                            {...register("subcategoryId", { required: "A sub-category is required" })}
+                                            disabled={!selectedCategoryId || isSubLoading}
                                             className={`w-full bg-white border-2 rounded-[12px] px-3 py-2.5 text-[11px] font-bold text-[#0F172A] outline-none shadow-sm transition-all ${errors.subcategoryId ? 'border-red-500 ring-2 ring-red-50' : 'border-slate-100 focus:border-[#7a6af6]'}`}
                                         >
                                             <option value="">{isSubLoading ? "Synchronizing..." : "Select Sub-Category"}</option>
@@ -230,13 +252,13 @@ const ProductForm = () => {
                                 </div>
                                 <div className="md:col-span-2">
                                     <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Description *</label>
-                                    <textarea 
-                                        {...register("description", { 
+                                    <textarea
+                                        {...register("description", {
                                             required: "A product description is necessary",
                                             minLength: { value: 20, message: "Description must provide at least 20 characters of detail" },
                                             maxLength: { value: 800, message: "Description limit is 800 characters" }
-                                        })} 
-                                        className={`w-full bg-slate-50 border-2 rounded-[12px] p-4 text-xs font-bold text-[#0F172A] h-24 outline-none transition-all ${errors.description ? 'border-red-500 ring-2 ring-red-50' : 'border-slate-100 focus:border-[#7a6af6]'}`} 
+                                        })}
+                                        className={`w-full bg-slate-50 border-2 rounded-[12px] p-4 text-xs font-bold text-[#0F172A] h-24 outline-none transition-all ${errors.description ? 'border-red-500 ring-2 ring-red-50' : 'border-slate-100 focus:border-[#7a6af6]'}`}
                                     />
                                     {errors.description && <p className="text-[9px] text-red-500 font-bold mt-1 uppercase italic tracking-tighter">! {errors.description.message}</p>}
                                 </div>
@@ -266,7 +288,7 @@ const ProductForm = () => {
                                                 {index + 1}
                                             </div>
                                             <input
-                                                {...register(`highlights.${index}`, { 
+                                                {...register(`highlights.${index}`, {
                                                     required: "Field cannot be left empty",
                                                     maxLength: { value: 100, message: "Bullet point too long" }
                                                 })}

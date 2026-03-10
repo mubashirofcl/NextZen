@@ -19,10 +19,12 @@ export const updateProfile = async (req, res) => {
       req.user.userId,
       req.body
     );
-
     return res.status(200).json(result);
   } catch (error) {
-    return res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ 
+      success: false, 
+      message: error.message 
+    });
   }
 };
 

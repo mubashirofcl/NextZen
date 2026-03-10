@@ -9,15 +9,32 @@ import { nxToast } from "../../utils/userToast";
 
 const ForgotPassword = () => {
     const navigate = useNavigate();
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting }
+    } = useForm({
+        mode: "onBlur"
+    });
 
     const onSubmit = async (data) => {
+        const email = data.email.trim().toLowerCase();
+
         try {
-            await requestForgotPassword(data);
-            navigate("/verify-otp", { state: { email: data.email, flow: "forgot_password" } });
+            await requestForgotPassword({ email });
+
+            navigate("/verify-otp", {
+                state: {
+                    email: email,
+                    flow: "forgot_password"
+                },
+                replace: true
+            });
+
             nxToast.success("Verification code sent to your Email");
         } catch (err) {
-            nxToast.security(err.response?.data?.message || "Error sending code");
+            const errorMessage = err.response?.data?.message || "Error sending code";
+            nxToast.security(errorMessage);
         }
     };
 
@@ -32,7 +49,7 @@ const ForgotPassword = () => {
                     </div>
 
                     <header className="mb-8">
-                        <h2 className="text-2xl font-black text-[#0F172A] tracking-tight mb-2">Recovery</h2>
+                        <h2 className="text-2xl font-black text-[#0F172A] tracking-tight mb-2 uppercase">Recovery</h2>
                         <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em]">
                             Enter your email for a code
                         </p>
@@ -44,18 +61,32 @@ const ForgotPassword = () => {
                             <input
                                 type="email"
                                 placeholder="name@example.com"
-                                {...register("email", { required: "Email is required" })}
-                                className="w-full h-14 px-5 bg-gray-50 border-none rounded-xl text-xs text-black font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
+                                {...register("email", {
+                                    required: "Email is required",
+                                    pattern: {
+                                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                        message: "Invalid email address"
+                                    }
+                                })}
+                                className={`w-full h-14 px-5 bg-gray-50 border-2 rounded-xl text-xs text-black font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all ${errors.email ? 'border-red-100' : 'border-transparent'}`}
                             />
-                            {errors.email && <p className="text-red-500 text-[9px] font-bold mt-1 ml-1 uppercase tracking-tighter italic">{errors.email.message}</p>}
+                            {errors.email && (
+                                <p className="text-red-500 text-[9px] font-bold mt-1 ml-1 uppercase tracking-tighter italic">
+                                    {errors.email.message}
+                                </p>
+                            )}
                         </div>
 
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full h-14 bg-[#0F172A] text-white rounded-xl text-[10px] uppercase tracking-[0.3em] font-black shadow-lg hover:bg-black transition-all active:scale-[0.98] disabled:bg-gray-200 mt-2"
+                            className="w-full h-14 bg-[#0F172A] text-white rounded-xl text-[10px] uppercase tracking-[0.3em] font-black shadow-lg hover:bg-black transition-all active:scale-[0.98] disabled:bg-gray-200 mt-2 flex items-center justify-center"
                         >
-                            {isSubmitting ? <Loader2 className="animate-spin w-4 h-4 mx-auto" /> : "Send Code"}
+                            {isSubmitting ? (
+                                <Loader2 className="animate-spin w-5 h-5" />
+                            ) : (
+                                "Send Code"
+                            )}
                         </button>
                     </form>
 

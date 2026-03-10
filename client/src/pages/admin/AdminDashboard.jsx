@@ -13,7 +13,7 @@ import { getDashboardStats } from "../../api/admin/admin.api";
 const COLORS = {
     delivered: '#22c55e',
     pending: '#eab308',
-    canceled: '#ef4444',
+    cancelled: '#eb2525',
     shipped: '#a855f7',
     out_for_delivery: '#3b82f6',
     confirmed: '#2563eb',

@@ -51,7 +51,6 @@ const OrderStatusPage = ({ type = 'success' }) => {
             const isLoaded = await loadRazorpayScript();
             if (!isLoaded) return nxToast.error("Gateway Offline");
 
-            // 🟢 Pass ONLY the orderId. Let the server determine the correct discounted price.
             const { data: sessionData } = await userAxios.post("/user/payment/create-order", {
                 orderId: orderId,
                 isRetry: true
@@ -59,15 +58,12 @@ const OrderStatusPage = ({ type = 'success' }) => {
 
             if (!sessionData.success) return nxToast.error("Could not sync payment");
 
-            // 🟢 UPDATE: Reflect the server's corrected payableAmount on the UI instantly.
-            // If coupon expired, the server recalculated totalAmount and sent it back.
             if (sessionData.payableAmount) {
                 setFetchedOrder(prev => prev ? { ...prev, totalAmount: sessionData.payableAmount } : prev);
             }
 
             const options = {
                 key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-                // 🟢 USE THE AMOUNT RETURNED FROM SERVER (Persisted Discounted Price)
                 amount: sessionData.order.amount,
                 currency: "INR",
                 name: "Next Zen Store",
@@ -80,7 +76,6 @@ const OrderStatusPage = ({ type = 'success' }) => {
                             newRazorpayOrderId: sessionData.order.id
                         });
 
-                        // 🟢 Handle coupon expiry warning from completeRetry
                         if (updateRes.data.warning) {
                             nxToast.warn("Policy Update", updateRes.data.warning);
                         }

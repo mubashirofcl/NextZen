@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOrders } from '../../hooks/user/useOrder';
-import { Package, Clock, Loader2, ChevronRight, Box, AlertTriangle, XCircle, Search, ImageIcon, AlertOctagon } from 'lucide-react';
+import { Package, Clock, Loader2, ChevronRight, Box, AlertTriangle, XCircle, Search, ImageIcon, AlertOctagon, X } from 'lucide-react';
 
 const OrderHistory = () => {
     const navigate = useNavigate();
@@ -62,13 +62,25 @@ const OrderHistory = () => {
                     <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
                         <div className="relative group w-full sm:w-80">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#7a6af6] transition-colors" size={16} />
+
                             <input
                                 type="text"
                                 placeholder="FIND AN ORDER..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full bg-black/40 border border-white/5 rounded-2xl py-3 pl-12 pr-4 text-[10px] font-black uppercase tracking-widest text-white placeholder:text-white/10 focus:outline-none focus:border-[#7a6af6]/50 transition-all"
+                                className="w-full bg-black/40 border border-white/5 rounded-2xl py-3 pl-12 pr-10 text-[10px] font-black uppercase tracking-widest text-white placeholder:text-white/10 focus:outline-none focus:border-[#7a6af6]/50 transition-all"
                             />
+
+                           
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm("")}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-white/20 hover:text-red-400 transition-colors"
+                                    title="Clear Search"
+                                >
+                                    <X size={14} strokeWidth={3} />
+                                </button>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-2xl border border-white/5 w-full sm:w-auto overflow-x-auto no-scrollbar">

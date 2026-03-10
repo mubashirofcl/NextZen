@@ -2,7 +2,8 @@ import React, { useState, useDeferredValue } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     Search, Eye, ShoppingBag, Truck, XCircle, Clock,
-    FileText, CreditCard, ChevronLeft, ChevronRight, AlertOctagon
+    FileText, CreditCard, ChevronLeft, ChevronRight, AlertOctagon,
+    X
 } from "lucide-react";
 
 import AdminSidebar from "../../components/admin/AdminSidebar";
@@ -27,7 +28,7 @@ const AdminOrderManagement = () => {
     const orders = data?.orders ?? [];
     const pagination = {
         page: data?.currentPage ?? 1,
-        pages: Math.max(1, data?.totalPages ?? 1), 
+        pages: Math.max(1, data?.totalPages ?? 1),
         total: data?.totalOrders ?? 0,
     };
 
@@ -58,14 +59,33 @@ const AdminOrderManagement = () => {
 
                     <div className="flex items-center gap-3">
                         <div className="relative group">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                            <Search
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#7a6af6] transition-colors"
+                                size={14}
+                            />
                             <input
                                 type="text"
                                 placeholder="Search ID or Email..."
                                 value={searchTerm}
-                                onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-                                className="pl-9 pr-8 py-2 bg-slate-100 focus:bg-white rounded-xl text-xs w-64 outline-none transition-all border border-transparent focus:border-slate-200"
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="pl-9 pr-10 py-2 bg-slate-100 focus:bg-white rounded-xl text-xs w-64 outline-none transition-all border border-transparent focus:border-slate-200"
                             />
+
+                            {searchTerm && (
+                                <button
+                                    onClick={() => {
+                                        setSearchTerm("");
+                                        setPage(1);
+                                    }}
+                                    type="button"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-0.5 rounded-full hover:bg-slate-200/50"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
                         </div>
                         <select
                             value={statusFilter}
@@ -77,7 +97,7 @@ const AdminOrderManagement = () => {
                             <option value="shipped">Shipped</option>
                             <option value="delivered">Delivered</option>
                             <option value="cancelled">Cancelled</option>
-                            <option value="returns">Returns (Req/App/Ref)</option> 
+                            <option value="returns">Returns (Req/App/Ref)</option>
                             <option value="payment_failed">Payment Failed</option>
                         </select>
                     </div>
@@ -86,7 +106,7 @@ const AdminOrderManagement = () => {
                 <div className="flex-1 flex flex-col gap-3 overflow-hidden">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-3 shrink-0">
                         <StatsCard title="Total Found" value={pagination.total} icon={<ShoppingBag size={18} />} color="blue" />
-  
+
                         <StatsCard title="In Transit (Page)" value={orders.filter(o => o.status === 'shipped').length} icon={<Truck size={18} />} color="blue" />
                         <StatsCard title="Processing (Page)" value={orders.filter(o => o.status === 'pending').length} icon={<Clock size={18} />} color="orange" />
                         <StatsCard title="Issues (Page)" value={orders.filter(o => o.status === 'payment_failed').length} icon={<AlertOctagon size={18} />} color="red" />
@@ -101,7 +121,7 @@ const AdminOrderManagement = () => {
                                 pagination={null}
                                 renderRow={(order) => {
                                     const isFullyCancelled = order.status === 'cancelled';
-                          
+
                                     const isCOD = ['COD', 'cashOnDelivery'].includes(order.paymentMethod);
                                     const displayPaymentStatus = (isCOD && isFullyCancelled) ? "Cancelled" : order.paymentStatus;
 
@@ -132,11 +152,10 @@ const AdminOrderManagement = () => {
                                                 <div className="flex flex-col">
                                                     <p className="text-xs font-black text-[#0F172A]">₹{order.totalAmount?.toLocaleString()}</p>
                                                     <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded border ${
-                                                            displayPaymentStatus === 'Paid' ? 'bg-green-50 text-green-600 border-green-100' :
-                                                            displayPaymentStatus === 'Cancelled' ? 'bg-slate-50 text-slate-400 border-slate-200' :
-                                                            'bg-orange-50 text-orange-600 border-orange-100'
-                                                        }`}>
+                                                        <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded border ${displayPaymentStatus === 'Paid' ? 'bg-green-50 text-green-600 border-green-100' :
+                                                                displayPaymentStatus === 'Cancelled' ? 'bg-slate-50 text-slate-400 border-slate-200' :
+                                                                    'bg-orange-50 text-orange-600 border-orange-100'
+                                                            }`}>
                                                             {displayPaymentStatus}
                                                         </span>
                                                         <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tighter">
@@ -155,7 +174,7 @@ const AdminOrderManagement = () => {
 
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
-                                                  
+
                                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
                                                         {new Date(order.createdAt || order.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </p>
@@ -230,7 +249,7 @@ const SmartPagination = ({ currentPage, totalPages, onPageChange }) => {
 
             {getPageNumbers().map((p, i) => (
                 <button
-                    key={p === '...' ? `dots-${i}` : p} 
+                    key={p === '...' ? `dots-${i}` : p}
                     onClick={() => typeof p === 'number' && onPageChange(p)}
                     disabled={p === '...'}
                     className={`w-8 h-8 flex items-center justify-center rounded-lg text-[10px] font-bold transition-all ${p === currentPage

@@ -1,7 +1,6 @@
 import User from "./user.model.js";
 import OTP from "../common/otp.model.js";
 
-// ==================== USER OPERATIONS ====================
 
 const findByEmail = async (email) => {
   return await User.findOne({ email }).select('+password');
@@ -30,7 +29,7 @@ const updateRefreshToken = async (userId, token) => {
 const findByReferralCode = async (code) => {
   return await User.findOne({ referralCode: code });
 };
-// ==================== OTP OPERATIONS ====================
+
 
 const createOTP = async (email, otp, purpose) => {
   await OTP.deleteMany({ email, purpose, isUsed: false });
@@ -43,9 +42,20 @@ const createOTP = async (email, otp, purpose) => {
   });
 };
 
+
+const findActiveOTPRecord = async (email, purpose) => {
+  return await OTP.findOne({
+    email: email.toLowerCase(),
+    purpose,
+    isUsed: false,
+    expiresAt: { $gt: new Date() },
+  }).sort({ createdAt: -1 });
+};
+
+
 const findValidOTP = async (email, otp, purpose) => {
   return await OTP.findOne({
-    email,
+    email: email.toLowerCase(),
     otp,
     purpose,
     isUsed: false,
@@ -59,7 +69,7 @@ const markOTPAsUsed = async (otpId) => {
 
 const findRecentOTP = async (email, purpose) => {
   return await OTP.findOne({
-    email,
+    email: email.toLowerCase(),
     purpose,
   }).sort({ createdAt: -1 });
 };
@@ -80,6 +90,7 @@ export default {
   updateLastLogin,
   updateRefreshToken,
   createOTP,
+  findActiveOTPRecord, 
   findValidOTP,
   markOTPAsUsed,
   findRecentOTP,

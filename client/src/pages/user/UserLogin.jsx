@@ -41,18 +41,12 @@ const UserLogin = () => {
 
     const handleGoogleSignIn = () => {
         const params = new URLSearchParams(window.location.search);
-        let ref = params.get("ref");
-
-        if (!ref) {
-            ref = localStorage.getItem("pending_referral");
-        }
+        let ref = params.get("ref") || localStorage.getItem("pending_referral");
 
         const backendBaseUrl = "http://localhost:5000/api/auth/google";
-        const finalUrl = ref
-            ? `${backendBaseUrl}?ref=${ref}`
-            : backendBaseUrl;
+        const finalUrl = ref ? `${backendBaseUrl}?ref=${ref}` : backendBaseUrl;
 
-        window.location.href = finalUrl;
+        window.location.replace(finalUrl);
     };
 
     useEffect(() => {
@@ -153,8 +147,8 @@ const UserLogin = () => {
                                     <input
                                         type="email"
                                         placeholder="Enter your email"
-                                        {...register("email", { 
-                                            required: "Email address is required", 
+                                        {...register("email", {
+                                            required: "Email address is required",
                                             pattern: {
                                                 value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
                                                 message: "Please enter a valid email address"
@@ -177,8 +171,8 @@ const UserLogin = () => {
                                         <input
                                             type={showPass ? "text" : "password"}
                                             placeholder="••••••••"
-                                            {...register("password", { 
-                                                required: "Password is required", 
+                                            {...register("password", {
+                                                required: "Password is required",
                                                 minLength: { value: 6, message: "Password must be at least 6 characters" },
                                                 maxLength: { value: 25, message: "Password cannot exceed 25 characters" }
                                             })}

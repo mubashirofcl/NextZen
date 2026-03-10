@@ -7,7 +7,7 @@ export const useWallet = () => {
         queryKey: ["wallet"],
         queryFn: fetchWalletApi,
         select: (data) => data.wallet,
-        staleTime: 1000 * 5,
+        staleTime: 1000 * 60,
         refetchOnWindowFocus: true,
         retry: 2
     });
@@ -19,8 +19,19 @@ export const useAddMoney = () => {
     return useMutation({
         mutationFn: addMoneyToWalletApi,
         onSuccess: (data) => {
+            queryClient.setQueryData(["wallet"], (oldData) => {
+                return {
+                    ...oldData,
+                    wallet: data.wallet 
+                };
+            });
+
             queryClient.invalidateQueries({ queryKey: ["wallet"] }); 
-            nxToast.success("Funds Added", `₹${data.wallet?.transactions[data.wallet.transactions.length - 1].amount} credited to your wallet!`);
+
+            const lastTx = data.wallet?.transactions?.slice(-1)[0];
+            const amount = lastTx?.amount || 0;
+            
+            nxToast.success("Funds Added", `₹${amount} credited to your wallet!`);
         },
         onError: (error) => {
             nxToast.error("Transaction Failed", error.response?.data?.message || "Could not verify payment.");
