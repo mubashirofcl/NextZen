@@ -18,10 +18,8 @@ passport.use(
     },
     async (req, accessToken, refreshToken, profile, done) => {
       try {
-        // 🟢 FIX: Google returns 'state' in req.query. 
-        // Let's add a console log here to verify it's arriving!
         const referralCode = req.query.state || null;
-        console.log("📍 Passport captured referral code:", referralCode);
+        console.log("Passport captured referral code:", referralCode);
 
         const user = await authService.handleGoogleAuth(profile, referralCode);
         return done(null, user);

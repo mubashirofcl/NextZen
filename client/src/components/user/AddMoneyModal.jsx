@@ -3,6 +3,7 @@ import { ArrowLeft, Wallet, CheckCircle2, Lock, Loader2, ShieldCheck, AlertCircl
 import { useAddMoney } from '../../hooks/user/useWallet';
 import userAxios from '../../api/baseAxios';
 import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
 import { loadRazorpayScript } from '../../utils/loadRazorpay';
 
 const presetAmounts = [100, 500, 1000, 2000, 5000];
@@ -72,7 +73,7 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
 
     const handlePayment = async () => {
         if (!validateAmount(finalAmount)) {
-            nxToast.warn("Entry Required", "Please enter a valid amount before proceeding.");
+            nxToast.warn(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Please enter a valid amount before proceeding.");
             return;
         }
 
@@ -82,7 +83,7 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
             if (!isLoaded) {
                 const msg = "Payment Gateway is offline. Please check your connection.";
                 setFailReason(msg);
-                nxToast.error("Gateway Error", msg);
+                nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, msg);
                 setStep('failed');
                 return;
             }
@@ -109,7 +110,7 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
                             amount: finalAmount
                         });
                         setStep('success');
-                        nxToast.success("Funds Added", "Your wallet has been topped up successfully.");
+                        nxToast.success(TOAST_MESSAGES.CHECKOUT.WALLET_FUNDED.title, TOAST_MESSAGES.CHECKOUT.WALLET_FUNDED.message);
                     } catch (err) {
                         setFailReason("Payment was successful, but verification failed. Please contact support.");
                         setStep('failed');
@@ -123,7 +124,7 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
                         setIsProcessing(false);
                         const msg = "Transaction was cancelled or interrupted.";
                         setFailReason(msg);
-                        nxToast.info("Payment Cancelled", "You closed the payment window.");
+                        nxToast.info(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "You closed the payment window.");
                         setStep('failed');
                     } 
                 }
@@ -134,7 +135,7 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
             setIsProcessing(false);
             const msg = "Could not initialize secure gateway.";
             setFailReason(msg);
-            nxToast.error("Security Block", msg);
+            nxToast.error(TOAST_MESSAGES.SYSTEM.SECURITY_ALERT.title, msg);
             setStep('failed');
         }
     };

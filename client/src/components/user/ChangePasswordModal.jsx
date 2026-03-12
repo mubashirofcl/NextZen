@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Lock, Eye, EyeOff, ShieldAlert, Loader2, CheckCircle2, Info } from 'lucide-react';
 import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
 
 const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
     const [showCurrent, setShowCurrent] = useState(false);
@@ -37,11 +38,11 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
                 currentPassword: data.currentPassword,
                 newPassword: data.newPassword
             });
-            nxToast.success("Success", "Security credentials updated successfully.");
+            nxToast.success(TOAST_MESSAGES.PROFILE.PASSWORD_UPDATED.title, TOAST_MESSAGES.PROFILE.PASSWORD_UPDATED.message);
             onClose();
         } catch (err) {
             const msg = err.response?.data?.message || "Verification failed. Please check your current password.";
-            nxToast.security("Update Denied", msg);
+            nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, msg);
             setBackendError(msg);
         }
     };

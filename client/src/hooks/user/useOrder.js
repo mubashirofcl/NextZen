@@ -13,6 +13,7 @@ export const useOrder = () => {
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
+            queryClient.invalidateQueries({ queryKey: ["wallet"] });
         },
         onError: (error) => {
             nxToast.security("Protocol Breach", error.response?.data?.message || "Sync Error");
@@ -22,14 +23,14 @@ export const useOrder = () => {
     return { placeOrder };
 };
 
-export const useOrders = () => {
+export const useOrders = (page = 1, limit = 10) => {
     return useQuery({
-        queryKey: ["orders"],
+        queryKey: ["orders", page, limit],
         queryFn: async () => {
-            const { data } = await userAxios.get("/users/orders");
-            return data.orders || [];
+            const { data } = await userAxios.get(`/users/orders?page=${page}&limit=${limit}`);
+            return data;
         },
-        staleTime: 5000,
+        staleTime: 0,
         refetchOnWindowFocus: true,
     });
 };
@@ -42,27 +43,26 @@ export const useOrderDetail = (orderId) => {
             return data.order;
         },
         enabled: !!orderId,
-        refetchInterval: (query) =>
-            query.state.data?.paymentStatus === 'Pending' ? 3000 : false,
+        refetchInterval: (query) => {
+            const order = query.state.data;
+            if (!order) return false;
+            return order.paymentStatus === 'Pending' || order.orderStatus === 'Pending' ? 3000 : false;
+        },
+        refetchOnMount: "always",
     });
 };
 
 export const useRetryPayment = () => {
     return useMutation({
         mutationFn: async (orderId) => {
-
             const { data } = await userAxios.post("/user/payment/create-order", {
                 orderId,
                 isRetry: true
             });
             return data;
         },
-        onSuccess: (data) => {
-
-        },
         onError: (err) => {
             const message = err.response?.data?.message || "Payment re-initialization failed";
-
             if (message.toLowerCase().includes("stock") || message.toLowerCase().includes("blocked")) {
                 nxToast.security("Order Invalid", message);
             } else {
@@ -84,10 +84,13 @@ export const useCompleteRetry = () => {
             });
             return data;
         },
-        onSuccess: (data, variables) => {
-            queryClient.invalidateQueries({ queryKey: ["order", variables.orderId] });
-            queryClient.invalidateQueries({ queryKey: ["orders"] });
-            queryClient.invalidateQueries({ queryKey: ["inventory"] }); 
+        onSuccess: async (data, variables) => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ["order", variables.orderId] }),
+                queryClient.invalidateQueries({ queryKey: ["orders"] }),
+                queryClient.invalidateQueries({ queryKey: ["inventory"] }),
+                queryClient.invalidateQueries({ queryKey: ["wallet"] })
+            ]);
 
             if (data.warning) {
                 nxToast.warn("Policy Update", data.warning);
@@ -109,7 +112,8 @@ export const useCancelItem = () => {
             const { data } = await userAxios.patch(`/users/orders/${orderId}/items/${itemId}/cancel`, { reason });
             return data;
         },
-        onSuccess: (_, variables) => {
+        onSuccess: async (_, variables) => {
+            await queryClient.invalidateQueries({ queryKey: ["wallet"] });
             queryClient.invalidateQueries({ queryKey: ["order", variables.orderId] });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
             nxToast.success("Item Cancelled", "Refund credited to wallet.");
@@ -142,10 +146,11 @@ export const useCancelFullOrder = () => {
             const { data } = await userAxios.patch(`/users/orders/${orderId}/cancel-all`, { reason });
             return data;
         },
-        onSuccess: (_, variables) => {
+        onSuccess: async (_, variables) => {
+            await queryClient.invalidateQueries({ queryKey: ["wallet"] });
             queryClient.invalidateQueries({ queryKey: ["order", variables.orderId] });
             queryClient.invalidateQueries({ queryKey: ["orders"] });
-            nxToast.success("Order Voided", "All items cancelled.");
+            nxToast.success("Order Voided", "All items cancelled and refunded.");
         }
     });
 };

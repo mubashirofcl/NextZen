@@ -49,7 +49,7 @@ const AdminSidebar = () => {
                     onClick={() => navigate("/admin/dashboard")}
                 />
 
-                {/* --- PRODUCTS SECTION --- */}
+
                 <DropdownItem
                     icon={<Package size={16} />}
                     label="Products"
@@ -65,7 +65,6 @@ const AdminSidebar = () => {
                     currentPath={location.pathname}
                 />
 
-                {/* --- ORDERS SECTION --- */}
                 <DropdownItem
                     icon={<ShoppingBag size={16} />}
                     label="Orders"
@@ -81,7 +80,7 @@ const AdminSidebar = () => {
 
                 <NavItem icon={<Users size={16} />} label="Customers" active={isActive("/admin/customers")} onClick={() => navigate("/admin/customers")} />
 
-                {/* --- PROMOTIONS SECTION --- */}
+
                 <DropdownItem
                     icon={<TicketPercent size={16} />}
                     label="Promotions"
@@ -102,13 +101,6 @@ const AdminSidebar = () => {
                     onClick={() => navigate("/admin/sales-report")}
                 />
 
-                {/* 🟢 UPDATED SETTINGS SECTION */}
-                <NavItem 
-                    icon={<Settings size={16} />} 
-                    label="Settings" 
-                    active={isActive("/admin/settings")} 
-                    onClick={() => navigate("/admin/settings")} 
-                />
             </nav>
 
             <div onClick={handleLogout} className="m-3 p-3 rounded-xl text-[11px] font-bold uppercase tracking-widest hover:text-white cursor-pointer transition-all flex items-center gap-3 hover:bg-red-500/10 text-slate-400 border border-transparent hover:border-red-500/20">

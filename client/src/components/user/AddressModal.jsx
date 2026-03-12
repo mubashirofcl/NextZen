@@ -11,6 +11,7 @@ import {
     Edit3,
 } from "lucide-react";
 import { nxToast } from "../../utils/userToast";
+import TOAST_MESSAGES from "../../utils/toastMessages";
 
 const AddressModal = ({
     isOpen,
@@ -68,14 +69,14 @@ const AddressModal = ({
             await onSubmit(payload);
 
             nxToast.success(
-                mode === "add" ? "Address Saved" : "Address Updated",
-                mode === "add" ? "New delivery address added successfully." : "Your address details have been updated."
+                mode === "add" ? TOAST_MESSAGES.PROFILE.ADDRESS_ADDED.title : TOAST_MESSAGES.PROFILE.ADDRESS_UPDATED.title,
+                mode === "add" ? TOAST_MESSAGES.PROFILE.ADDRESS_ADDED.message : TOAST_MESSAGES.PROFILE.ADDRESS_UPDATED.message
             );
             onClose();
         } catch (err) {
-            const msg = err.response?.data?.message || "System error. Try again.";
+            const msg = err.response?.data?.message || TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message;
             setBackendError(msg);
-            nxToast.security("Security Alert", msg);
+            nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, msg);
         }
     };
 

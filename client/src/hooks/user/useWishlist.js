@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import userAxios from "../../api/user/userAxios";
 import { nxToast } from "../../utils/userToast";
+import TOAST_MESSAGES from "../../utils/toastMessages";
 
 export const useWishlist = () => {
     const queryClient = useQueryClient();
@@ -27,13 +28,16 @@ export const useWishlist = () => {
             queryClient.invalidateQueries({ queryKey: ["wishlist"] });
             refetch();
             if (data.action) {
-                const msg = data.action === 'added' ? "Added to Archive" : "Removed from Archive";
-                nxToast.success("Success", msg);
+                const isAdded = data.action === 'added';
+                nxToast.success(
+                    isAdded ? TOAST_MESSAGES.CART_WISHLIST.ADDED_TO_WISHLIST.title : TOAST_MESSAGES.CART_WISHLIST.REMOVED.title,
+                    isAdded ? TOAST_MESSAGES.CART_WISHLIST.ADDED_TO_WISHLIST.message : TOAST_MESSAGES.CART_WISHLIST.REMOVED.message
+                );
             }
         },
         onError: (err) => {
-            const msg = err.response?.data?.message || "Sync failed.";
-            nxToast.security("Archive Error", msg);
+            const msg = err.response?.data?.message || TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message;
+            nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, msg);
         }
     });
 
@@ -47,7 +51,7 @@ export const useWishlist = () => {
             refetch();
         },
         onError: (err) => {
-            nxToast.security("Error", err.response?.data?.message || "Could not remove item.");
+            nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, err.response?.data?.message || TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message);
         }
     });
 
@@ -56,10 +60,10 @@ export const useWishlist = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['wishlist'] });
             refetch();
-            nxToast.success("Archive Purged", "All items removed.");
+            nxToast.success(TOAST_MESSAGES.CART_WISHLIST.PURGED.title, TOAST_MESSAGES.CART_WISHLIST.PURGED.message);
         },
         onError: (err) => {
-            nxToast.error("Action Blocked", err.response?.data?.message || "Purge failed.");
+            nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, err.response?.data?.message || TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message);
         }
     });
 

@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { requestSignupOTP } from "../../api/user/user.api";
 import { nxToast } from "../../utils/userToast";
+import TOAST_MESSAGES from "../../utils/toastMessages";
 
 const UserSignup = () => {
     const navigate = useNavigate();
@@ -56,7 +57,7 @@ const UserSignup = () => {
                 purpose: "SIGNUP"
             });
 
-            nxToast.success("Verification Sent", "A fresh security code is waiting in your inbox.");
+            nxToast.success(TOAST_MESSAGES.VERIFICATION.OTP_SENT.title, TOAST_MESSAGES.VERIFICATION.OTP_SENT.message);
 
             navigate("/verify-otp", {
                 state: {
@@ -69,9 +70,9 @@ const UserSignup = () => {
                 replace: true
             });
         } catch (err) {
-            const errorMsg = err.response?.data?.message || "We encountered a problem. Please try again.";
+            const errorMsg = err.response?.data?.message || TOAST_MESSAGES.AUTH.SIGNUP_INTERRUPTED.message;
             setServerError(errorMsg);
-            nxToast.error("Signup Interrupted", errorMsg);
+            nxToast.security(TOAST_MESSAGES.AUTH.SIGNUP_INTERRUPTED.title, errorMsg);
         }
     };
 

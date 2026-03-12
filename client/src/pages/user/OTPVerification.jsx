@@ -9,6 +9,7 @@ import { setUser } from '../../store/user/authSlice';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
 import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
 
 const OTP_COOLDOWN = 60; // seconds
 
@@ -57,7 +58,7 @@ const OTPVerification = () => {
     // Redirect if session is invalid
     useEffect(() => {
         if (!email || !flow) {
-            nxToast.security('Invalid access session');
+            nxToast.security(TOAST_MESSAGES.AUTH.ACCESS_DENIED.title, TOAST_MESSAGES.AUTH.ACCESS_DENIED.message);
             navigate('/login', { replace: true });
         }
     }, [email, flow, navigate]);
@@ -105,7 +106,7 @@ const OTPVerification = () => {
     const handleVerify = async () => {
         const otpString = otp.join('');
         if (otpString.length !== 6) {
-            nxToast.security('Please enter the 6-digit code');
+            nxToast.security(TOAST_MESSAGES.VERIFICATION.MISSING_OTP.title, TOAST_MESSAGES.VERIFICATION.MISSING_OTP.message);
             return;
         }
 
@@ -119,22 +120,22 @@ const OTPVerification = () => {
                 });
                 localStorage.removeItem("pending_referral");
                 localStorage.removeItem(storageKey); // Clear timer
-                nxToast.success('Account verified successfully!');
+                nxToast.success(TOAST_MESSAGES.VERIFICATION.ACCOUNT_VERIFIED.title, TOAST_MESSAGES.VERIFICATION.ACCOUNT_VERIFIED.message);
                 navigate('/login', { replace: true });
             } else if (flow === 'forgot_password') {
                 await verifyForgotPasswordOTP({ email, otp: otpString, purpose: "FORGOT_PASSWORD" });
                 localStorage.removeItem(storageKey); // Clear timer
-                nxToast.success('Email verified! Set your new password.');
+                nxToast.success(TOAST_MESSAGES.VERIFICATION.PASSWORD_SET.title, TOAST_MESSAGES.VERIFICATION.PASSWORD_SET.message);
                 navigate('/reset-password', { state: { email, otp: otpString }, replace: true });
             } else if (flow === 'email_change') {
                 const response = await verifyEmailChange({ email, otp: otpString, purpose: "EMAIL_CHANGE" });
                 localStorage.removeItem(storageKey); // Clear timer
                 dispatch(setUser(response.data.user));
-                nxToast.success('Email updated successfully');
+                nxToast.success(TOAST_MESSAGES.VERIFICATION.EMAIL_UPDATED.title, TOAST_MESSAGES.VERIFICATION.EMAIL_UPDATED.message);
                 navigate('/profile/info', { replace: true });
             }
         } catch (error) {
-            nxToast.security(error.response?.data?.message || 'Invalid verification code');
+            nxToast.security(TOAST_MESSAGES.VERIFICATION.INVALID_OTP.title, error.response?.data?.message || TOAST_MESSAGES.VERIFICATION.INVALID_OTP.message);
             setOtp(['', '', '', '', '', '']);
             document.getElementById('otp-0')?.focus();
         } finally {
@@ -150,7 +151,7 @@ const OTPVerification = () => {
             else if (flow === 'forgot_password') await resendForgotPasswordOTP({ email, purpose: "FORGOT_PASSWORD" });
             else if (flow === 'email_change') await resendEmailChangeOTP({ email, purpose: "EMAIL_CHANGE" });
 
-            nxToast.success('A new code has been sent');
+            nxToast.success(TOAST_MESSAGES.VERIFICATION.OTP_SENT.title, TOAST_MESSAGES.VERIFICATION.OTP_SENT.message);
             
             // 🟢 FORCE NEW STORAGE TIMESTAMP
             startNewTimer();
@@ -158,7 +159,7 @@ const OTPVerification = () => {
             setOtp(['', '', '', '', '', '']);
             document.getElementById('otp-0')?.focus();
         } catch (error) {
-            nxToast.security(error.response?.data?.message || 'Failed to resend code');
+            nxToast.security(TOAST_MESSAGES.VERIFICATION.RESEND_FAILED.title, error.response?.data?.message || TOAST_MESSAGES.VERIFICATION.RESEND_FAILED.message);
         } finally {
             setIsResending(false);
         }

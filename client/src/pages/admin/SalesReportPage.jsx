@@ -17,8 +17,10 @@ import { getSalesReport } from '../../api/admin/admin.api';
 
 const SalesReportPage = () => {
     const navigate = useNavigate();
-    const [filter, setFilter] = useState('thisMonth');
+    const [filter, setFilter] = useState('today');
     const [customDates, setCustomDates] = useState({ start: '', end: '' });
+
+    const today = new Date().toISOString().split('T')[0];
 
     const { data: response, isLoading } = useQuery({
         queryKey: ['salesReport', filter, customDates],
@@ -30,7 +32,7 @@ const SalesReportPage = () => {
                 params.endDate = customDates.end;
             }
             const { data } = await getSalesReport(params);
-            
+
             return data.data[0] || {
                 salesCount: 0,
                 totalOrderAmount: 0,
@@ -47,13 +49,13 @@ const SalesReportPage = () => {
     });
 
     const report = response || {
-        salesCount: 0, 
-        totalOrderAmount: 0, 
-        productRevenue: 0, 
+        salesCount: 0,
+        totalOrderAmount: 0,
+        productRevenue: 0,
         totalDeliveryFees: 0,
-        productDiscount: 0, 
-        couponDiscount: 0, 
-        recentOrders: [], 
+        productDiscount: 0,
+        couponDiscount: 0,
+        recentOrders: [],
         chartData: []
     };
 
@@ -80,12 +82,14 @@ const SalesReportPage = () => {
                             <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-right-2">
                                 <input
                                     type="date"
+                                    max={today}
                                     className="bg-transparent text-[9px] font-black uppercase p-1 outline-none cursor-pointer"
                                     onChange={(e) => setCustomDates(prev => ({ ...prev, start: e.target.value }))}
                                 />
                                 <span className="text-slate-300 font-bold">-</span>
                                 <input
                                     type="date"
+                                    max={today}
                                     className="bg-transparent text-[9px] font-black uppercase p-1 outline-none cursor-pointer"
                                     onChange={(e) => setCustomDates(prev => ({ ...prev, end: e.target.value }))}
                                 />
@@ -107,46 +111,46 @@ const SalesReportPage = () => {
                 </header>
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4 pb-10">
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <StatCard 
-                            title="Total Orders" 
-                            value={report.salesCount} 
-                            sub="Paid Transactions" 
-                            icon={<ShoppingBag size={18} />} 
-                            color="text-purple-600 bg-purple-50" 
+                        <StatCard
+                            title="Total Orders"
+                            value={report.salesCount}
+                            sub="Paid Transactions"
+                            icon={<ShoppingBag size={18} />}
+                            color="text-purple-600 bg-purple-50"
                         />
-                        <StatCard 
-                            title="Product Sales" 
-                            value={report.productRevenue} 
-                            sub="Goods Revenue" 
-                            isPrice 
-                            icon={<Box size={18} />} 
-                            color="text-blue-600 bg-blue-50" 
+                        <StatCard
+                            title="Product Sales"
+                            value={report.productRevenue}
+                            sub="Goods Revenue"
+                            isPrice
+                            icon={<Box size={18} />}
+                            color="text-blue-600 bg-blue-50"
                         />
-                        <StatCard 
-                            title="Shipping Fees" 
-                            value={report.totalDeliveryFees} 
-                            sub="Logistics Income" 
-                            isPrice 
-                            icon={<Truck size={18} />} 
-                            color="text-amber-600 bg-amber-50" 
+                        <StatCard
+                            title="Shipping Fees"
+                            value={report.totalDeliveryFees}
+                            sub="Logistics Income"
+                            isPrice
+                            icon={<Truck size={18} />}
+                            color="text-amber-600 bg-amber-50"
                         />
-                        <StatCard 
-                            title="Net Revenue" 
-                            value={report.totalOrderAmount} 
-                            sub="Total Earnings" 
-                            isPrice 
-                            icon={<Banknote size={18} />} 
-                            color="text-green-600 bg-green-50" 
+                        <StatCard
+                            title="Net Revenue"
+                            value={report.totalOrderAmount}
+                            sub="Total Earnings"
+                            isPrice
+                            icon={<Banknote size={18} />}
+                            color="text-green-600 bg-green-50"
                         />
-                        <StatCard 
-                            title="Total Savings" 
-                            value={report.productDiscount + report.couponDiscount} 
-                            sub="Price Deductions" 
-                            isPrice 
-                            icon={<Tag size={18} />} 
-                            color="text-red-600 bg-red-50" 
+                        <StatCard
+                            title="Total Savings"
+                            value={report.productDiscount + report.couponDiscount}
+                            sub="Price Deductions"
+                            isPrice
+                            icon={<Tag size={18} />}
+                            color="text-red-600 bg-red-50"
                         />
                     </div>
 
@@ -234,8 +238,8 @@ const SalesReportPage = () => {
                                                 <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter border ${order.status?.toLowerCase() === 'returned'
                                                     ? 'bg-red-50 text-red-600 border-red-100'
                                                     : order.status?.toLowerCase() === 'cancelled'
-                                                    ? 'bg-slate-50 text-slate-400 border-slate-200'
-                                                    : 'bg-green-50 text-green-600 border-green-100'
+                                                        ? 'bg-slate-50 text-slate-400 border-slate-200'
+                                                        : 'bg-green-50 text-green-600 border-green-100'
                                                     }`}>
                                                     {order.status}
                                                 </span>

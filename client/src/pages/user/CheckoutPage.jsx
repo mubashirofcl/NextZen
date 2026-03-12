@@ -17,6 +17,7 @@ import {
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
 import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
 import OrderConfirmModal from '../../components/user/OrderConfirmModal';
 import AddressModal from '../../components/user/AddressModal';
 import { loadRazorpayScript } from '../../utils/loadRazorpay';
@@ -78,7 +79,7 @@ const CheckoutPage = () => {
             const isStillValid = availableCoupons.some(c => c.code === appliedCoupon.code);
             if (!isStillValid) {
                 setAppliedCoupon(null);
-                nxToast.error("Coupon Expired", "The applied coupon is no longer available.");
+                nxToast.security(TOAST_MESSAGES.CHECKOUT.INVALID_COUPON.title, TOAST_MESSAGES.CHECKOUT.INVALID_COUPON.message);
             }
         }
     }, [availableCoupons, appliedCoupon]);
@@ -132,7 +133,7 @@ const CheckoutPage = () => {
                 setAppliedCoupon(data.coupon);
                 setCouponInput("");
                 setShowCouponList(false);
-                nxToast.success("Coupon Applied", `${data.coupon.code} applied successfully!`);
+                nxToast.success(TOAST_MESSAGES.CHECKOUT.COUPON_APPLIED.title, `${data.coupon.code} applied successfully!`);
             }
         } catch (err) {
             setCouponError(err.response?.data?.message || "Invalid or expired coupon code.");
@@ -145,7 +146,7 @@ const CheckoutPage = () => {
         setAppliedCoupon(null);
         setCouponInput("");
         setCouponError("");
-        nxToast.success("Coupon removed");
+        nxToast.success(TOAST_MESSAGES.CHECKOUT.COUPON_REMOVED.title, TOAST_MESSAGES.CHECKOUT.COUPON_REMOVED.message);
     };
 
     useEffect(() => {
@@ -163,7 +164,7 @@ const CheckoutPage = () => {
     const handleOnlinePayment = async (orderPayload) => {
         try {
             const isLoaded = await loadRazorpayScript();
-            if (!isLoaded) return nxToast.security("Payment gateway offline");
+            if (!isLoaded) return nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Payment gateway offline");
             
             const { data } = await userAxios.post("/user/payment/create-order", {
                 amount: financials.finalTotal,
@@ -171,7 +172,7 @@ const CheckoutPage = () => {
                 totals: financials,
                 orderId: `TMP_${Date.now()}`
             });
-            if (!data.success) return nxToast.security("Payment initialization failed");
+            if (!data.success) return nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Payment initialization failed");
 
             const options = {
                 key: import.meta.env.VITE_RAZORPAY_KEY_ID,
@@ -194,7 +195,7 @@ const CheckoutPage = () => {
                             navigate(`/checkout/success/${finalRes.orderId}`, { replace: true });
                         }
                     } catch (err) {
-                        nxToast.security("Payment synchronization error");
+                        nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Payment synchronization error");
                         setIsProcessing(false);
                     }
                 },
@@ -218,16 +219,16 @@ const CheckoutPage = () => {
             };
             new window.Razorpay(options).open();
         } catch (error) {
-            nxToast.security("Something went wrong. Please try again.");
+            nxToast.security(TOAST_MESSAGES.SYSTEM.SERVER_ERROR.title, TOAST_MESSAGES.SYSTEM.SERVER_ERROR.message);
             setIsProcessing(false);
         }
     };
 
     const handleConfirmRequest = () => {
-        if (hasInventoryConflict) return nxToast.security("Item availability conflict detected");
-        if (!selectedAddress) return nxToast.security("Please select a delivery address");
+        if (hasInventoryConflict) return nxToast.security(TOAST_MESSAGES.PRODUCT.OUT_OF_STOCK.title, "Item availability conflict detected");
+        if (!selectedAddress) return nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Please select a delivery address");
         if (paymentMethod === 'wallet' && (wallet?.balance || 0) < financials.finalTotal) {
-            return nxToast.security("Insufficient wallet balance");
+            return nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Insufficient wallet balance");
         }
         setFrozenTotals({ ...financials });
         setIsConfirmModalOpen(true);
@@ -280,11 +281,11 @@ const CheckoutPage = () => {
             setIsProcessing(true);
             if (addressToEdit) {
                 await updateAddress(addressToEdit._id, data);
-                nxToast.success("Address updated successfully");
+                nxToast.success(TOAST_MESSAGES.PROFILE.ADDRESS_UPDATED.title, TOAST_MESSAGES.PROFILE.ADDRESS_UPDATED.message);
             } else {
 
                 await createAddress(data);
-                nxToast.success("New address added successfully");
+                nxToast.success(TOAST_MESSAGES.PROFILE.ADDRESS_ADDED.title, TOAST_MESSAGES.PROFILE.ADDRESS_ADDED.message);
             }
 
             await queryClient.invalidateQueries({ queryKey: ["addresses"] });
@@ -293,7 +294,7 @@ const CheckoutPage = () => {
             setIsAddressModalOpen(false);
             setAddressToEdit(null);
         } catch (err) {
-            nxToast.error(err.response?.data?.message || "Failed to save address");
+            nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, err.response?.data?.message || "Failed to save address");
         } finally {
             setIsProcessing(false);
         }

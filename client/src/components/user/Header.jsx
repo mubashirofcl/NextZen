@@ -5,6 +5,7 @@ import { ShoppingBag, LogOut, Settings, ChevronDown, Heart, Ticket, Search, X, P
 import { clearUser } from '../../store/user/authSlice';
 import { userLogout } from '../../api/user/user.api';
 import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
 import { useCart } from '../../hooks/user/useCart';
 import { useWishlist } from '../../hooks/user/useWishlist';
 import { useUserCategories } from '../../hooks/user/useUserCategories';
@@ -94,7 +95,7 @@ const Header = () => {
 
     const handleProtectedNavigation = (path) => {
         if (!isAuthenticated) {
-            nxToast.security("Access Restricted", "Please login to access your personal bag.");
+            nxToast.security(TOAST_MESSAGES.AUTH.ACCESS_DENIED.title, TOAST_MESSAGES.AUTH.ACCESS_DENIED.message);
             navigate('/login');
             return;
         }
@@ -127,7 +128,7 @@ const Header = () => {
         try {
             await userLogout();
             dispatch(clearUser());
-            nxToast.success("Successfully Logged out.");
+            nxToast.success(TOAST_MESSAGES.AUTH.LOGOUT_SUCCESS.title, TOAST_MESSAGES.AUTH.LOGOUT_SUCCESS.message);
             navigate('/');
         } catch (error) {
             dispatch(clearUser());

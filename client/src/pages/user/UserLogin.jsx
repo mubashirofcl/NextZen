@@ -8,6 +8,7 @@ import { userLogin } from "../../api/user/user.api";
 import { fetchUser } from "../../store/user/authSlice";
 import BlockedModal from "../../components/user/BlockedModal";
 import { nxToast } from "../../utils/userToast";
+import TOAST_MESSAGES from "../../utils/toastMessages";
 
 const UserLogin = () => {
     const navigate = useNavigate();
@@ -76,8 +77,8 @@ const UserLogin = () => {
             if (!showBlockedModal) {
                 navigate(from, { replace: true });
                 nxToast.success(
-                    "Welcome Back!",
-                    "You have signed in successfully. Enjoy your shopping!"
+                    TOAST_MESSAGES.AUTH.LOGIN_SUCCESS.title,
+                    TOAST_MESSAGES.AUTH.LOGIN_SUCCESS.message
                 );
             }
         } catch (loginErr) {
@@ -87,9 +88,9 @@ const UserLogin = () => {
                 setShowBlockedModal(true);
                 return;
             }
-            const errorMsg = res?.data?.message || "Please check your email and password.";
+            const errorMsg = res?.data?.message || TOAST_MESSAGES.AUTH.INVALID_CREDENTIALS.message;
             setApiError(errorMsg);
-            nxToast.error("Login Failed", errorMsg);
+            nxToast.security(TOAST_MESSAGES.AUTH.INVALID_CREDENTIALS.title, errorMsg);
         }
     };
 

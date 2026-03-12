@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Camera, AlertCircle, Loader2, Info } from 'lucide-react';
 import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
 
 const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
     const fileInputRef = useRef(null);
@@ -47,14 +48,14 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
         const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
         if (!validTypes.includes(file.type)) {
             setBackendError("Please use a standard image format (JPG, PNG, or WebP).");
-            nxToast.error("Format Error", "The selected file type is not supported.");
+            nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "The selected file type is not supported.");
             e.target.value = null;
             return;
         }
 
         if (file.size > 2 * 1024 * 1024) {
             setBackendError("The image is too large. Please select a file smaller than 2MB.");
-            nxToast.warn("File Size Alert", "Profile images should be under 2MB for best performance.");
+            nxToast.warn(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Profile images should be under 2MB for best performance.");
             e.target.value = null;
             return;
         }
@@ -63,7 +64,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
         const reader = new FileReader();
         reader.onload = () => setPreviewImage(reader.result);
         reader.readAsDataURL(file);
-        nxToast.success("Success", "Photo prepared for update.");
+        nxToast.success(TOAST_MESSAGES.PROFILE.PROFILE_UPDATED.title, "Photo prepared for update.");
     };
 
     const onSubmit = async (data) => {
@@ -81,7 +82,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
 
             await onUpdate(payload);
 
-            nxToast.success("Update Complete");
+            nxToast.success(TOAST_MESSAGES.PROFILE.PROFILE_UPDATED.title, TOAST_MESSAGES.PROFILE.PROFILE_UPDATED.message);
             onClose();
         } catch (err) {
             const serverMessage = err.response?.data?.message || err.message || "Internal system error.";
@@ -104,7 +105,7 @@ const EditProfileModal = ({ isOpen, user, onClose, onUpdate }) => {
                     message: serverMessage
                 }, { shouldFocus: true });
             }
-            nxToast.error("Update Blocked", serverMessage);
+            nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, serverMessage);
         }
     }
 

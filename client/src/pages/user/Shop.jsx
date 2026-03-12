@@ -12,6 +12,7 @@ import { useUserBrands } from "../../hooks/user/useUserBrands";
 import { useUserSubCategories } from "../../hooks/user/useUserSubCategories";
 import { useWishlist } from '../../hooks/user/useWishlist';
 import { nxToast } from "../../utils/userToast";
+import TOAST_MESSAGES from "../../utils/toastMessages";
 
 const FilterDropdown = ({ label, children, isOpen, onClick, variant = "default" }) => {
     return (
@@ -52,7 +53,7 @@ const ProductCard = ({ product }) => {
 
     const handleWishlistToggle = (e) => {
         e.stopPropagation();
-        if (!isAuthenticated) return nxToast.security("Access Denied", "Please login to save items.");
+        if (!isAuthenticated) return nxToast.security(TOAST_MESSAGES.AUTH.ACCESS_DENIED.title, TOAST_MESSAGES.AUTH.ACCESS_DENIED.message);
         toggleWishlist(pId, vId);
     };
 

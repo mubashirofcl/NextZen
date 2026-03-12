@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import {
     ShoppingBag, Banknote, Users, Package,
     Clock, AlertCircle, TrendingUp, ChevronRight, Loader2,
-    Medal, BarChart3, Star, ShieldCheck
+    Medal, BarChart3, Star, ShieldCheck, Calendar
 } from 'lucide-react';
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { getDashboardStats } from "../../api/admin/admin.api";
@@ -25,17 +25,30 @@ const COLORS = {
 const AdminDashboard = () => {
     const navigate = useNavigate();
 
+    const [filter, setFilter] = useState('today');
+    const [customDates, setCustomDates] = useState({ start: '', end: '' });
+    const today = new Date().toISOString().split('T')[0];
+
+
     const { data: response, isLoading, isError } = useQuery({
-        queryKey: ['dashboardStats'],
+        queryKey: ['dashboardStats', filter, customDates],
         queryFn: async () => {
-            const result = await getDashboardStats();
+            const params = { range: filter };
+            if (filter === 'custom') {
+                if (!customDates.start || !customDates.end) return null;
+                params.startDate = customDates.start;
+                params.endDate = customDates.end;
+            }
+            const result = await getDashboardStats(params);
             return result.data;
         },
+        placeholderData: (previousData) => previousData,
+        enabled: filter !== 'custom' || (!!customDates.start && !!customDates.end),
         retry: false,
     });
 
     const stats = response || {
-        totals: { totalRevenue: 0, totalOrders: 0 },
+        totals: { totalRevenue: 0, totalOrders: 0, activeUsers: 0, listedProducts: 0 },
         statusDistribution: [],
         recentOrders: [],
         returnRequests: [],
@@ -43,7 +56,7 @@ const AdminDashboard = () => {
         topBrands: []
     };
 
-    if (isLoading) return (
+    if (isLoading && !response) return (
         <div className="h-screen w-full flex flex-col items-center justify-center bg-[#F8FAFC]">
             <div className="relative flex items-center justify-center mb-4">
                 <div className="absolute w-16 h-16 border-4 border-[#7a6af6]/20 border-t-[#7a6af6] rounded-full animate-spin"></div>
@@ -67,13 +80,13 @@ const AdminDashboard = () => {
 
             <main className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6 pb-10">
 
-                <header className="w-full bg-white border border-slate-100 px-6 py-4 rounded-2xl shadow-sm flex justify-between items-center animate-in fade-in slide-in-from-top-2 duration-500">
+                <header className="w-full bg-white border border-slate-100 px-6 py-4 rounded-2xl shadow-sm flex flex-wrap justify-between items-center animate-in fade-in slide-in-from-top-2 duration-500 gap-4">
                     <div className="flex items-center gap-4">
                         <div className="p-2 bg-slate-50 rounded-xl border border-slate-100">
                             <ShieldCheck size={18} className="text-[#7a6af6]" />
                         </div>
                         <div>
-                            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight leading-none">
+                            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight leading-none italic">
                                 Command <span className="text-[#7a6af6]">Center</span>
                             </h2>
                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">
@@ -82,26 +95,76 @@ const AdminDashboard = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 bg-slate-50 pl-3 pr-2 py-1.5 rounded-full border border-slate-100">
-                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">SUPER ADMIN</span>
-                        <div className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    <div className="flex flex-wrap items-center gap-3">
+                        {filter === 'custom' && (
+                            <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200 animate-in fade-in zoom-in-95">
+                                <input
+                                    type="date"
+                                    max={today}
+                                    className="bg-transparent text-[9px] font-black uppercase p-1 outline-none cursor-pointer"
+                                    onChange={(e) => setCustomDates(prev => ({ ...prev, start: e.target.value }))}
+                                />
+                                <span className="text-slate-300 font-bold">-</span>
+                                <input
+                                    type="date"
+                                    max={today}
+                                    className="bg-transparent text-[9px] font-black uppercase p-1 outline-none cursor-pointer"
+                                    onChange={(e) => setCustomDates(prev => ({ ...prev, end: e.target.value }))}
+                                />
+                            </div>
+                        )}
+
+                        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1">
+                            {['today', 'thisWeek', 'thisMonth', 'thisYear', 'custom'].map((f) => (
+                                <button
+                                    key={f}
+                                    onClick={() => setFilter(f)}
+                                    className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-white text-[#7a6af6] shadow-sm border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    {f === 'today' ? 'Today' : f === 'thisWeek' ? 'Weekly' : f === 'thisMonth' ? 'Monthly' : f === 'thisYear' ? 'Yearly' : 'Custom'}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex items-center gap-2 bg-slate-50 pl-3 pr-2 py-1.5 rounded-full border border-slate-100">
+                            <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">SUPER ADMIN</span>
+                            <div className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            </div>
                         </div>
                     </div>
                 </header>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-in fade-in zoom-in-95 duration-700 delay-100">
-                    <StatCard 
-                        title="Total Revenue" 
-                        value={`₹${Number(stats.totals?.totalRevenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
-                        icon={<Banknote className="text-green-600" />} 
-                        color="bg-green-50" 
-                        trend="Gross platform volume" 
+                    <StatCard
+                        title="Total Revenue"
+                        value={`₹${Number(stats.totals?.totalRevenue || 0).toLocaleString()}`}
+                        icon={<Banknote className="text-green-600" />}
+                        color="bg-green-50"
+                        trend={`${filter.replace('this', '')} revenue`}
                     />
-                    <StatCard title="Total Orders" value={stats.totals?.totalOrders || 0} icon={<ShoppingBag className="text-blue-600" />} color="bg-blue-50" trend="Fulfilled transactions" />
-                    <StatCard title="Active Users" value="32" icon={<Users className="text-purple-600" />} color="bg-purple-50" trend="Registered accounts" />
-                    <StatCard title="Listed Products" value="16" icon={<Package className="text-orange-600" />} color="bg-orange-50" trend="Active inventory" />
+                    <StatCard
+                        title="Total Orders"
+                        value={stats.totals?.totalOrders || 0}
+                        icon={<ShoppingBag className="text-blue-600" />}
+                        color="bg-blue-50"
+                        trend="Period volume"
+                    />
+                    <StatCard
+                        title="Active Users"
+                        value={stats.totals?.activeUsers || 0}
+                        icon={<Users className="text-purple-600" />}
+                        color="bg-purple-50"
+                        trend="Signups in period"
+                    />
+                    <StatCard
+                        title="Listed Products"
+                        value={stats.totals?.listedProducts || 0}
+                        icon={<Package className="text-orange-600" />}
+                        color="bg-orange-50"
+                        trend="Drops in period"
+                    />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
@@ -243,8 +306,8 @@ const AdminDashboard = () => {
                                         <td className="px-8 py-4 font-black text-[#0f172a] text-right tracking-tight">₹{Number(order.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         <td className="px-8 py-4 text-center">
                                             <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter border shadow-sm ${order.status === 'pending' ? 'bg-yellow-50 text-yellow-600 border-yellow-100' :
-                                                    order.status === 'delivered' ? 'bg-green-50 text-green-600 border-green-100' :
-                                                        'bg-slate-50 text-slate-400 border-slate-100'
+                                                order.status === 'delivered' ? 'bg-green-50 text-green-600 border-green-100' :
+                                                    'bg-slate-50 text-slate-400 border-slate-100'
                                                 }`}>
                                                 {order.status}
                                             </span>

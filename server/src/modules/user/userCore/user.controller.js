@@ -4,6 +4,7 @@ import userService from "./user.service.js";
 import { verifyOTPOnly } from "../common/otp.service.js";
 import userRepo from "./user.repository.js";
 import User from "./user.model.js";
+import SERVER_MESSAGES from "../../../utils/errorMessages.js";
 
 // ==================== COOKIE CONFIG ====================
 
@@ -84,9 +85,9 @@ export const verifySignupOTP = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return res.status(201).json({
+    return res.status(SERVER_MESSAGES.AUTH.SIGNUP_SUCCESS.status).json({
       success: true,
-      message: "Signup successful",
+      message: SERVER_MESSAGES.AUTH.SIGNUP_SUCCESS.message,
       user: {
         id: user._id,
         name: user.name,
@@ -112,7 +113,7 @@ export const loginUser = async (req, res) => {
 
     const user = await userRepo.findByEmail(email);
     if (!user) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
+      return res.status(SERVER_MESSAGES.AUTH.INVALID_CREDENTIALS.status).json({ success: false, message: SERVER_MESSAGES.AUTH.INVALID_CREDENTIALS.message, code: SERVER_MESSAGES.AUTH.INVALID_CREDENTIALS.code });
     }
 
     if (user.isBlocked) {
@@ -135,7 +136,7 @@ export const loginUser = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return res.status(200).json({ success: true, message: "Login successful" });
+    return res.status(SERVER_MESSAGES.AUTH.LOGIN_SUCCESS.status).json({ success: true, message: SERVER_MESSAGES.AUTH.LOGIN_SUCCESS.message });
   } catch (err) {
     return res.status(401).json({ success: false, message: err.message });
   }
@@ -147,7 +148,7 @@ export const refreshUserToken = async (req, res) => {
   const cookieRefreshToken = req.cookies.userRefreshToken;
 
   if (!cookieRefreshToken) {
-    return res.status(401).json({ success: false, message: "Refresh token missing" });
+    return res.status(SERVER_MESSAGES.AUTH.MISSING_TOKEN.status).json({ success: false, message: SERVER_MESSAGES.AUTH.MISSING_TOKEN.message, code: SERVER_MESSAGES.AUTH.MISSING_TOKEN.code });
   }
 
   try {

@@ -6,6 +6,7 @@ import * as orderService from "./order.service.js";
 import mongoose from "mongoose";
 import { getWalletByUserId, updateWalletBalance } from "../wallet/wallet.service.js";
 import couponModel from "../../admin/couponManagemen/coupon.model.js";
+import SERVER_MESSAGES from "../../../utils/errorMessages.js";
 
 const fixNum = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
 
@@ -46,7 +47,7 @@ export const placeOrder = async (req, res, next) => {
         if (paymentMethod === 'wallet' && orderStatus !== 'payment_failed') {
             const wallet = await getWalletByUserId(userId);
             if (wallet.balance < finalTotalValue) {
-                return res.status(400).json({ success: false, message: "Insufficient wallet balance." });
+                return res.status(SERVER_MESSAGES.CHECKOUT.INSUFFICIENT_WALLET.status).json({ success: false, message: SERVER_MESSAGES.CHECKOUT.INSUFFICIENT_WALLET.message, code: SERVER_MESSAGES.CHECKOUT.INSUFFICIENT_WALLET.code });
             }
             await updateWalletBalance(userId, finalTotalValue, 'debit', 'Order placement', null);
         }
@@ -123,7 +124,7 @@ export const completeRetry = async (req, res, next) => {
 
         if (!order) {
             await session.abortTransaction();
-            return res.status(404).json({ success: false, message: "Order not found." });
+            return res.status(SERVER_MESSAGES.CHECKOUT.ORDER_NOT_FOUND.status).json({ success: false, message: SERVER_MESSAGES.CHECKOUT.ORDER_NOT_FOUND.message, code: SERVER_MESSAGES.CHECKOUT.ORDER_NOT_FOUND.code });
         }
 
         if (order.paymentStatus === 'Paid') {
@@ -140,9 +141,11 @@ export const completeRetry = async (req, res, next) => {
             const sizeData = variant?.sizes.find(s => s.size === item.size);
             if (!sizeData || sizeData.stock < item.quantity) {
                 await session.abortTransaction();
-                return res.status(400).json({
+                const stockError = SERVER_MESSAGES.PRODUCT.STOCK_MISMATCH(item.size);
+                return res.status(stockError.status).json({
                     success: false,
-                    message: `Stock conflict: ${item.size} is currently out of stock.`
+                    message: stockError.message,
+                    code: stockError.code
                 });
             }
         }
@@ -209,7 +212,7 @@ export const cancelOrderItem = async (req, res, next) => {
         const order = await orderModel.findOne({ _id: orderId, userId: req.user.userId }).session(session);
 
         if (!order || ['shipped', 'delivered', 'cancelled'].includes(order.status)) {
-            return res.status(400).json({ success: false, message: "Action not allowed in current state." });
+            return res.status(SERVER_MESSAGES.CHECKOUT.ORDER_BLOCKED.status).json({ success: false, message: SERVER_MESSAGES.CHECKOUT.ORDER_BLOCKED.message, code: SERVER_MESSAGES.CHECKOUT.ORDER_BLOCKED.code });
         }
 
         const item = order.items.id(itemId);
@@ -327,7 +330,7 @@ export const cancelFullOrder = async (req, res, next) => {
     try {
         const { orderId } = req.params;
         const order = await orderModel.findOne({ _id: orderId, userId: req.user.userId }).session(session);
-        if (!order) return res.status(404).json({ success: false, message: "Order not found." });
+        if (!order) return res.status(SERVER_MESSAGES.CHECKOUT.ORDER_NOT_FOUND.status).json({ success: false, message: SERVER_MESSAGES.CHECKOUT.ORDER_NOT_FOUND.message, code: SERVER_MESSAGES.CHECKOUT.ORDER_NOT_FOUND.code });
 
         const isShipped = ['shipped', 'out_for_delivery'].includes(order.status.toLowerCase());
 
@@ -363,15 +366,17 @@ export const cancelFullOrder = async (req, res, next) => {
 
 export const getUserOrders = async (req, res, next) => {
     try {
-        const orders = await orderService.fetchUserHistory(req.user.userId);
-        res.status(200).json({ success: true, orders: orders || [] });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const orderData = await orderService.fetchUserHistory(req.user.userId, page, limit);
+        res.status(200).json({ success: true, ...orderData });
     } catch (error) { next(error); }
 };
 
 export const getOrderById = async (req, res, next) => {
     try {
         const order = await orderService.fetchManifestDetails(req.params.orderId, req.user.userId);
-        if (!order) return res.status(404).json({ success: false, message: "Manifest not found." });
+        if (!order) return res.status(SERVER_MESSAGES.CHECKOUT.ORDER_NOT_FOUND.status).json({ success: false, message: SERVER_MESSAGES.CHECKOUT.ORDER_NOT_FOUND.message, code: SERVER_MESSAGES.CHECKOUT.ORDER_NOT_FOUND.code });
         res.status(200).json({ success: true, order });
     } catch (error) { next(error); }
 };

@@ -85,6 +85,8 @@ export const downloadPDF = (report, filter, customDates) => {
     doc.save(`NextZen_${filter}_Full_Report.pdf`);
 };
 
+
+
 export const downloadExcel = (report, filter) => {
     const exportData = report?.allOrdersForExport || report?.recentOrders || [];
     if (!exportData.length) {

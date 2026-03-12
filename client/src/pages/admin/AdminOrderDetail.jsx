@@ -4,7 +4,7 @@ import {
     ChevronLeft, User, MapPin,
     Loader2, Box, Truck, Wallet,
     ArrowDownLeft, LayoutDashboard, RotateCcw,
-    XCircle, CheckCircle2, CreditCard, Tag, Percent
+    XCircle, CheckCircle2, CreditCard, Tag, Percent, Calendar
 } from "lucide-react";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { useAdminOrderDetails, useUpdateOrderStatus } from "../../hooks/admin/useAdminOrders";
@@ -139,7 +139,17 @@ const AdminOrderDetail = () => {
                         </button>
                         <div>
                             <h2 className="text-sm font-black uppercase tracking-tight text-slate-800 leading-none">Order Overview</h2>
-                            <p className="text-[9px] font-bold text-[#7a6af6] tracking-[0.2em] mt-2 uppercase">ID: {order?.orderNumber}</p>
+                            <div className="flex items-center gap-3 mt-2">
+                                <p className="text-[9px] font-bold text-[#7a6af6] tracking-[0.2em] uppercase">ID: {order?.orderNumber}</p>
+                                <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                <p className="text-[9px] font-bold text-slate-500 uppercase flex items-center gap-1.5 tracking-widest">
+                                    <Calendar size={10} className="text-slate-400"/>
+                                    {order?.createdAt ? new Date(order.createdAt).toLocaleString('en-IN', {
+                                        day: '2-digit', month: 'short', year: 'numeric',
+                                        hour: '2-digit', minute: '2-digit', hour12: true
+                                    }) : 'N/A'}
+                                </p>
+                            </div>
                         </div>
                     </div>
                     <div className={`px-4 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest ${getStatusTheme(order?.status)}`}>

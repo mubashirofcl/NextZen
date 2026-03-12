@@ -6,6 +6,7 @@ import { resetPassword } from "../../api/user/user.api";
 import Header from "../../components/user/Header";
 import Footer from "../../components/user/Footer";
 import { nxToast } from "../../utils/userToast";
+import TOAST_MESSAGES from "../../utils/toastMessages";
 
 const ResetPassword = () => {
     const { state } = useLocation();
@@ -38,8 +39,8 @@ const ResetPassword = () => {
             });
 
             nxToast.success(
-                "Password Updated Successfully.",
-                "Please Sign in Using New Password"
+                TOAST_MESSAGES.PROFILE.PASSWORD_UPDATED.title,
+                TOAST_MESSAGES.PROFILE.PASSWORD_UPDATED.message
             );
 
             navigate("/login", {
@@ -48,7 +49,7 @@ const ResetPassword = () => {
             });
 
         } catch (err) {
-            nxToast.security(err.response?.data?.message || "Failed to update password.");
+            nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, err.response?.data?.message || TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message);
         }
     };
 

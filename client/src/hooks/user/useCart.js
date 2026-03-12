@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import userAxios from "../../api/user/userAxios";
 import { nxToast } from "../../utils/userToast";
+import TOAST_MESSAGES from "../../utils/toastMessages";
 import { clearCartApi } from "../../api/user/cart.api";
 
 export const useCart = () => {
@@ -24,7 +25,7 @@ export const useCart = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
-            nxToast.success("Success", "Added to bag.");
+            nxToast.success(TOAST_MESSAGES.CART_WISHLIST.ADDED_TO_CART.title, TOAST_MESSAGES.CART_WISHLIST.ADDED_TO_CART.message);
         }
     });
 
@@ -37,7 +38,7 @@ export const useCart = () => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
         },
         onError: (error) => {
-            nxToast.security("Limit Reached", error.response?.data?.message || "Inventory conflict.");
+            nxToast.security(TOAST_MESSAGES.PRODUCT.STOCK_LIMIT.title, error.response?.data?.message || TOAST_MESSAGES.PRODUCT.STOCK_LIMIT.message);
             queryClient.invalidateQueries({ queryKey: ["cart"] }); 
         }
     });
@@ -49,7 +50,7 @@ export const useCart = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
-            nxToast.success("Inventory Updated", "Item removed.");
+            nxToast.success(TOAST_MESSAGES.CART_WISHLIST.REMOVED.title, TOAST_MESSAGES.CART_WISHLIST.REMOVED.message);
         }
     });
 
@@ -63,7 +64,7 @@ export const useCart = () => {
         },
         onError: (error) => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
-            nxToast.security("Inventory Conflict", "One or more items are now out of stock.");
+            nxToast.security(TOAST_MESSAGES.PRODUCT.OUT_OF_STOCK.title, TOAST_MESSAGES.PRODUCT.OUT_OF_STOCK.message);
         }
     });
 
@@ -86,7 +87,7 @@ export const useClearCart = () => {
         mutationFn: clearCartApi,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
-            nxToast.success("Cart Cleared", "All items removed from your cart.");
+            nxToast.success(TOAST_MESSAGES.CART_WISHLIST.PURGED.title, TOAST_MESSAGES.CART_WISHLIST.PURGED.message);
         }
     });
 };

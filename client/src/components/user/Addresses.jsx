@@ -18,6 +18,7 @@ import {
     setDefaultAddress,
 } from "../../api/user/address.api";
 import { nxToast } from "../../utils/userToast";
+import TOAST_MESSAGES from "../../utils/toastMessages";
 import AddressModal from "./AddressModal";
 
 const Addresses = () => {
@@ -53,9 +54,9 @@ const Addresses = () => {
                 try {
                     await deleteAddress(id);
                     setAddresses((prev) => prev.filter((addr) => addr._id !== id));
-                    nxToast.success("Address Removed");
+                    nxToast.success(TOAST_MESSAGES.PROFILE.ADDRESS_REMOVED.title, TOAST_MESSAGES.PROFILE.ADDRESS_REMOVED.message);
                 } catch {
-                    nxToast.security("Action Failed");
+                    nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message);
                 }
             }
         );
@@ -70,9 +71,9 @@ const Addresses = () => {
                     isDefault: addr._id === data._id,
                 }))
             );
-            nxToast.success("Default address updated");
+            nxToast.success(TOAST_MESSAGES.PROFILE.ADDRESS_DEFAULT_UPDATED.title, TOAST_MESSAGES.PROFILE.ADDRESS_DEFAULT_UPDATED.message);
         } catch {
-            nxToast.error("Protocol error");
+            nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Protocol error");
         }
     };
 

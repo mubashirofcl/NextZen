@@ -11,6 +11,7 @@ import EditProfileModal from './EditProfileModal';
 import { updateProfile, getUserMe } from '../../api/user/user.api';
 import { setUser } from '../../store/user/authSlice';
 import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
 
 const PersonalInfo = () => {
     const { user } = useSelector((state) => state.userAuth);
@@ -65,12 +66,12 @@ const PersonalInfo = () => {
                 });
             } else {
                 dispatch(setUser(response.data.user));
-                nxToast.success("Profile Updated", "Your information has been successfully saved.");
+                nxToast.success(TOAST_MESSAGES.PROFILE.PROFILE_UPDATED.title, TOAST_MESSAGES.PROFILE.PROFILE_UPDATED.message);
                 setIsEditModalOpen(false);
             }
         } catch (error) {
             if (error.response?.status !== 400) {
-                nxToast.error("Update Failed", "Could not update profile information.");
+                nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message);
             }
             throw error;
         }

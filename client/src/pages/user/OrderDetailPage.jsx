@@ -11,6 +11,7 @@ import OrderActionModal from '../../components/user/OrderActionModal';
 import { generateInvoice } from '../../utils/invoiceGenerator';
 import userAxios from '../../api/baseAxios';
 import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
 import { loadRazorpayScript } from '../../utils/loadRazorpay';
 
 const ReturnTracker = ({ status }) => {
@@ -111,10 +112,10 @@ const OrderDetailPage = () => {
     const handleRetryPayment = async () => {
         try {
             setIsRetrying(true);
-            if (!order?._id) return nxToast.error("Manifest missing.");
+            if (!order?._id) return nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Manifest missing.");
 
             const isLoaded = await loadRazorpayScript();
-            if (!isLoaded) return nxToast.security("Gateway error.");
+            if (!isLoaded) return nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Gateway error.");
 
 
             const { data: sessionData } = await userAxios.post("/user/payment/create-order", {
@@ -123,11 +124,11 @@ const OrderDetailPage = () => {
             });
 
             if (!sessionData.success) {
-                return nxToast.security("Procedure Blocked", sessionData.message);
+                return nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, sessionData.message);
             }
 
             if (sessionData.payableAmount && sessionData.payableAmount !== order.totalAmount) {
-                nxToast.security("Policy Alert", "Promotion expired. Manifest adjusted to standard price.");
+                nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Promotion expired. Manifest adjusted to standard price.");
                 queryClient.setQueryData(["order", orderId], (old) =>
                     old ? {
                         ...old,
@@ -154,12 +155,12 @@ const OrderDetailPage = () => {
                         });
 
                         if (updateRes.data.success) {
-                            nxToast.success("Manifest Secured");
+                            nxToast.success(TOAST_MESSAGES.CHECKOUT.ORDER_PLACED.title, TOAST_MESSAGES.CHECKOUT.ORDER_PLACED.message);
                             await queryClient.invalidateQueries({ queryKey: ["order", orderId] });
                             navigate(`/checkout/success/${order._id}`, { replace: true });
                         }
                     } catch (err) {
-                        nxToast.security("Sync Error", "Transaction verified but manifest update failed.");
+                        nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Transaction verified but manifest update failed.");
                     }
                 },
                 prefill: {
@@ -172,8 +173,8 @@ const OrderDetailPage = () => {
 
             new window.Razorpay(options).open();
         } catch (err) {
-            const errorMsg = err.response?.data?.message || "Verification Failed";
-            nxToast.security("Warehouse Sync Error", errorMsg);
+            const errorMsg = err.response?.data?.message || TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message;
+            nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, errorMsg);
             await queryClient.invalidateQueries({ queryKey: ["order", orderId] });
         } finally {
             setIsRetrying(false);
@@ -215,7 +216,7 @@ const OrderDetailPage = () => {
                     const remainingSubtotal = activeItems.reduce((acc, curr) => acc + curr.totalAmount, 0);
 
                     if (activeItems.length > 0 && remainingSubtotal < minAmt) {
-                        return nxToast.security("Action Blocked", `Minimum order of ₹${minAmt} required for applied coupon.`);
+                        return nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, `Minimum order of ₹${minAmt} required for applied coupon.`);
                     }
                 }
             } catch (error) { console.error(error); }
@@ -312,7 +313,7 @@ const OrderDetailPage = () => {
                                             {['pending', 'processing', 'confirmed'].includes(order.status.toLowerCase()) && item.status?.toLowerCase() === 'placed' && (
                                                 <button onClick={() => openModal('cancel', item)} className="text-[7px] font-black uppercase text-red-500 hover:text-red-400 flex items-center gap-1 transition-all"><XCircle size={10} /> Cancel</button>
                                             )}
-                                            {/* 🟢 Return button with 7-day logic */}
+                                            
                                             {order.status.toLowerCase() === 'delivered' && item.status?.toLowerCase() === 'delivered' && (
                                                 <button
                                                     onClick={() => openModal('return', item)}

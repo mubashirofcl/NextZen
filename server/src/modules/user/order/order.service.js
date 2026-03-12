@@ -83,8 +83,8 @@ export const processCODOrder = async (userId, orderPayload) => {
     return newOrder;
 };
 
-export const fetchUserHistory = async (userId) => {
-    return await orderRepo.findOrdersByUserId(userId);
+export const fetchUserHistory = async (userId, page, limit) => {
+    return await orderRepo.findOrdersByUserId(userId, page, limit);
 };
 
 export const fetchManifestDetails = async (orderId, userId) => {

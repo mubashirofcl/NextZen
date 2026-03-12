@@ -4,6 +4,7 @@ import { Trash2, ShoppingBag, ArrowRight, Loader2, Heart } from 'lucide-react';
 import { useWishlist } from "../../hooks/user/useWishlist";
 import { useCart } from "../../hooks/user/useCart";
 import { nxToast } from "../../utils/userToast";
+import TOAST_MESSAGES from "../../utils/toastMessages";
 import Header from "../../components/user/Header";
 import Footer from "../../components/user/Footer";
 
@@ -19,11 +20,11 @@ const WishlistPage = () => {
         const variant = item.variantId;
 
         if (!variant || !variant.sizes || variant.sizes.length === 0) {
-            return nxToast.error("Error", "Product information is missing.");
+            return nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Product information is missing.");
         }
 
         const targetSize = variant.sizes.find(s => s.stock > 0);
-        if (!targetSize) return nxToast.error("Out of Stock", "This item is currently unavailable.");
+        if (!targetSize) return nxToast.error(TOAST_MESSAGES.PRODUCT.OUT_OF_STOCK.title, TOAST_MESSAGES.PRODUCT.OUT_OF_STOCK.message);
 
         addToCart.mutate({
             productId: product._id,
@@ -39,10 +40,10 @@ const WishlistPage = () => {
                     variantId: variant._id 
                 });
 
-                nxToast.success("Success", "Item moved to your shopping bag.");
+                nxToast.success(TOAST_MESSAGES.CART_WISHLIST.ADDED_TO_CART.title, TOAST_MESSAGES.CART_WISHLIST.ADDED_TO_CART.message);
             },
             onError: (err) => {
-                nxToast.error("Error", err.response?.data?.message || "Could not move item to cart.");
+                nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, err.response?.data?.message || TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message);
             }
         });
     };

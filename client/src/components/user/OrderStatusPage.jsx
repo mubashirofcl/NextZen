@@ -6,6 +6,7 @@ import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
 import userAxios from '../../api/baseAxios';
 import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
 import { loadRazorpayScript } from '../../utils/loadRazorpay';
 
 const OrderStatusPage = ({ type = 'success' }) => {
@@ -49,14 +50,14 @@ const OrderStatusPage = ({ type = 'success' }) => {
     const handleRetry = async () => {
         try {
             const isLoaded = await loadRazorpayScript();
-            if (!isLoaded) return nxToast.error("Gateway Offline");
+            if (!isLoaded) return nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Gateway Offline");
 
             const { data: sessionData } = await userAxios.post("/user/payment/create-order", {
                 orderId: orderId,
                 isRetry: true
             });
 
-            if (!sessionData.success) return nxToast.error("Could not sync payment");
+            if (!sessionData.success) return nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Could not sync payment");
 
             if (sessionData.payableAmount) {
                 setFetchedOrder(prev => prev ? { ...prev, totalAmount: sessionData.payableAmount } : prev);
@@ -77,15 +78,15 @@ const OrderStatusPage = ({ type = 'success' }) => {
                         });
 
                         if (updateRes.data.warning) {
-                            nxToast.warn("Policy Update", updateRes.data.warning);
+                            nxToast.info(TOAST_MESSAGES.SYSTEM.SECURITY_ALERT.title, updateRes.data.warning);
                         }
 
                         if (updateRes.data.success) {
-                            nxToast.success("Success", "Payment confirmed.");
+                            nxToast.success(TOAST_MESSAGES.CHECKOUT.ORDER_PLACED.title, TOAST_MESSAGES.CHECKOUT.ORDER_PLACED.message);
                             navigate(`/checkout/success/${orderId}`, { replace: true });
                         }
                     } catch (err) {
-                        nxToast.error("Verification Failed", err.response?.data?.message || "Sync Error");
+                        nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, err.response?.data?.message || TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message);
                     }
                 },
                 theme: { color: "#7a6af6" },
@@ -93,7 +94,7 @@ const OrderStatusPage = ({ type = 'success' }) => {
             };
             new window.Razorpay(options).open();
         } catch (err) {
-            nxToast.error("Inventory Alert", err.response?.data?.message || "Retry failed");
+            nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, err.response?.data?.message || TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message);
         }
     };
 

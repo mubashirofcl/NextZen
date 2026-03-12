@@ -5,11 +5,15 @@ import { Package, Clock, Loader2, ChevronRight, Box, AlertTriangle, XCircle, Sea
 
 const OrderHistory = () => {
     const navigate = useNavigate();
-    const { data: orders, isLoading } = useOrders();
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
+    const [page, setPage] = useState(1);
+    const limit = 5;
 
-    const orderList = Array.isArray(orders) ? orders : [];
+    const { data: ordersData, isLoading } = useOrders(page, limit);
+
+    const orderList = Array.isArray(ordersData?.orders) ? ordersData.orders : [];
+    const totalPages = ordersData?.totalPages || 1;
 
     const filteredOrders = orderList.filter((order) => {
         const matchesSearch =
@@ -181,6 +185,28 @@ const OrderHistory = () => {
                     })
                 )}
             </div>
+
+            {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-4 mt-12 pb-4">
+                    <button
+                        onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                        disabled={page === 1}
+                        className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white/50 text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 hover:text-white transition-all uppercase tracking-widest"
+                    >
+                        Prev
+                    </button>
+                    <span className="text-white/70 text-[10px] font-black uppercase tracking-widest">
+                        Page {page} of {totalPages}
+                    </span>
+                    <button
+                        onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                        disabled={page === totalPages}
+                        className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white/50 text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 hover:text-white transition-all uppercase tracking-widest"
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
 
             <style jsx>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }

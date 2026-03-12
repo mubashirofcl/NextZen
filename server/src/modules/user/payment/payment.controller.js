@@ -5,6 +5,7 @@ import orderModel from "../order/order.model.js";
 import variantModel from "../../admin/productManagement/variant.model.js";
 import productModel from "../../admin/productManagement/product.model.js";
 import couponModel from "../../admin/couponManagemen/coupon.model.js";
+import SERVER_MESSAGES from "../../../utils/errorMessages.js";
 
 dotenv.config();
 
@@ -22,7 +23,7 @@ export const createRazorpayOrder = async (req, res) => {
 
         if (isRetry && orderId) {
             const order = await orderModel.findById(orderId);
-            if (!order) return res.status(404).json({ success: false, message: "Order records not found." });
+            if (!order) return res.status(SERVER_MESSAGES.CHECKOUT.ORDER_NOT_FOUND.status).json({ success: false, message: SERVER_MESSAGES.CHECKOUT.ORDER_NOT_FOUND.message, code: SERVER_MESSAGES.CHECKOUT.ORDER_NOT_FOUND.code });
 
             for (const item of order.items) {
                 const variant = await variantModel.findOne({
@@ -34,17 +35,20 @@ export const createRazorpayOrder = async (req, res) => {
 
 
                 if (!variant || variant.isBlocked || variant.productId?.isBlocked) {
-                    return res.status(400).json({ 
+                    return res.status(SERVER_MESSAGES.PRODUCT.NOT_FOUND.status).json({ 
                         success: false, 
-                        message: `Product ${item.productId?.name || ''} is no longer available.` 
+                        message: SERVER_MESSAGES.PRODUCT.NOT_FOUND.message,
+                        code: SERVER_MESSAGES.PRODUCT.NOT_FOUND.code
                     });
                 }
 
 
                 if (!sizeData || sizeData.stock < item.quantity) {
-                    return res.status(400).json({ 
+                    const stockError = SERVER_MESSAGES.PRODUCT.STOCK_MISMATCH(item.size);
+                    return res.status(stockError.status).json({ 
                         success: false, 
-                        message: `Stock mismatch: ${item.size} is now out of stock.` 
+                        message: stockError.message,
+                        code: stockError.code
                     });
                 }
             }
@@ -64,7 +68,7 @@ export const createRazorpayOrder = async (req, res) => {
         }
 
         if (!finalAmount || isNaN(finalAmount) || finalAmount <= 0) {
-            return res.status(400).json({ success: false, message: "Invalid amount." });
+            return res.status(SERVER_MESSAGES.CHECKOUT.INVALID_AMOUNT.status).json({ success: false, message: SERVER_MESSAGES.CHECKOUT.INVALID_AMOUNT.message, code: SERVER_MESSAGES.CHECKOUT.INVALID_AMOUNT.code });
         }
 
         const options = {
@@ -96,11 +100,11 @@ export const verifyRazorpayPayment = async (req, res) => {
             .digest("hex");
 
         if (expectedSignature === razorpay_signature) {
-            return res.status(200).json({ success: true, message: "Verified" });
+            return res.status(SERVER_MESSAGES.CHECKOUT.PAYMENT_VERIFIED.status).json({ success: true, message: SERVER_MESSAGES.CHECKOUT.PAYMENT_VERIFIED.message });
         } else {
-            return res.status(400).json({ success: false, message: "Invalid Signature" });
+            return res.status(SERVER_MESSAGES.CHECKOUT.INVALID_SIGNATURE.status).json({ success: false, message: SERVER_MESSAGES.CHECKOUT.INVALID_SIGNATURE.message, code: SERVER_MESSAGES.CHECKOUT.INVALID_SIGNATURE.code });
         }
     } catch (error) {
-        res.status(500).json({ success: false, message: "Server Error" });
+        res.status(SERVER_MESSAGES.SYSTEM.SERVER_ERROR.status).json({ success: false, message: SERVER_MESSAGES.SYSTEM.SERVER_ERROR.message, code: SERVER_MESSAGES.SYSTEM.SERVER_ERROR.code });
     }
 };

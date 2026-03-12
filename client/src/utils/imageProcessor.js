@@ -42,7 +42,7 @@ export const cropAndResizeImage = async (
                 reader.readAsDataURL(blob);
             },
             "image/jpeg",
-            0.8 // compression
+            0.8 
         );
     });
 };

@@ -9,6 +9,7 @@ import ChangePasswordModal from '../../components/user/ChangePasswordModal';
 import { changePassword, userLogout } from '../../api/user/user.api';
 import { clearUser } from '../../store/user/authSlice';
 import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
 
 const DEFAULT_AVATAR = 'https://avatar.iran.liara.run/public/boy';
 
@@ -27,11 +28,11 @@ const ProfileLayout = () => {
         try {
             await userLogout();
             dispatch(clearUser());
-            nxToast.success('Successfully Logged out.');
+            nxToast.success(TOAST_MESSAGES.AUTH.LOGOUT_SUCCESS.title, TOAST_MESSAGES.AUTH.LOGOUT_SUCCESS.message);
             navigate('/');
         } catch (error) {
             dispatch(clearUser());
-            nxToast.security('Failed to Logout.');
+            nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Failed to Logout.");
             navigate('/');
         }
     };

@@ -14,6 +14,7 @@ import { useRecommended } from '../../hooks/user/useRecommended';
 import { useCart } from '../../hooks/user/useCart';
 import { useWishlist } from '../../hooks/user/useWishlist';
 import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
 import { useSelector } from 'react-redux';
 import { askStyleAssistant } from '../../api/user/chatbotApi';
 
@@ -46,12 +47,10 @@ const ProductDetails = () => {
 
     const currentVariant = activeVariants[selectedVariantIdx];
 
-    // 🟢 LOGIC FIX: Check if the entire variant is out of stock across all sizes
     const isVariantEmpty = useMemo(() => {
         return currentVariant?.sizes.every(s => s.stock === 0);
     }, [currentVariant]);
 
-    // 🟢 LOGIC FIX: Only show 'Sold Out' if the variant is truly empty, otherwise wait for size selection
     const isOutOfStock = selectedSize ? selectedSize.stock === 0 : isVariantEmpty;
 
     const isAlreadyInCart = cart?.items?.some(item =>
@@ -76,7 +75,6 @@ const ProductDetails = () => {
         if (error || (product && product.isActive === false)) navigate('/shop', { replace: true });
     }, [product, error, navigate]);
 
-    // 🟢 FIX: Reset selectedSize to null when switching variants to force selection
     useEffect(() => {
         if (currentVariant) {
             setActiveImg(currentVariant.images[0]);
@@ -111,15 +109,14 @@ const ProductDetails = () => {
     };
 
     const handleAddToCart = async () => {
-        if (!isAuthenticated) return nxToast.security("Access Denied", "Please login to sync this item.");
-        
-        // 🟢 FIX: Trigger Toast if no size is selected
+        if (!isAuthenticated) return nxToast.security(TOAST_MESSAGES.AUTH.ACCESS_DENIED.title, TOAST_MESSAGES.AUTH.ACCESS_DENIED.message);
+
         if (!selectedSize) {
-            return nxToast.security("Selection Required", "Please select a Dimension/Size before adding to archive.");
+            return nxToast.security(TOAST_MESSAGES.PRODUCT.DIMENSION_REQUIRED.title, TOAST_MESSAGES.PRODUCT.DIMENSION_REQUIRED.message);
         }
 
-        if (isAlreadyInCart) return nxToast.security("Already Archived", "Item in manifest.");
-        if (qty > selectedSize.stock) return nxToast.security("Warehouse Limit", `Only ${selectedSize.stock} units left.`);
+        if (isAlreadyInCart) return nxToast.security(TOAST_MESSAGES.CART_WISHLIST.ALREADY_IN_CART.title, TOAST_MESSAGES.CART_WISHLIST.ALREADY_IN_CART.message);
+        if (qty > selectedSize.stock) return nxToast.security(TOAST_MESSAGES.PRODUCT.STOCK_LIMIT.title, `Only ${selectedSize.stock} units left.`);
 
         try {
             await addToCart.mutateAsync({
@@ -130,18 +127,17 @@ const ProductDetails = () => {
                 stock: selectedSize.stock,
                 price: selectedSize.salePrice || selectedSize.originalPrice
             });
-            nxToast.success("Archive Synced", "Secured in your archive.");
+            nxToast.success(TOAST_MESSAGES.CART_WISHLIST.ADDED_TO_CART.title, TOAST_MESSAGES.CART_WISHLIST.ADDED_TO_CART.message);
         } catch (err) {
-            nxToast.security("Sync Error", err.response?.data?.message || "Interrupted.");
+            nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, err.response?.data?.message || TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message);
         }
     };
 
     const handleWishlistToggle = () => {
-        if (!isAuthenticated) return nxToast.security("Access Denied", "Please login.");
+        if (!isAuthenticated) return nxToast.security(TOAST_MESSAGES.AUTH.ACCESS_DENIED.title, TOAST_MESSAGES.AUTH.ACCESS_DENIED.message);
 
-        // 🟢 FIX: Trigger Toast if no size is selected for wishlist
         if (!selectedSize) {
-            return nxToast.security("Selection Required", "Select a dimension to wishlist this specific spec.");
+            return nxToast.security(TOAST_MESSAGES.PRODUCT.DIMENSION_REQUIRED.title, TOAST_MESSAGES.PRODUCT.DIMENSION_REQUIRED.message);
         }
         toggleWishlist(id, currentVariant._id);
     };
@@ -191,7 +187,6 @@ const ProductDetails = () => {
     if (isLoading) return <div className="h-screen flex items-center justify-center text-[10px] font-black uppercase tracking-[0.5em] text-white/20 animate-pulse">Initialising Archive...</div>;
     if (!product || activeVariants.length === 0) return null;
 
-    // 🟢 UI FIX: Use starting price if no size is selected
     const salePrice = selectedSize?.salePrice || Math.min(...currentVariant.sizes.map(s => s.salePrice));
     const originalPrice = selectedSize?.originalPrice || Math.min(...currentVariant.sizes.map(s => s.originalPrice));
     const discount = originalPrice > salePrice ? Math.round(((originalPrice - salePrice) / originalPrice) * 100) : 0;

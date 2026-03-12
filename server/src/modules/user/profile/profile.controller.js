@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import User from "../userCore/user.model.js";
 import * as profileService from "./profile.service.js";
+import SERVER_MESSAGES from "../../../utils/errorMessages.js";
 
 
 export const getUserMe = async (req, res) => {
@@ -37,9 +38,9 @@ export const verifyEmailChange = async (req, res) => {
       req.body.otp
     );
 
-    return res.status(200).json({
+    return res.status(SERVER_MESSAGES.USER.PROFILE_UPDATED.status).json({
       success: true,
-      message: "Profile updated successfully",
+      message: SERVER_MESSAGES.USER.PROFILE_UPDATED.message,
       user,
     });
   } catch (error) {
@@ -55,9 +56,9 @@ export const resendEmailChangeOTP = async (req, res) => {
       req.body.email
     );
 
-    return res.status(200).json({
+    return res.status(SERVER_MESSAGES.VERIFICATION.OTP_SENT.status).json({
       success: true,
-      message: "Verification code resent successfully",
+      message: SERVER_MESSAGES.VERIFICATION.OTP_SENT.message,
     });
   } catch (error) {
     return res.status(400).json({ success: false, message: error.message });
@@ -72,32 +73,36 @@ export const changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({
+      return res.status(SERVER_MESSAGES.USER.PASSWORD_MISSING.status).json({
         success: false,
-        message: "Current and new password are required",
+        message: SERVER_MESSAGES.USER.PASSWORD_MISSING.message,
+        code: SERVER_MESSAGES.USER.PASSWORD_MISSING.code
       });
     }
 
     const user = await User.findById(userId).select("+password");
     if (!user) {
-      return res.status(404).json({
+      return res.status(SERVER_MESSAGES.USER.NOT_FOUND.status).json({
         success: false,
-        message: "User not found",
+        message: SERVER_MESSAGES.USER.NOT_FOUND.message,
+        code: SERVER_MESSAGES.USER.NOT_FOUND.code
       });
     }
 
     if (user.googleId) {
-      return res.status(403).json({
+      return res.status(SERVER_MESSAGES.AUTH.GOOGLE_ACCOUNT_PASSWORD.status).json({
         success: false,
-        message: "Password change is not allowed for Google accounts",
+        message: SERVER_MESSAGES.AUTH.GOOGLE_ACCOUNT_PASSWORD.message,
+        code: SERVER_MESSAGES.AUTH.GOOGLE_ACCOUNT_PASSWORD.code
       });
     }
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
-      return res.status(400).json({
+      return res.status(SERVER_MESSAGES.USER.PASSWORD_INCORRECT.status).json({
         success: false,
-        message: "Current password is incorrect",
+        message: SERVER_MESSAGES.USER.PASSWORD_INCORRECT.message,
+        code: SERVER_MESSAGES.USER.PASSWORD_INCORRECT.code
       });
     }
 
@@ -106,9 +111,9 @@ export const changePassword = async (req, res) => {
 
     await user.save();
 
-    return res.status(200).json({
+    return res.status(SERVER_MESSAGES.VERIFICATION.PASSWORD_SET.status).json({
       success: true,
-      message: "Password updated successfully",
+      message: SERVER_MESSAGES.VERIFICATION.PASSWORD_SET.message,
     });
   } catch (error) {
     console.error("CHANGE_PASSWORD_ERROR:", error);

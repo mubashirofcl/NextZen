@@ -13,7 +13,11 @@ export const getSalesReport = async (req, res, next) => {
 
 export const getAdminDashboardStats = async (req, res, next) => {
     try {
-        const stats = await dashboardService.getDashboardStats();
+
+        const { range, startDate, endDate } = req.query;
+        
+        const stats = await dashboardService.getDashboardStats({ range, startDate, endDate });
+        
         res.status(200).json({
             success: true,
             data: stats 
