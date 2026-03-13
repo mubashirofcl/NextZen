@@ -41,7 +41,7 @@ const Header = () => {
         const fetchLiveOffers = async () => {
             try {
                 // Ensure this matches your backend route in app.js
-                const { data } = await userAxios.get("/users/coupons"); 
+                const { data } = await userAxios.get("/users/coupons");
                 if (data.success) setLiveCoupons(data.coupons);
             } catch (err) {
                 console.error("Coupon Sync Error");

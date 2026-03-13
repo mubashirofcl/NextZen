@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, ArrowUpRight, ArrowRight, Loader2, Heart, Percent, CheckCircle, Sparkles, Banknote, Palette, ShieldCheck, Ticket } from 'lucide-react';
+import { Star, ArrowUpRight, ArrowRight, Loader2, Heart, Percent, CheckCircle, Sparkles, Banknote, Palette, ShieldCheck, Ticket, Play, ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
@@ -31,12 +31,38 @@ const Home = () => {
     const { data: featuredData } = useProducts({ limit: 4, isFeatured: true });
     const { data: freshData } = useProducts({ limit: 8, sort: "createdAt" });
     const [latestCoupon, setLatestCoupon] = useState(null);
+    const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
+
+    const referenceStyles = `
+
+        .vertical-text {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+        .text-outline-white {
+            -webkit-text-stroke: 1px white;
+            color: transparent;
+        }
+    `;
+
+    const heroImages = [
+        "/hero_model.png",
+        "/hero_model_2.png",
+        "/hero_model_3.png"
+    ];
 
     const adminHeroBanner = "https://images.unsplash.com/photo-1507680434567-5739c80be1ac?q=80&w=2000";
     const adminOfferBanner = "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?q=80&w=2000";
 
     const featuredProducts = featuredData?.products || [];
     const freshArrivals = freshData?.products || [];
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentHeroIndex((prev) => (prev + 1) % heroImages.length);
+        }, 5000);
+        return () => clearInterval(interval);
+    }, [heroImages.length]);
 
     useEffect(() => {
         const fetchPromo = async () => {
@@ -59,56 +85,86 @@ const Home = () => {
 
     return (
         <div className="relative min-h-screen font-sans text-white selection:bg-[#7a6af6]/20 overflow-x-hidden">
+            <style dangerouslySetInnerHTML={{ __html: referenceStyles }} />
             <Header />
 
-            <section className="relative h-[75vh] md:h-[95vh] mt-16 flex items-center justify-center mb-32 overflow-hidden px-4">
-                <div className="absolute inset-0 pointer-events-none z-20">
-                    <NewCollectionRib rotation={-16} top="45%" text="WINTER COLLECTION 2026" />
-                    <NewCollectionRib rotation={6} top="56%" text="SHOP NEW ARRIVALS" />
+            <section className="relative w-full h-screen flex items-center justify-center overflow-hidden mb-20 md:mb-24">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+                    <h2 className="text-[24vw] font-[900] text-[#7a6af6] select-none tracking-tighter uppercase whitespace-nowrap leading-none opacity-100 animate-fade-in transition-all duration-1000">
+                        NEXTZEN
+                    </h2>
                 </div>
 
-                <div className="absolute inset-x-2 md:inset-x-10 inset-y-4 md:inset-y-6 rounded-[2rem] md:rounded-[4.5rem] overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(122,106,246,0.15)] bg-[#111] z-10">
-                    <video
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className="absolute inset-0 w-full h-full object-cover scale-105 z-0"
-                    >
-                        <source src="/bg_promo2.mp4" type="video/mp4" />
-                    </video>
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[8px] z-[1]" />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40 z-[1]" />
-
-                    <img
-                        src={adminHeroBanner}
-                        alt="Main Hero"
-                        className="relative z-[2] w-full h-full object-cover object-center scale-105 animate-slow-zoom"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent z-[3]" />
-                </div>
-
-                <div className="relative z-30 text-center px-4 mt-20">
-                    <div className="flex items-center justify-center gap-3 mb-6 animate-fade-in">
-                        <CheckCircle size={14} className="text-[#7a6af6]" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.6em] text-[#7a6af6]">Quality Streetwear Heritage</span>
+                <div className="relative z-20 flex justify-center items-center h-full w-full animate-fade-in-up">
+                    <div className="relative w-[70vw] md:w-[320px] aspect-[9/15.5] rounded-[3rem] md:rounded-[4rem] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.8)] ring-1 ring-white/5 group transition-all duration-500 hover:shadow-[0_60px_100px_rgba(224,31,31,0.2)]">
+                        <video
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                        >
+                            <source src="/bg_promo.mp4" type="video/mp4" />
+                        </video>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                        <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-[#7a6af6]/20 to-transparent opacity-60 pointer-events-none" />
                     </div>
-                    <h1 className="text-[clamp(3.5rem,14vw,10rem)] font-black uppercase italic leading-[0.8] tracking-tighter text-white drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)]">
-                        DEFINE YOUR<br />
-                        <span className="text-transparent text-outline-white opacity-40">STYLE</span>
-                    </h1>
-                    <button
-                        onClick={() => navigate('/shop')}
-                        className="mt-12 group relative inline-flex items-center gap-8 bg-white text-black px-10 py-5 rounded-full font-black uppercase text-[11px] tracking-[0.2em] transition-all hover:bg-[#7a6af6] hover:text-white shadow-2xl"
-                    >
-                        Explore Collection
-                        <div className="bg-black text-white p-2 rounded-full group-hover:bg-white group-hover:text-[#7a6af6] transition-colors">
-                            <ArrowRight size={14} />
+                </div>
+
+                <div className="absolute inset-0 z-30 flex flex-col justify-between p-6 md:p-14 pointer-events-none">
+                    <div className="max-w-2xl mt-4 md:mt-10 animate-fade-in-up">
+                        <h1 className="text-[clamp(2.5rem,7vw,5.5rem)] font-black uppercase tracking-tighter leading-[0.85] text-white">
+                            Watch. <br />
+                            Shop. Own.
+                        </h1>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row items-end justify-between w-full h-auto mb-4 md:mb-6">
+                        <div className="max-w-xs mb-8 md:mb-0 animate-fade-in-up delay-200">
+                            <p className="text-[9px] md:text-[11px] text-white/50 font-normal leading-relaxed tracking-tight lowercase">
+                                welcome to nextzen — the next-gen social <br />
+                                marketplace powered by innovation. seamlessly <br />
+                                scroll through content, shop what you see, and <br />
+                                own your experience — all in one app.
+                            </p>
                         </div>
-                    </button>
+
+                        <div className="flex flex-col md:flex-row gap-3 pointer-events-auto animate-fade-in-up delay-400">
+                            <button
+                                onClick={() => navigate('/shop')}
+                                className="group relative w-[180px] h-14 bg-white rounded-xl border border-white/5 transition-all hover:border-[#7a6af6]/40 overflow-hidden"
+                            >
+                                <div className="absolute inset-x-0 bottom-0 h-[1px] bg-[#7a6af6] opacity-50 shadow-[0_0_15px_#7a6af6]" />
+                                <div className="flex items-center gap-3 px-5">
+                                    <div className="w-8 h-8 flex items-center justify-center">
+                                        <ShoppingBag size={18} className="text-black opacity-40 group-hover:text-[#7a6af6] group-hover:opacity-100 transition-all" />
+                                    </div>
+                                    <div className="flex flex-col items-start leading-tight">
+                                        <span className="text-[7px] font-bold text-black/40 uppercase tracking-widest">LATEST DROP</span>
+                                        <span className="text-[13px] font-black text-black tracking-tighter">Shop Now</span>
+                                    </div>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => navigate('/shop')}
+                                className="group relative w-[180px] h-14 bg-white rounded-xl border border-white/5 transition-all hover:border-[#7a6af6]/40 overflow-hidden"
+                            >
+                                <div className="absolute inset-x-0 bottom-0 h-[1px] bg-[#7a6af6] opacity-50 shadow-[0_0_15px_#7a6af6]" />
+                                <div className="flex items-center gap-3 px-5">
+                                    <div className="w-8 h-8 flex items-center justify-center">
+                                        <ArrowUpRight size={18} className="text-black opacity-40 group-hover:text-[#7a6af6] group-hover:opacity-100 transition-all" />
+                                    </div>
+                                    <div className="flex flex-col items-start leading-tight">
+                                        <span className="text-[7px] font-bold text-black/40 uppercase tracking-widest">ARCHIVE 26</span>
+                                        <span className="text-[13px] font-black text-black tracking-tighter">Explore Now</span>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </section>
-
             <main className="max-w-[1600px] mx-auto px-6 md:px-12 relative z-10">
 
                 <section className="w-full mb-40">
@@ -177,8 +233,8 @@ const Home = () => {
                     </div>
                 </section>
 
-                {/* 🟢 DYNAMIC OFFER BANNER */}
                 <section className="w-full mb-40 px-2">
+
                     <div className="relative min-h-[400px] md:h-[550px] rounded-[2rem] md:rounded-[3.5rem] overflow-hidden group border border-white/5 shadow-2xl bg-black">
                         <div className="absolute inset-0 bg-gradient-to-br from-[#7a6af6] via-[#4f46e5]/40 to-black opacity-90 z-10" />
                         <img
@@ -257,13 +313,28 @@ const Home = () => {
             <style dangerouslySetInnerHTML={{
                 __html: `
                 .text-outline-white { -webkit-text-stroke: 1px rgba(255,255,255,1); }
-                @media (min-width: 768px) { .text-outline-white { -webkit-text-stroke: 1.5px rgba(255,255,255,1); } }
+                .text-outline-black { -webkit-text-stroke: 1px rgba(0,0,0,1); }
+                @media (min-width: 768px) { 
+                    .text-outline-white { -webkit-text-stroke: 1.5px rgba(255,255,255,1); } 
+                    .text-outline-black { -webkit-text-stroke: 1.5px rgba(0,0,0,1); } 
+                }
                 @keyframes marquee-slow { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
                 .animate-marquee-slow { animation: marquee-slow 45s linear infinite; }
                 @keyframes slow-zoom { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
                 .animate-slow-zoom { animation: slow-zoom 20s ease-in-out infinite alternate; }
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
                 .animate-fade-in { animation: fadeIn 1.5s ease-out forwards; }
+                
+                @keyframes fadeInUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-fade-in-up { animation: fadeInUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+                
+                @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
+                .animate-float { animation: float 6s ease-in-out infinite; }
+                
+                .delay-100 { animation-delay: 100ms; }
+                .delay-200 { animation-delay: 200ms; }
+                .delay-300 { animation-delay: 400ms; }
+                .delay-400 { animation-delay: 600ms; }
             `}} />
         </div>
     );
