@@ -3,12 +3,10 @@ import userRepo from "../userCore/user.repository.js";
 import User from "../userCore/user.model.js";
 import Wallet from "../wallet/wallet.model.js"; 
 
-const isProduction = process.env.NODE_ENV === "production";
-
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? "none" : "lax",
+  secure: true,   
+  sameSite: "none", 
   path: "/",
 };
 

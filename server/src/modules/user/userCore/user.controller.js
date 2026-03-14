@@ -8,12 +8,10 @@ import SERVER_MESSAGES from "../../../utils/errorMessages.js";
 
 // ==================== COOKIE CONFIG ====================
 
-const isProduction = process.env.NODE_ENV === "production";
-
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: isProduction,         
-  sameSite: isProduction ? "none" : "lax",
+  secure: true,   
+  sameSite: "none", 
   path: "/",
 };
 
@@ -148,7 +146,11 @@ export const refreshUserToken = async (req, res) => {
   const cookieRefreshToken = req.cookies.userRefreshToken;
 
   if (!cookieRefreshToken) {
-    return res.status(SERVER_MESSAGES.AUTH.MISSING_TOKEN.status).json({ success: false, message: SERVER_MESSAGES.AUTH.MISSING_TOKEN.message, code: SERVER_MESSAGES.AUTH.MISSING_TOKEN.code });
+    return res.status(SERVER_MESSAGES.AUTH.MISSING_TOKEN.status).json({
+      success: false,
+      message: SERVER_MESSAGES.AUTH.MISSING_TOKEN.message,
+      code: SERVER_MESSAGES.AUTH.MISSING_TOKEN.code
+    });
   }
 
   try {
@@ -162,7 +164,7 @@ export const refreshUserToken = async (req, res) => {
     if (!user || user.isBlocked || user.refreshToken !== cookieRefreshToken) {
       res.clearCookie("userAccessToken", COOKIE_OPTIONS);
       res.clearCookie("userRefreshToken", COOKIE_OPTIONS);
-      return res.status(403).json({ success: false });
+      return res.status(403).json({ success: false, message: "Invalid Session" });
     }
 
     const newAccessToken = jwt.sign(
@@ -190,10 +192,10 @@ export const refreshUserToken = async (req, res) => {
     });
 
     return res.status(200).json({ success: true });
-  } catch {
+  } catch (error) {
     res.clearCookie("userAccessToken", COOKIE_OPTIONS);
     res.clearCookie("userRefreshToken", COOKIE_OPTIONS);
-    return res.status(401).json({ success: false });
+    return res.status(401).json({ success: false, message: "Expired Session" });
   }
 };
 
