@@ -9,9 +9,8 @@ const processQueue = (error) => {
 };
 
 const adminAxios = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+  baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,
-  headers: { "Content-Type": "application/json" },
 });
 
 adminAxios.interceptors.response.use(
@@ -21,36 +20,26 @@ adminAxios.interceptors.response.use(
     const status = error.response?.status;
     const code = error.response?.data?.code;
 
-    if (!error.response) return Promise.reject(error);
-``
-    if (status === 401 && code === "TOKEN_EXPIRED" && !originalRequest._retry) {
+    const skipRoutes = ["/admin/login", "/admin/refresh"];
+    if (skipRoutes.some((r) => originalRequest.url.includes(r))) {
+      return Promise.reject(error);
+    }
+
+    if (status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then(() => adminAxios(originalRequest));
-      }
-
-      isRefreshing = true;
 
       try {
         await adminAxios.post("/admin/refresh");
-        processQueue(null);
-        isRefreshing = false;
         return adminAxios(originalRequest);
       } catch (err) {
-        processQueue(err);
-        isRefreshing = false;
-        return Promise.reject(err); 
+        window.dispatchEvent(new Event("ADMIN_LOGOUT"));
+        return Promise.reject(err);
       }
     }
 
-    if (
-      originalRequest.url.includes("/admin/login") ||
-      originalRequest.url.includes("/admin/refresh")
-    ) {
-      return Promise.reject(error);
+
+    if (status === 401 && ["NO_TOKEN", "INVALID_TOKEN", "SESSION_EXPIRED"].includes(code)) {
+      window.dispatchEvent(new Event("ADMIN_LOGOUT"));
     }
 
     return Promise.reject(error);

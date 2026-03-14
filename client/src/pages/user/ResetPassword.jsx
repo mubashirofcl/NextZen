@@ -5,12 +5,14 @@ import { Eye, EyeOff, Lock, Loader2 } from "lucide-react";
 import { resetPassword } from "../../api/user/user.api";
 import Header from "../../components/user/Header";
 import Footer from "../../components/user/Footer";
-import { nxToast } from "../../utils/toastProvider";
+import { nxToast } from "../../utils/userToast";
+import TOAST_MESSAGES from "../../utils/toastMessages";
 
 const ResetPassword = () => {
     const { state } = useLocation();
     const navigate = useNavigate();
     const [showPass, setShowPass] = useState(false);
+    const [showConfirmPass, setShowConfirmPass] = useState(false);
 
     const {
         register,
@@ -18,12 +20,13 @@ const ResetPassword = () => {
         watch,
         formState: { errors, isSubmitting }
     } = useForm({
+        mode: "onBlur",
         defaultValues: { password: "", confirmPassword: "" }
     });
 
     useEffect(() => {
         if (!state?.email || !state?.otp) {
-            navigate("/forgot-password");
+            navigate("/login", { replace: true });
         }
     }, [state, navigate]);
 
@@ -35,24 +38,25 @@ const ResetPassword = () => {
                 password: data.password,
             });
 
-            navigate("/login", {
-                state: { message: "Security updated. Please sign in." },
+            nxToast.success(
+                TOAST_MESSAGES.PROFILE.PASSWORD_UPDATED.title,
+                TOAST_MESSAGES.PROFILE.PASSWORD_UPDATED.message
+            );
 
+            navigate("/login", {
+                replace: true,
+                state: { message: "Security updated. Please sign in." }
             });
 
-            nxToast.success(
-                "Password Updated Successfully.",
-                "Please Sing in Using New Password"
-            );
         } catch (err) {
-            nxToast.security(err.response?.data?.message || "Failed to update password.");
+            nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, err.response?.data?.message || TOAST_MESSAGES.SYSTEM.ACTION_FAILED.message);
         }
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-white font-sans selection:bg-[#7a6af6]/20">
+        <div className="flex flex-col min-h-screen bg-black/20 font-sans selection:bg-[#7a6af6]/20 mt-20">
             <Header />
-            <main className="flex-grow flex items-center justify-center py-12 px-4 bg-gray-50/50">
+            <main className="flex-grow flex items-center justify-center py-12 px-4">
                 <div className="max-w-[380px] w-full bg-white border border-gray-100 shadow-[0_15px_40px_rgba(0,0,0,0.04)] rounded-[2rem] p-8 md:p-10 text-center transition-all">
 
                     <div className="w-14 h-14 bg-[#0F172A] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-[#0F172A]/10 text-white">
@@ -71,8 +75,12 @@ const ResetPassword = () => {
                                 <input
                                     type={showPass ? "text" : "password"}
                                     placeholder="••••••••"
-                                    {...register("password", { required: "Required", minLength: { value: 6, message: "Min 6 chars" } })}
-                                    className="w-full h-14 px-5 bg-gray-50 border-none rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
+                                    {...register("password", {
+                                        required: "Password is required",
+                                        minLength: { value: 6, message: "Min 6 chars" },
+                                        maxLength: { value: 12, message: "Max 12 chars" }
+                                    })}
+                                    className={`w-full h-14 px-5 text-black bg-gray-50 border-2 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all ${errors.password ? 'border-red-100' : 'border-transparent'}`}
                                 />
                                 <button
                                     type="button"
@@ -82,18 +90,34 @@ const ResetPassword = () => {
                                     {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
+                            {errors.password && (
+                                <p className="text-red-500 text-[9px] font-bold mt-1 ml-1 uppercase italic tracking-tighter">
+                                    {errors.password.message}
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-1.5">
                             <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-500 ml-1">Confirm Password</label>
-                            <input
-                                type="password"
-                                placeholder="••••••••"
-                                {...register("confirmPassword", {
-                                    validate: v => v === watch('password') || "Passwords do not match"
-                                })}
-                                className="w-full h-14 px-5 bg-gray-50 border-none rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all"
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showConfirmPass ? "text" : "password"}
+                                    placeholder="••••••••"
+                                    {...register("confirmPassword", {
+                                        required: "Please confirm your password",
+                                        maxLength: { value: 12, message: "Max 12 chars" },
+                                        validate: v => v === watch('password') || "Passwords do not match"
+                                    })}
+                                    className={`w-full h-14 px-5 text-black bg-gray-50 border-2 rounded-xl text-xs font-semibold outline-none focus:bg-white focus:ring-4 focus:ring-[#7a6af6]/5 transition-all ${errors.confirmPassword ? 'border-red-100' : 'border-transparent'}`}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPass(!showConfirmPass)}
+                                    className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#7a6af6]"
+                                >
+                                    {showConfirmPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
                             {errors.confirmPassword && (
                                 <p className="text-red-500 text-[9px] font-bold mt-1 ml-1 uppercase italic tracking-tighter">
                                     {errors.confirmPassword.message}
@@ -104,10 +128,10 @@ const ResetPassword = () => {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full h-14 bg-[#0F172A] text-white rounded-xl text-[10px] uppercase tracking-[0.3em] font-black shadow-lg hover:bg-black transition-all active:scale-[0.98] disabled:bg-gray-200 mt-2"
+                            className="w-full h-14 bg-[#0F172A] text-white rounded-xl text-[10px] uppercase tracking-[0.3em] font-black shadow-lg hover:bg-black transition-all active:scale-[0.98] disabled:bg-gray-200 mt-2 flex items-center justify-center"
                         >
                             {isSubmitting ? (
-                                <Loader2 className="animate-spin w-4 h-4 mx-auto" />
+                                <Loader2 className="animate-spin w-5 h-5" />
                             ) : (
                                 "Update Password"
                             )}

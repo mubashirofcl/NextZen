@@ -1,9 +1,7 @@
-
 const MainLayout = ({ children }) => {
     return (
-        <div className="relative min-h-screen font-sans text-[#333] selection:bg-[#7a6af6]/20">
-
-            <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
+        <div className="relative min-h-screen font-sans text-white selection:bg-[#7a6af6]/80">
+            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
                 <video
                     autoPlay
                     loop
@@ -11,18 +9,17 @@ const MainLayout = ({ children }) => {
                     playsInline
                     className="w-full h-full object-cover scale-105"
                 >
-                    <source src="/hero-bg.mp4" type="video/mp4" />
+                    <source src="https://d3kspkscsewpy5.cloudfront.net/bg-video.mp4" type="video/mp4" />
                 </video>
 
-                <div className="absolute inset-0 bg-black/30" />
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-[8px] transition-all duration-700" />
+
+                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" />
             </div>
 
-
-
-            <main className="mx-auto relative z-10">
+            <main className="relative z-10 mx-auto">
                 {children}
             </main>
-
         </div>
     );
 };

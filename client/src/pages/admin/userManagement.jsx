@@ -1,141 +1,175 @@
-import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { Search, Filter, Ban, Users, RefreshCcw, UserCheck, ShieldAlert } from 'lucide-react';
+import React, { useState, useDeferredValue, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Search, Filter, Users, UserCheck, ShieldAlert, List, Ban, CheckCircle, X } from "lucide-react";
 
-// Redux Actions
-import { fetchUsersList, blockUserAction, unblockUserAction } from '../../store/admin/adminUserMgmtSlice';
-
-// Components
-import AdminSidebar from '../../components/admin/AdminSidebar';
-import UserTable from '../../components/admin/UserTable';
-import BlockModal from '../../components/admin/BlockUserModal';
+import AdminSidebar from "../../components/admin/AdminSidebar";
+import BlockModal from "../../components/admin/BlockUserModal";
+import DataTable from "../../tables/admin/DataTable";
+import { adminToast } from "../../utils/adminToast";
+import { useAdminUsers, useBlockUser, useUnblockUser } from "../../hooks/admin/useAdminUsers";
 
 const UserManagement = () => {
-    const dispatch = useDispatch();
+    const [searchParams, setSearchParams] = useSearchParams();
 
-    // Select state with safe fallbacks
-    const { users = [], pagination = {}, loading = false } = useSelector((state) => state.adminUserMgmt || {});
-    const { admin } = useSelector((state) => state.adminAuth);
-
-    const [searchTerm, setSearchTerm] = useState("");
+    const [searchTerm, setSearchTerm] = useState(() => searchParams.get("search") || "");
+    const [statusFilter, setStatusFilter] = useState("");
+    const [page, setPage] = useState(1);
     const [selectedUser, setSelectedUser] = useState(null);
 
-    // Debounced search and fetch
+    const deferredSearch = useDeferredValue(searchTerm);
+
     useEffect(() => {
-        const delayDebounceFn = setTimeout(() => {
-            const pageToFetch = pagination?.currentPage ?? 1;
-            dispatch(fetchUsersList({ page: pageToFetch, search: searchTerm }));
-        }, 500);
+        const currentUrlSearch = searchParams.get("search") || "";
+        if (searchTerm !== currentUrlSearch) {
+            setSearchParams(prev => {
+                const newParams = new URLSearchParams(prev);
+                if (searchTerm) newParams.set("search", searchTerm);
+                else newParams.delete("search");
+                return newParams;
+            }, { replace: true });
+        }
+    }, [searchTerm, searchParams, setSearchParams]);
 
-        return () => clearTimeout(delayDebounceFn);
-    }, [dispatch, pagination?.currentPage, searchTerm]);
+    const { data, isLoading: loading } = useAdminUsers({
+        page,
+        search: deferredSearch,
+        status: statusFilter,
+    });
 
-    const handlePageChange = (newPage) => {
-        dispatch(fetchUsersList({ page: newPage, search: searchTerm }));
+    const users = data?.users ?? [];
+    const pagination = {
+        page: data?.currentPage || 1,
+        pages: data?.totalPages || 1,
+        total: data?.totalUsers || 0,
     };
 
+    const blockMutation = useBlockUser();
+    const unblockMutation = useUnblockUser();
+
     const handleUnblock = (userId) => {
-        if (window.confirm("Confirm: Unblock this user and restore access?")) {
-            dispatch(unblockUserAction(userId));
-        }
+        adminToast.confirm("Restore Access?", "Allow the customer to log in again.", () => {
+            unblockMutation.mutate(userId, {
+                onSuccess: () => adminToast.success("Access Restored Successfully"),
+            });
+        });
     };
 
     return (
-        <div className="min-h-screen flex bg-[#f8fafc] font-sans text-[#1e293b] p-3 gap-3">
-
-            {/* REUSABLE SIDEBAR */}
+        <div className="min-h-screen flex bg-[#f8fafc] p-3 gap-3 font-sans">
             <AdminSidebar />
-
-            {/* MAIN CONTENT AREA */}
             <main className="flex-1 flex flex-col gap-3 overflow-hidden">
-
-                {/* COMPACT HEADER */}
-                <header className="bg-white/70 backdrop-blur-md border border-white rounded-[20px] px-6 py-3 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-                        <span>Admin</span>
-                        <span>/</span>
-                        <span className="text-[#0F172A]">Customers</span>
+                <header className="bg-white/80 backdrop-blur-md border border-white rounded-[20px] px-6 py-3 flex justify-between items-center shadow-sm">
+                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                        Admin / <span className="text-[#0F172A] font-black">Customers</span>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                    <div className="flex items-center gap-3">
+
+                        <div className="relative group">
+                            {/* Search Icon */}
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#7a6af6] transition-colors" size={14} />
+
                             <input
                                 type="text"
                                 placeholder="Search customers..."
-                                className="pl-9 pr-4 py-1.5 bg-slate-100/50 border-transparent focus:bg-white focus:border-slate-200 rounded-lg text-xs outline-none transition-all w-64"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setPage(1);
+                                }}
+                                className="pl-9 pr-10 py-2 bg-slate-100/50 focus:bg-white rounded-xl text-xs w-64 outline-none transition-all focus:ring-1 focus:ring-[#7a6af6]"
+                                autoFocus={!!searchParams.get("search")}
                             />
+
+                            {searchTerm && (
+                                <button
+                                    onClick={() => {
+                                        setSearchTerm("");
+                                        setPage(1);
+                                    }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition-colors"
+                                    title="Clear search"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
                         </div>
-                        <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
-                            <div className="text-right hidden sm:block">
-                                <p className="text-xs font-bold text-[#0F172A] leading-none mb-1">{admin?.name || "Admin"}</p>
-                                <p className="text-[9px] text-green-600 font-bold uppercase">Customer Lead</p>
-                            </div>
-                            <div className="w-8 h-8 rounded-lg bg-[#0F172A] flex items-center justify-center text-white shadow-md">
-                                <Users size={16} />
-                            </div>
+                        <div className="relative">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                                className="appearance-none text-[10px] font-bold uppercase tracking-widest px-4 py-2 pr-8 rounded-xl bg-slate-100/50 outline-none cursor-pointer"
+                            >
+                                <option value="">All Access</option>
+                                <option value="active">Active Only</option>
+                                <option value="blocked">Restricted</option>
+                            </select>
+                            <Filter size={10} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                         </div>
+                        <div className="w-9 h-9 rounded-xl bg-[#0F172A] flex items-center justify-center text-white shadow-lg"><Users size={16} /></div>
                     </div>
                 </header>
 
-                {/* SCROLLABLE CONTENT */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3">
-
-                    {/* MINI STATS GRID */}
+                <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <StatsCard
-                            title="Total Users"
-                            value={pagination?.totalUsers || 0}
-                            icon={<Users size={18} />}
-                            color="blue"
-                        />
-                        <StatsCard
-                            title="Active Access"
-                            value={users.filter(u => !u.isBlocked).length}
-                            icon={<UserCheck size={18} />}
-                            color="green"
-                        />
-                        <StatsCard
-                            title="Restricted"
-                            value={users.filter(u => u.isBlocked).length}
-                            icon={<ShieldAlert size={18} />}
-                            color="red"
-                        />
+                        <StatsCard title="Total Users" value={pagination.total} icon={<Users size={18} />} color="blue" />
+                        <StatsCard title="Active Access" value={users.filter(u => !u.isBlocked).length} icon={<UserCheck size={18} />} color="green" />
+                        <StatsCard title="Restricted" value={users.filter(u => u.isBlocked).length} icon={<ShieldAlert size={18} />} color="red" />
                     </div>
 
-                    {/* TABLE CONTAINER */}
-                    <div className="bg-white border border-slate-100 rounded-[20px] shadow-sm overflow-hidden">
-                        <div className="p-5 border-b border-slate-50 flex justify-between items-center">
+                    <div className="bg-white rounded-[20px] shadow-sm overflow-hidden">
+                        <div className="p-5 border-b flex justify-between items-center">
                             <h2 className="text-xs font-black uppercase tracking-widest text-[#0F172A]">User Management List</h2>
-                            <button className="p-2 hover:bg-slate-50 rounded-lg text-slate-400 transition-colors">
-                                <Filter size={16} />
-                            </button>
+                            <List size={16} className="text-slate-400" />
                         </div>
 
-                        <div className="p-2">
-                            <UserTable
-                                users={users}
-                                loading={loading}
-                                pagination={pagination}
-                                onPageChange={handlePageChange}
-                                onBlock={(user) => setSelectedUser(user)}
-                                onUnblock={handleUnblock}
-                            />
-                        </div>
+                        <DataTable
+                            columns={["Customer Details", "Email Address", "Access Status", "Action"]}
+                            data={users}
+                            loading={loading}
+                            pagination={pagination}
+                            onPageChange={setPage}
+                            emptyText="No customer records found"
+                            renderRow={(user) => (
+                                <tr key={user._id} className="group hover:bg-slate-50/30 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-[#0F172A] font-black text-xs border border-slate-200 group-hover:border-[#0F172A] transition-colors uppercase">{user.name?.charAt(0)}</div>
+                                            <div>
+                                                <p className="text-xs font-bold text-[#0F172A] uppercase tracking-tight leading-none mb-1">{user.name}</p>
+                                                <p className="text-[9px] text-slate-400 font-medium tracking-widest uppercase">ID: {user._id?.slice(-6)}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4"><p className="text-xs font-semibold text-slate-500">{user.email}</p></td>
+                                    <td className="px-6 py-4">
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter border ${user.isBlocked ? "bg-red-50 text-red-600 border-red-100" : "bg-green-50 text-green-600 border-green-100"}`}>
+                                            <div className={`w-1 h-1 rounded-full mr-1.5 ${user.isBlocked ? "bg-red-500" : "bg-green-500"}`} />
+                                            {user.isBlocked ? "Restricted" : "Active Access"}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        {user.isBlocked ? (
+                                            <button onClick={() => handleUnblock(user._id)} className="p-2 text-green-600 hover:bg-green-50 rounded-xl transition-all active:scale-90" title="Restore"><CheckCircle size={18} strokeWidth={2.5} /></button>
+                                        ) : (
+                                            <button onClick={() => setSelectedUser(user)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all active:scale-90" title="Revoke"><Ban size={18} strokeWidth={2.5} /></button>
+                                        )}
+                                    </td>
+                                </tr>
+                            )}
+                        />
                     </div>
                 </div>
             </main>
 
-            {/* BLOCK MODAL */}
             {selectedUser && (
                 <BlockModal
                     user={selectedUser}
                     onClose={() => setSelectedUser(null)}
                     onConfirm={(reason) => {
-                        dispatch(blockUserAction({ userId: selectedUser._id, reason }));
-                        setSelectedUser(null);
+                        blockMutation.mutate({ userId: selectedUser._id, reason }, {
+                            onSuccess: () => { adminToast.success("User Restricted"); setSelectedUser(null); },
+                        });
                     }}
                 />
             )}
@@ -143,19 +177,12 @@ const UserManagement = () => {
     );
 };
 
-// COMPACT STATS CARD (Matching Dashboard)
 const StatsCard = ({ title, value, icon, color }) => {
-    const colors = {
-        blue: "bg-blue-50 text-blue-600",
-        green: "bg-green-50 text-green-600",
-        red: "bg-red-50 text-red-600",
-    };
+    const colors = { blue: "bg-blue-50 text-blue-600", green: "bg-green-50 text-green-600", red: "bg-red-50 text-red-600" };
     return (
-        <div className="bg-white border border-slate-100 rounded-[20px] p-4 shadow-sm">
+        <div className="bg-white rounded-[20px] p-4 border border-slate-100 shadow-sm">
             <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]}`}>
-                    {icon}
-                </div>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]}`}>{icon}</div>
                 <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</p>
                     <p className="text-lg font-bold text-[#0F172A]">{value}</p>

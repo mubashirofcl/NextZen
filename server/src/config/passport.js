@@ -6,31 +6,27 @@ import dotenv from "dotenv";
 dotenv.config();
 
 if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  throw new Error("Google OAuth environment variables are missing");
 }
-
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: "/api/auth/google/callback",
-      // Add these TWO lines to force the correct data format
-      userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
-      scope: ['profile', 'email', 'openid'] 
+      passReqToCallback: true,
     },
-    async (accessToken, refreshToken, profile, done) => {
-        try {
+    async (req, accessToken, refreshToken, profile, done) => {
+      try {
+        const referralCode = req.query.state || null;
+        console.log("Passport captured referral code:", referralCode);
 
-            const user = await authService.handleGoogleAuth(profile);
-            return done(null, user);
-        } catch (error) {
-            return done(error, null);
-        }
+        const user = await authService.handleGoogleAuth(profile, referralCode);
+        return done(null, user);
+      } catch (error) {
+        return done(error, null);
+      }
     }
   )
 );
-
-passport.serializeUser((user, done) => done(null, user._id));
-passport.deserializeUser((id, done) => done(null, { id }));
-
 export default passport;

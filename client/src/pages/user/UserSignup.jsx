@@ -1,61 +1,89 @@
-import React, { useState } from "react";
-import { Eye, EyeOff, Star, Twitter, Instagram, Facebook, Shield } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Eye, EyeOff, Star, Twitter, Instagram, Facebook, Tag, ArrowRight } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { requestSignupOTP } from "../../api/user/user.api";
-import { nxToast } from "../../utils/toastProvider";
+import { nxToast } from "../../utils/userToast";
+import TOAST_MESSAGES from "../../utils/toastMessages";
 
 const UserSignup = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [showPass, setShowPass] = useState(false);
     const [showConfirmPass, setShowConfirmPass] = useState(false);
     const [serverError, setServerError] = useState("");
+
+    const urlReferralCode = searchParams.get("ref") || "";
 
     const {
         register,
         handleSubmit,
         watch,
         formState: { errors, isSubmitting }
-    } = useForm();
+    } = useForm({
+        mode: "onBlur",
+        defaultValues: {
+            name: "",
+            email: "",
+            password: "",
+            confirmPassword: "",
+            referralCode: urlReferralCode
+        }
+    });
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const ref = params.get("ref");
+        if (ref) {
+            localStorage.setItem("pending_referral", ref);
+        }
+    }, []);
 
     const handleGoogleSignIn = () => {
-        window.location.href = "http://localhost:5000/api/auth/google";
+        const params = new URLSearchParams(window.location.search);
+        let ref = params.get("ref") || localStorage.getItem("pending_referral");
+
+        const backendBaseUrl = `${import.meta.env.VITE_API_URL}/auth/google`;
+        const finalUrl = ref ? `${backendBaseUrl}?ref=${ref}` : backendBaseUrl;
+
+        window.location.href = finalUrl;
     };
 
     const onSubmit = async (data) => {
         setServerError("");
         try {
             await requestSignupOTP({
-                name: data.name,
                 email: data.email,
-                password: data.password,
                 purpose: "SIGNUP"
             });
+
+            nxToast.success(TOAST_MESSAGES.VERIFICATION.OTP_SENT.title, TOAST_MESSAGES.VERIFICATION.OTP_SENT.message);
 
             navigate("/verify-otp", {
                 state: {
                     flow: "signup",
                     name: data.name,
                     email: data.email,
-                    password: data.password
-                }
+                    password: data.password,
+                    referralCode: data.referralCode || localStorage.getItem("pending_referral")
+                },
+                replace: true
             });
-            nxToast.success("Verification code sent to your Email");
-
         } catch (err) {
-            setServerError(err.response?.data?.message || "Signup failed. Please try again.");
-            nxToast.security("Signup failed. Please try again.");
+            const errorMsg = err.response?.data?.message || TOAST_MESSAGES.AUTH.SIGNUP_INTERRUPTED.message;
+            setServerError(errorMsg);
+            nxToast.security(TOAST_MESSAGES.AUTH.SIGNUP_INTERRUPTED.title, errorMsg);
         }
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-white font-sans">
-            <main className="flex-grow flex items-center justify-center py-8 px-4 bg-gray-50/50">
-                <div className="max-w-[900px] w-full flex bg-white border border-gray-100 shadow-2xl rounded-2xl overflow-hidden min-h-[580px]">
+        <div className="flex flex-col min-h-screen bg-black/20 font-sans">
+            <main className="flex-grow flex items-center justify-center py-8 px-4 text-black">
+                <div className="max-w-[900px] w-full flex bg-white/60 shadow-2xl rounded-2xl overflow-hidden min-h-[580px]">
 
                     <div className="hidden lg:block lg:w-[42%] relative">
                         <img
-                            src="https://images.unsplash.com/photo-1550246140-5119ae4790b8?q=80&w=2070&auto=format&fit=crop"
+                            src="https://images.unsplash.com/photo-1675079506207-668db5bb2e80?q=80&w=2070&auto=format&fit=crop"
                             alt="NextZen Lifestyle"
                             className="absolute inset-0 w-full h-full object-cover"
                         />
@@ -63,7 +91,7 @@ const UserSignup = () => {
                             <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 bg-[#0F172A] rounded-lg flex items-center justify-center font-bold text-lg shadow-lg">N</div>
                                 <div>
-                                    <h1 className="font-bold text-md leading-none tracking-tight">NEXTZEN</h1>
+                                    <h1 className="font-bold text-md leading-none tracking-tight text-white uppercase">NEXTZEN</h1>
                                     <p className="text-[9px] opacity-80 uppercase tracking-widest mt-1">Premium Apparel</p>
                                 </div>
                             </div>
@@ -81,11 +109,11 @@ const UserSignup = () => {
                         </div>
                     </div>
 
-                    <div className="w-full lg:w-[58%] p-8 lg:px-10 flex flex-col justify-center bg-white">
+                    <div className="w-full lg:w-[58%] p-8 lg:px-10 flex flex-col justify-center bg-white/40">
                         <div className="max-w-xs mx-auto w-full">
                             <div className="text-center mb-6">
                                 <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight mb-1">Create Account</h2>
-                                <p className="text-gray-400 text-xs font-medium">Join the NEXTZEN community today.</p>
+                                <p className="text-black text-xs font-medium">Join the NEXTZEN community today.</p>
                             </div>
 
                             {serverError && (
@@ -94,16 +122,21 @@ const UserSignup = () => {
                                 </div>
                             )}
 
-                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
+                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Full Name</label>
                                     <input
                                         type="text"
                                         placeholder="Enter your name"
-                                        {...register("name", { required: "Name is required", minLength: 3 })}
-                                        className="w-full px-3.5 py-2.5 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
+                                        {...register("name", {
+                                            required: "Name is required",
+                                            minLength: { value: 3, message: "Name is too short" },
+                                            maxLength: { value: 30, message: "Name is too long" },
+                                            pattern: { value: /^[a-zA-Z\s]*$/, message: "Only letters allowed" }
+                                        })}
+                                        className={`w-full px-3.5 py-2.5 bg-gray-50 rounded-xl text-xs outline-none transition-all border ${errors.name ? 'border-red-300' : 'border-transparent focus:ring-1 focus:ring-gray-300'}`}
                                     />
-                                    {errors.name && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase">{errors.name.message}</p>}
+                                    {errors.name && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase tracking-tighter">! {errors.name.message}</p>}
                                 </div>
 
                                 <div className="space-y-1">
@@ -111,58 +144,93 @@ const UserSignup = () => {
                                     <input
                                         type="email"
                                         placeholder="john@example.com"
-                                        {...register("email", { required: "Email required", pattern: /^\S+@\S+$/i })}
-                                        className="w-full px-3.5 py-2.5 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
+                                        {...register("email", {
+                                            required: "Email is required",
+                                            pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: "Invalid email format" },
+                                            maxLength: { value: 50, message: "Email is too long" }
+                                        })}
+                                        className={`w-full px-3.5 py-2.5 bg-gray-50 rounded-xl text-xs outline-none transition-all border ${errors.email ? 'border-red-300' : 'border-transparent focus:ring-1 focus:ring-gray-300'}`}
                                     />
-                                    {errors.email && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase">Valid email required</p>}
+                                    {errors.email && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase tracking-tighter">! {errors.email.message}</p>}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1 relative">
                                         <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Password</label>
-                                        <input
-                                            type={showPass ? "text" : "password"}
-                                            placeholder="••••••••"
-                                            {...register("password", { required: "Required", minLength: { value: 6, message: "Min 6 chars" } })}
-
-                                            className="w-full px-3.5 py-2.5 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
-                                        />
-                                        <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-8 text-gray-400 hover:text-gray-600">
-                                            {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                                        </button>
-                                        {errors.password && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase">{errors.password.message}</p>}
+                                        <div className="relative">
+                                            <input
+                                                type={showPass ? "text" : "password"}
+                                                placeholder="••••••••"
+                                                {...register("password", {
+                                                    required: "Required",
+                                                    minLength: { value: 6, message: "Min 6 chars" },
+                                                    maxLength: { value: 20, message: "Max 20 chars" }
+                                                })}
+                                                className={`w-full px-3.5 py-2.5 bg-gray-50 rounded-xl text-xs outline-none transition-all border ${errors.password ? 'border-red-300' : 'border-transparent focus:ring-1 focus:ring-gray-300'}`}
+                                            />
+                                            <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                                {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                                            </button>
+                                        </div>
+                                        {errors.password && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase tracking-tighter">! {errors.password.message}</p>}
                                     </div>
 
                                     <div className="space-y-1 relative">
                                         <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Confirm</label>
-                                        <input
-                                            type={showConfirmPass ? "text" : "password"}
-                                            placeholder="••••••••"
-                                            {...register("confirmPassword", {
-                                                validate: v => v === watch("password") || "Mismatch"
-                                            })}
-                                            className="w-full px-3.5 py-2.5 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
-                                        />
-                                        <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-8 text-gray-400 hover:text-gray-600">
-                                            {showConfirmPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                                        </button>
-                                        {errors.confirmPassword && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase">{errors.confirmPassword.message}</p>}
+                                        <div className="relative">
+                                            <input
+                                                type={showConfirmPass ? "text" : "password"}
+                                                placeholder="••••••••"
+                                                {...register("confirmPassword", {
+                                                    required: "Required",
+                                                    validate: v => v === watch("password") || "Mismatch"
+                                                })}
+                                                className={`w-full px-3.5 py-2.5 bg-gray-50 rounded-xl text-xs outline-none transition-all border ${errors.confirmPassword ? 'border-red-300' : 'border-transparent focus:ring-1 focus:ring-gray-300'}`}
+                                            />
+                                            <button type="button" onClick={() => setShowConfirmPass(!showConfirmPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                                {showConfirmPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                                            </button>
+                                        </div>
+                                        {errors.confirmPassword && <p className="text-[9px] text-red-500 font-medium mt-0.5 uppercase tracking-tighter">! {errors.confirmPassword.message}</p>}
                                     </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Referral Code (Optional)</label>
+                                    <div className="relative group">
+                                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                            <Tag size={12} />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="GIFT-100"
+                                            {...register("referralCode", {
+                                                maxLength: { value: 15, message: "Code too long" }
+                                            })}
+                                            className={`w-full pl-9 pr-3.5 py-2.5 border-none rounded-xl text-xs outline-none focus:ring-1 transition-all ${urlReferralCode ? 'bg-indigo-50/50 ring-1 ring-indigo-200' : 'bg-gray-50 focus:ring-gray-300'}`}
+                                        />
+                                        {urlReferralCode && (
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-indigo-500 uppercase tracking-tighter animate-pulse">
+                                                Link Applied
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-[8px] text-gray-400 font-medium uppercase italic">Earn rewards on your first deployment.</p>
                                 </div>
 
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="w-full bg-[#0F172A] text-white py-3.5 rounded-xl text-[10px] uppercase tracking-[0.2em] font-bold shadow-lg hover:bg-black transition-all active:scale-[0.98] disabled:bg-gray-400 mt-2"
+                                    className="w-full bg-[#0F172A] text-white py-3.5 rounded-xl text-[10px] uppercase tracking-[0.2em] font-bold shadow-lg hover:bg-black transition-all active:scale-[0.98] disabled:bg-gray-400 mt-2 flex items-center justify-center gap-2"
                                 >
-                                    {isSubmitting ? "Processing..." : "Sign Up"}
+                                    {isSubmitting ? "Processing..." : <>Sign Up <ArrowRight size={14} /></>}
                                 </button>
                             </form>
 
                             <div className="relative my-5">
                                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-100"></span></div>
                                 <div className="relative flex justify-center text-[9px] uppercase tracking-widest font-bold">
-                                    <span className="bg-white px-3 text-gray-400">Or continue with</span>
+                                    <span className="bg-white px-3 text-gray-500">Or continue with</span>
                                 </div>
                             </div>
 

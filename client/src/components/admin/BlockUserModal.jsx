@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { Ban, X, AlertCircle } from "lucide-react";
+import { adminToast } from "../../utils/adminToast";
+
 
 const BlockModal = ({ user, onClose, onConfirm }) => {
     const [reason, setReason] = useState("");
 
     const handleConfirm = () => {
-        if (reason.trim().length < 5) return alert("Please specify a reason (min 5 characters)");
+        if (reason.trim().length < 5) return adminToast.warn("Please specify a reason (min 5 characters)");
         onConfirm(reason);
+        adminToast.success("Customer will no longer have access to the store.")
         onClose();
     };
 

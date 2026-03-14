@@ -6,8 +6,9 @@ import { useDispatch } from "react-redux";
 
 import { userLogin } from "../../api/user/user.api";
 import { fetchUser } from "../../store/user/authSlice";
-import BlockedModal from "../../components/admin/BlockedModal";
-import { nxToast } from "../../utils/toastProvider";
+import BlockedModal from "../../components/user/BlockedModal";
+import { nxToast } from "../../utils/userToast";
+import TOAST_MESSAGES from "../../utils/toastMessages";
 
 const UserLogin = () => {
     const navigate = useNavigate();
@@ -26,12 +27,27 @@ const UserLogin = () => {
         handleSubmit,
         formState: { errors, isSubmitting },
     } = useForm({
+        mode: "onBlur",
         defaultValues: { email: "", password: "" },
     });
 
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const ref = params.get("ref");
+        if (ref) {
+            localStorage.setItem("pending_referral", ref);
+            console.log("📍 Referral saved to storage:", ref);
+        }
+    }, [location.search]);
 
     const handleGoogleSignIn = () => {
-        window.location.href = "http://localhost:5000/api/auth/google";
+        const params = new URLSearchParams(window.location.search);
+        let ref = params.get("ref") || localStorage.getItem("pending_referral");
+
+        const backendBaseUrl = `${import.meta.env.VITE_API_URL}/auth/google`;
+        const finalUrl = ref ? `${backendBaseUrl}?ref=${ref}` : backendBaseUrl;
+
+        window.location.replace(finalUrl);
     };
 
     useEffect(() => {
@@ -39,6 +55,15 @@ const UserLogin = () => {
         if (params.get("blocked") === "true") {
             setBlockedReason(params.get("reason") || "Your account has been restricted.");
             setShowBlockedModal(true);
+        }
+
+        const blockedReason = sessionStorage.getItem("BLOCKED_MESSAGE");
+
+        if (blockedReason) {
+            setBlockedReason(blockedReason);
+            setShowBlockedModal(true);
+
+            sessionStorage.removeItem("BLOCKED_MESSAGE");
         }
     }, [location.search]);
 
@@ -52,8 +77,8 @@ const UserLogin = () => {
             if (!showBlockedModal) {
                 navigate(from, { replace: true });
                 nxToast.success(
-                    "Welcome Back!",
-                    "Successfully signed in. Happy shopping at NEXTZEN!"
+                    TOAST_MESSAGES.AUTH.LOGIN_SUCCESS.title,
+                    TOAST_MESSAGES.AUTH.LOGIN_SUCCESS.message
                 );
             }
         } catch (loginErr) {
@@ -63,19 +88,21 @@ const UserLogin = () => {
                 setShowBlockedModal(true);
                 return;
             }
-            setApiError(res?.data?.message || "Invalid email or password");
+            const errorMsg = res?.data?.message || TOAST_MESSAGES.AUTH.INVALID_CREDENTIALS.message;
+            setApiError(errorMsg);
+            nxToast.security(TOAST_MESSAGES.AUTH.INVALID_CREDENTIALS.title, errorMsg);
         }
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-white font-sans">
-            <main className="flex-grow flex items-center justify-center py-8 px-4 bg-gray-50/50">
+        <div className="flex flex-col min-h-screen bg-black/20 font-sans">
+            <main className="flex-grow flex items-center justify-center py-8 px-4 text-black">
 
-                <div className="max-w-[900px] w-full flex bg-white border border-gray-100 shadow-2xl rounded-2xl overflow-hidden min-h-[580px]">
+                <div className="max-w-[900px] w-full flex bg-white/60 shadow-2xl rounded-2xl overflow-hidden min-h-[580px]">
 
                     <div className="hidden lg:block lg:w-[42%] relative">
                         <img
-                            src="https://images.unsplash.com/photo-1550246140-5119ae4790b8?q=80&w=2070&auto=format&fit=crop"
+                            src="https://images.unsplash.com/photo-1675079505988-96936a80efb3?q=80&w=2070&auto=format&fit=crop"
                             alt="NextZen Lifestyle"
                             className="absolute inset-0 w-full h-full object-cover"
                         />
@@ -101,12 +128,12 @@ const UserLogin = () => {
                         </div>
                     </div>
 
-                    <div className="w-full lg:w-[58%] p-8 lg:px-10 flex flex-col justify-center bg-white">
+                    <div className="w-full lg:w-[58%] p-8 lg:px-10 flex flex-col justify-center bg-white/40">
                         <div className="max-w-xs mx-auto w-full">
 
                             <div className="text-center mb-10">
                                 <h2 className="text-2xl font-bold text-[#0F172A] tracking-tight mb-1">Welcome Back</h2>
-                                <p className="text-gray-400 text-xs font-medium">Please sign in to your account.</p>
+                                <p className="text-gray text-xs font-medium">Please sign in to your account.</p>
                             </div>
 
                             {apiError && (
@@ -117,27 +144,40 @@ const UserLogin = () => {
 
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                                 <div className="space-y-1.5">
-                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Email Address</label>
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Email Address</label>
                                     <input
                                         type="email"
                                         placeholder="Enter your email"
-                                        {...register("email", { required: "Email required", pattern: /^\S+@\S+$/i })}
-                                        className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
+                                        {...register("email", {
+                                            required: "Email address is required",
+                                            pattern: {
+                                                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                                message: "Please enter a valid email address"
+                                            },
+                                            maxLength: {
+                                                value: 50,
+                                                message: "Email cannot exceed 50 characters"
+                                            }
+                                        })}
+                                        className={`w-full px-4 py-3 bg-gray-50 border rounded-xl text-xs outline-none transition-all focus:ring-1 ${errors.email ? 'border-red-300 focus:ring-red-200' : 'border-none focus:ring-gray-300'}`}
                                     />
-                                    {errors.email && <p className="text-[9px] text-red-500 font-medium uppercase mt-1">{errors.email.message}</p>}
+                                    {errors.email && <p className="text-[9px] text-red-500 font-medium uppercase mt-1">! {errors.email.message}</p>}
                                 </div>
 
                                 <div className="space-y-1.5 relative">
                                     <div className="flex justify-between items-center">
-                                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Password</label>
-
+                                        <label className="text-[9px] font-bold uppercase tracking-widest text-gray">Password</label>
                                     </div>
                                     <div className="relative">
                                         <input
                                             type={showPass ? "text" : "password"}
                                             placeholder="••••••••"
-                                            {...register("password", { required: "Password is required", minLength: { value: 6, message: "Min 6 chars" } })}
-                                            className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-xs outline-none focus:ring-1 focus:ring-gray-300 transition-all"
+                                            {...register("password", {
+                                                required: "Password is required",
+                                                minLength: { value: 6, message: "Password must be at least 6 characters" },
+                                                maxLength: { value: 25, message: "Password cannot exceed 25 characters" }
+                                            })}
+                                            className={`w-full px-4 py-3 bg-gray-50 border rounded-xl text-xs outline-none transition-all focus:ring-1 ${errors.password ? 'border-red-300 focus:ring-red-200' : 'border-none focus:ring-gray-300'}`}
                                         />
                                         <button
                                             type="button"
@@ -147,7 +187,7 @@ const UserLogin = () => {
                                             {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
                                         </button>
                                     </div>
-                                    {errors.password && <p className="text-[9px] text-red-500 font-medium uppercase mt-1">{errors.password.message}</p>}
+                                    {errors.password && <p className="text-[9px] text-red-500 font-medium uppercase mt-1">! {errors.password.message}</p>}
                                 </div>
 
                                 <button
@@ -169,7 +209,7 @@ const UserLogin = () => {
                             <div className="relative my-8">
                                 <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-100"></span></div>
                                 <div className="relative flex justify-center text-[9px] uppercase tracking-widest font-bold">
-                                    <span className="bg-white px-3 text-gray-400">Or continue with</span>
+                                    <span className="bg-white px-3 text-gray">Or continue with</span>
                                 </div>
                             </div>
 

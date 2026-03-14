@@ -44,12 +44,10 @@ const otpSchema = new mongoose.Schema(
     }
 );
 
-// Indexes
 otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 otpSchema.index({ email: 1, purpose: 1, isUsed: 1 });
 otpSchema.index({ userId: 1, purpose: 1 });
 
-// Methods
 otpSchema.methods.incrementAttempts = async function() {
     this.attempts += 1;
     

@@ -8,11 +8,13 @@ import Footer from '../../components/user/Footer';
 import ChangePasswordModal from '../../components/user/ChangePasswordModal';
 import { changePassword, userLogout } from '../../api/user/user.api';
 import { clearUser } from '../../store/user/authSlice';
-import { nxToast } from '../../utils/toastProvider';
+import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
+
+const DEFAULT_AVATAR = 'https://avatar.iran.liara.run/public/boy';
 
 const ProfileLayout = () => {
     const { user } = useSelector((state) => state.userAuth);
-
     const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
     const navigate = useNavigate();
@@ -26,86 +28,87 @@ const ProfileLayout = () => {
         try {
             await userLogout();
             dispatch(clearUser());
-            nxToast.success(
-                "Successfully Logged out."
-            );
+            nxToast.success(TOAST_MESSAGES.AUTH.LOGOUT_SUCCESS.title, TOAST_MESSAGES.AUTH.LOGOUT_SUCCESS.message);
             navigate('/');
         } catch (error) {
             dispatch(clearUser());
-            nxToast.security(
-                "Failed to Logout."
-            );
+            nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Failed to Logout.");
             navigate('/');
         }
     };
 
-    const avatarSrc =
-        [user?.image, user?.profilePicture, user?.picture].find(Boolean) ||
-        "https://avatar.iran.liara.run/public/boy";
-
-    const finalAvatar = avatarSrc.includes("googleusercontent")
-        ? avatarSrc
-        : `${avatarSrc}?t=${new Date(user?.updatedAt || Date.now()).getTime()}`;
-
-    const isGoogleUser = user?.authSource === "google" || user?.isGoogleUser;
+    const isGoogleUser = Boolean(user?.googleId);
 
     return (
-        <div className="min-h-screen text-[#0F172A]">
-            <Header />
+        <div className="h-screen w-full flex flex-col overflow-hidden">
+            <div className="shrink-0 z-50">
+                <Header />
+            </div>
 
-            <main className="max-w-[1200px] mx-auto pt-16 pb-24 px-6 flex flex-col md:flex-row gap-10">
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden pt-24">
+                <div className="flex-1 flex flex-col lg:flex-row gap-8 px-4 sm:px-6 lg:px-12 py-8 overflow-hidden">
 
-    
-                <aside className="w-full md:w-64 flex flex-col gap-6">
-                    <div className="bg-white/40 rounded-xl p-6 text-center shadow-sm">
-                        <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-4 border-2 border-slate-200">
-                            <img
-                                key={user?.updatedAt}
-                                src={finalAvatar}
-                                alt="User"
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                    e.target.src = "https://avatar.iran.liara.run/public/boy";
+                    <aside className="w-full lg:w-[320px] shrink-0 flex flex-col gap-6 overflow-y-auto custom-scrollbar pb-6 lg:pb-0">
+                        <div className="bg-white/10 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 text-center shadow-2xl shrink-0">
+                            <div className="relative w-24 h-24 mx-auto mb-4">
+                                <div className="w-full h-full rounded-full overflow-hidden border-2 border-[#7a6af6] p-1">
+                                    {user?.profilePicture ? (
+                                        <img
+                                            src={user.profilePicture}
+                                            alt="User"
+                                            className="w-full h-full object-cover rounded-full"
+                                            onError={(e) => {
+                                                e.currentTarget.onerror = null;
+                                                e.currentTarget.src = DEFAULT_AVATAR;
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-[#7a6af6] flex items-center justify-center text-white text-2xl font-black">
+                                            {user?.name?.charAt(0) || 'U'}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 border-4 border-[#1e293b] rounded-full" />
+                            </div>
+
+                            <h2 className="text-lg font-black uppercase italic text-white tracking-tighter">
+                                {user?.name || 'Client'}
+                            </h2>
+                            <p className="text-[9px] text-[#7a6af6] font-black uppercase tracking-[0.3em] mt-1">
+                                Premium Member
+                            </p>
+                        </div>
+
+                        <nav className="bg-white/[0.03] backdrop-blur-md border py-12 border-white/5 rounded-[2rem] p-4 space-y-2 shrink-0">
+                            <ProfileNavLink to="info" icon={<User size={16} />} label="Profile" />
+                            <ProfileNavLink to="address" icon={<MapPin size={16} />} label="Addresses" />
+                            <ProfileNavLink to="orders" icon={<ShoppingBag size={16} />} label="Orders" />
+                            <ProfileNavLink to="wallet" icon={<Wallet size={16} />} label="Wallet" />
+
+                            <div className="pt-4 mt-2 border-t border-white/5">
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center gap-3 px-5 py-3 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors font-black text-[10px] uppercase tracking-widest"
+                                >
+                                    <LogOut size={14} /> Sign Out
+                                </button>
+                            </div>
+                        </nav>
+                    </aside>
+
+                    <section className="flex-1 min-w-0 overflow-y-auto custom-scrollbar pr-2 pb-24">
+                        <div className="max-w-5xl">
+                            <Outlet
+                                context={{
+                                    openChangePassword: () => setIsChangePasswordOpen(true),
+                                    isGoogleUser,
                                 }}
                             />
                         </div>
-                        <h2 className="text-sm text-white font-bold uppercase">
-                            {user?.name || "Client"}
-                        </h2>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                            Premium Member
-                        </p>
-                    </div>
-
-                    <nav className="space-y-1 bg-white/40 rounded-xl p-6 text-white">
-                        <ProfileNavLink to="info" icon={<User size={16} />} label="Personal Profile" />
-                        <ProfileNavLink to="address" icon={<MapPin size={16} />} label="Saved Addresses" />
-                        <ProfileNavLink to="orders" icon={<ShoppingBag size={16} />} label="My Orders" />
-                        <ProfileNavLink to="wallet" icon={<Wallet size={16} />} label="Wallet" />
-                        <ProfileNavLink to="referrals" icon={<Gift size={16} />} label="Referrals" />
-
-                        <div className="pt-4 mt-4 border-t border-slate-100">
-                            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 font-bold text-[10px] uppercase tracking-widest">
-                                <LogOut size={14} /> Sign Out
-                            </button>
-                        </div>
-                    </nav>
-                </aside>
-
-                {/* ==================== CONTENT ==================== */}
-                <section className="flex-1 min-w-0">
-                    <Outlet
-                        context={{
-                            openChangePassword: () => setIsChangePasswordOpen(true),
-                            isGoogleUser,
-                        }}
-                    />
-                </section>
+                    </section>
+                </div>
             </main>
 
-            <Footer />
-
-            {/* ==================== CHANGE PASSWORD MODAL ==================== */}
             <ChangePasswordModal
                 isOpen={isChangePasswordOpen}
                 onClose={() => setIsChangePasswordOpen(false)}
@@ -119,14 +122,14 @@ const ProfileNavLink = ({ to, icon, label }) => (
     <NavLink
         to={to}
         className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive
-                ? 'bg-[#0F172A] text-white'
-                : 'text-slate-200 hover:text-[#0F172A] hover:bg-slate-50'
+            `flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-300 border ${isActive
+                ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)]'
+                : 'text-white/40 border-transparent hover:text-white hover:bg-white/5'
             }`
         }
     >
         {icon}
-        <span className="text-[10px] font-black uppercase tracking-[0.15em]">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em]">
             {label}
         </span>
     </NavLink>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { X, Lock, Eye, EyeOff, ShieldAlert, Loader2, CheckCircle2 } from 'lucide-react';
-import { nxToast } from '../../utils/toastProvider';
+import { X, Lock, Eye, EyeOff, ShieldAlert, Loader2, CheckCircle2, Info } from 'lucide-react';
+import { nxToast } from '../../utils/userToast';
+import TOAST_MESSAGES from '../../utils/toastMessages';
 
 const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
     const [showCurrent, setShowCurrent] = useState(false);
@@ -37,25 +38,25 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
                 currentPassword: data.currentPassword,
                 newPassword: data.newPassword
             });
-            nxToast.success("Password updated Successfully");
+            nxToast.success(TOAST_MESSAGES.PROFILE.PASSWORD_UPDATED.title, TOAST_MESSAGES.PROFILE.PASSWORD_UPDATED.message);
             onClose();
         } catch (err) {
-            const msg = err.response?.data?.message || "Failed to update password. Please try again.";
-            nxToast.security("Failed to update password. Please try again");
+            const msg = err.response?.data?.message || "Verification failed. Please check your current password.";
+            nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, msg);
             setBackendError(msg);
         }
     };
 
     const inputClasses = (error) => `
         w-full px-4 py-3 bg-slate-50 rounded-xl text-sm font-bold border-2 outline-none transition-all pr-12
-        ${error ? 'border-red-500 focus:border-red-500' : 'border-transparent focus:border-[#7a6af6]/20'}
+        ${error ? 'border-red-500 focus:border-red-500' : 'border-transparent focus:border-[#7a6af6]/20 focus:bg-white'}
     `;
 
     const labelClasses = "text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 mb-1 block";
-    const errorClasses = "text-[9px] text-red-500 font-bold mt-1 uppercase ml-1 tracking-tighter";
+    const errorClasses = "text-[9px] text-red-500 font-bold mt-1 uppercase ml-1 tracking-tighter flex items-center gap-1";
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm transition-all">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0F172A]/60 backdrop-blur-sm transition-all text-black">
             <div className="bg-white w-full max-w-[400px] rounded-2xl shadow-2xl p-8 relative animate-in zoom-in duration-300">
 
                 <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-black transition-colors">
@@ -89,8 +90,10 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
                         <div className="relative">
                             <input
                                 type={showCurrent ? "text" : "password"}
-                                {...register("currentPassword", { required: "Current password is required" })}
-                                className={inputClasses(errors.currentPassword)}
+                                {...register("currentPassword", { 
+                                    required: "Current password is required" 
+                                })}
+                                className={inputClasses(errors.currentPassword)} 
                                 placeholder="••••••••"
                             />
                             <button
@@ -101,7 +104,7 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
                                 {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
                         </div>
-                        {errors.currentPassword && <p className={errorClasses}>{errors.currentPassword.message}</p>}
+                        {errors.currentPassword && <p className={errorClasses}><Info size={10} /> {errors.currentPassword.message}</p>}
                     </div>
 
                     <hr className="border-slate-100 my-2" />
@@ -112,8 +115,12 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
                             <input
                                 type={showNew ? "text" : "password"}
                                 {...register("newPassword", {
-                                    required: "New password is required",
-                                    minLength: { value: 6, message: "Minimum 6 characters" },
+                                    required: "A new password is required",
+                                    minLength: { value: 6, message: "Security key must be at least 6 characters" },
+                                    maxLength: { value: 30, message: "Security key cannot exceed 30 characters" },
+                                    validate: {
+                                        noLeadingSpace: (val) => !/^\s/.test(val) || "Cannot start with a space"
+                                    }
                                 })}
                                 className={inputClasses(errors.newPassword)}
                                 placeholder="••••••••"
@@ -126,17 +133,17 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
                                 {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
                         </div>
-                        {errors.newPassword && <p className={errorClasses}>{errors.newPassword.message}</p>}
+                        {errors.newPassword && <p className={errorClasses}><Info size={10} /> {errors.newPassword.message}</p>}
                     </div>
 
                     <div>
                         <label className={labelClasses}>Verify New Key</label>
-                        <div className="relative">
+                        <div className="relative text-black">
                             <input
                                 type={showConfirm ? "text" : "password"}
                                 {...register("confirmPassword", {
-                                    required: "Please confirm your password",
-                                    validate: value => value === newPassword || "Passwords do not match"
+                                    required: "Please confirm your new key",
+                                    validate: value => value === newPassword || "Security keys do not match"
                                 })}
                                 className={inputClasses(errors.confirmPassword)}
                                 placeholder="••••••••"
@@ -149,7 +156,7 @@ const ChangePasswordModal = ({ isOpen, onClose, onUpdate }) => {
                                 {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
                         </div>
-                        {errors.confirmPassword && <p className={errorClasses}>{errors.confirmPassword.message}</p>}
+                        {errors.confirmPassword && <p className={errorClasses}><Info size={10} /> {errors.confirmPassword.message}</p>}
                     </div>
 
                     <button

@@ -1,6 +1,9 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { getAdminMe, adminLogout } from "../../api/admin/admin.api";
 
+// =======================
+// Fetch admin session
+// =======================
 export const fetchAdmin = createAsyncThunk(
   "adminAuth/fetchAdmin",
   async (_, { rejectWithValue }) => {
@@ -13,25 +16,36 @@ export const fetchAdmin = createAsyncThunk(
   }
 );
 
+// =======================
+// Logout admin
+// =======================
 export const logoutAdmin = createAsyncThunk(
-  "adminAuth/logout",
-  async (_, { dispatch }) => {
-    await adminLogout();
-    dispatch(clearAdmin());
+  "adminAuth/logoutAdmin",
+  async (_, { rejectWithValue }) => {
+    try {
+      await adminLogout();
+      return true;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Logout failed");
+    }
   }
 );
 
+// =======================
+// Slice
+// =======================
 const adminAuthSlice = createSlice({
   name: "adminAuth",
   initialState: {
     admin: null,
     loading: true,
-    error: null,
+    isAuthenticated: false,
   },
   reducers: {
     clearAdmin: (state) => {
       state.admin = null;
       state.loading = false;
+      state.isAuthenticated = false;
     },
   },
   extraReducers: (builder) => {
@@ -41,10 +55,17 @@ const adminAuthSlice = createSlice({
       })
       .addCase(fetchAdmin.fulfilled, (state, action) => {
         state.admin = action.payload;
+        state.isAuthenticated = true;
         state.loading = false;
       })
       .addCase(fetchAdmin.rejected, (state) => {
         state.admin = null;
+        state.isAuthenticated = false;
+        state.loading = false; // This gets you off the spinner
+      })
+      .addCase(logoutAdmin.fulfilled, (state) => {
+        state.admin = null;
+        state.isAuthenticated = false;
         state.loading = false;
       });
   },

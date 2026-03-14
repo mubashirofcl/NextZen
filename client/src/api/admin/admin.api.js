@@ -7,7 +7,7 @@ export const adminLogin = async (payload) => {
 
 export const getAdminMe = async () => {
   const res = await adminAxios.get("/admin/me");
-  return res.data; // { success, admin }
+  return res.data; 
 };
 
 export const refreshAdminToken = async () => {
@@ -17,5 +17,13 @@ export const refreshAdminToken = async () => {
 
 export const adminLogout = async () => {
   const res = await adminAxios.post("/admin/logout");
+  return res.data;
+};
+
+export const getSalesReport = (params) =>
+  adminAxios.get("/admin/sales-report", { params });
+
+export const getDashboardStats = async (params) => {
+  const res = await adminAxios.get("/admin/dashboard-stats", { params });
   return res.data;
 };
