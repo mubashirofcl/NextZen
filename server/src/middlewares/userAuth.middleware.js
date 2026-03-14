@@ -25,9 +25,15 @@ const userAuth = async (req, res, next) => {
       res.clearCookie("userAccessToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        path: "/",
       });
-      res.clearCookie("userRefreshToken");
+      res.clearCookie("userRefreshToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+        path: "/",
+      });
 
       // 2. Send the specific 403 signal your frontend is waiting for
       return res.status(403).json({

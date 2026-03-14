@@ -209,7 +209,7 @@ const AddMoneyModal = ({ isOpen, onClose, currentBalance }) => {
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Settlement Protocol</p>
                                 <div className="border border-slate-200 bg-slate-50 rounded-xl p-5 flex items-center justify-between cursor-default">
                                     <div className="flex items-center gap-4">
-                                        <img src="/Razorpay_logo.png" className="h-4" alt="Razorpay" />
+                                        <img src="https://nextzen-assets.s3.ap-south-1.amazonaws.com/images/Razorpay_logo.png" className="h-4" alt="Razorpay" />
                                         <div>
                                             <p className="font-black text-[10px] uppercase tracking-widest text-[#0F172A]">Razorpay Secure</p>
                                             <p className="text-[8px] text-slate-500 uppercase font-bold mt-0.5">UPI, Cards, NetBanking</p>

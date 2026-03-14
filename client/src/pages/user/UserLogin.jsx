@@ -44,7 +44,7 @@ const UserLogin = () => {
         const params = new URLSearchParams(window.location.search);
         let ref = params.get("ref") || localStorage.getItem("pending_referral");
 
-        const backendBaseUrl = "http://localhost:5000/api/auth/google";
+        const backendBaseUrl = `${import.meta.env.VITE_API_URL}/auth/google`;
         const finalUrl = ref ? `${backendBaseUrl}?ref=${ref}` : backendBaseUrl;
 
         window.location.replace(finalUrl);

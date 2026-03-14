@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const userAxios = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/api",
+  baseURL: import.meta.env.VITE_API_URL || "http://3.108.67.34:5000/api",
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
@@ -13,7 +13,6 @@ userAxios.interceptors.response.use(
     const data = error.response?.data;
     const originalRequest = error.config;
 
-    // 🚫 Ignore admin routes
     if (originalRequest?.url?.includes("/admin")) {
       return Promise.reject(error);
     }
@@ -37,7 +36,7 @@ userAxios.interceptors.response.use(
       originalRequest._retry = true;
       try {
         await axios.post(
-          `${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/users/refresh`,
+          `${import.meta.env.VITE_API_URL}/users/refresh`,
           {},
           { withCredentials: true }
         );

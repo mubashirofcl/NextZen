@@ -9,7 +9,7 @@ const MainLayout = ({ children }) => {
                     playsInline
                     className="w-full h-full object-cover scale-105"
                 >
-                    <source src="/bg_promo2.mp4" type="video/mp4" />
+                    <source src="https://d3kspkscsewpy5.cloudfront.net/bg-video.mp4" type="video/mp4" />
                 </video>
 
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-[8px] transition-all duration-700" />

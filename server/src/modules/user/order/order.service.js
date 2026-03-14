@@ -1,7 +1,7 @@
 import variantModel from "../../admin/productManagement/variant.model.js";
 import * as orderRepo from "./order.repository.js";
 import cartModel from "../cart/cart.model.js";
-import couponModel from "../../admin/couponManagemen/coupon.model.js";
+import couponModel from "../../admin/couponManagement/coupon.model.js";
 
 const sanitizeAmount = (amount) => Math.round((amount + Number.EPSILON) * 100) / 100;
 

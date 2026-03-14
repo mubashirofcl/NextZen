@@ -5,7 +5,7 @@ import cartModel from "../cart/cart.model.js";
 import * as orderService from "./order.service.js";
 import mongoose from "mongoose";
 import { getWalletByUserId, updateWalletBalance } from "../wallet/wallet.service.js";
-import couponModel from "../../admin/couponManagemen/coupon.model.js";
+import couponModel from "../../admin/couponManagement/coupon.model.js";
 import SERVER_MESSAGES from "../../../utils/errorMessages.js";
 
 const fixNum = (num) => Math.round((num + Number.EPSILON) * 100) / 100;

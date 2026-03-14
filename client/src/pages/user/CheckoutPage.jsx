@@ -404,7 +404,7 @@ const CheckoutPage = () => {
                             <div className="space-y-4">
                                 <div onClick={() => setPaymentMethod('razorpay')} className={`p-6 rounded-[2rem] border cursor-pointer flex items-center gap-5 transition-all ${paymentMethod === 'razorpay' ? 'border-[#3395FF] bg-[#3395FF]/[0.08]' : 'bg-white/[0.02] border-white/5'}`}>
                                     <div className="flex-1 flex items-center gap-4"><p className="text-sm font-black uppercase italic text-white">Online Payment</p><span className="bg-[#3395FF]/20 text-[#3395FF] text-[7px] font-black px-2 py-0.5 rounded border border-[#3395FF]/20">SECURE</span></div>
-                                    <img src="/Razorpay_logo.png" className="h-4" alt="" />
+                                    <img src="https://nextzen-assets.s3.ap-south-1.amazonaws.com/images/Razorpay_logo.png" className="h-4" alt="" />
                                 </div>
                                 <div onClick={() => setPaymentMethod('wallet')} className={`p-6 rounded-[2rem] border cursor-pointer flex items-center gap-5 transition-all ${paymentMethod === 'wallet' ? 'border-[#7a6af6] bg-[#7a6af6]/[0.08]' : 'bg-white/[0.02] border-white/5'}`}>
                                     <div className="flex-1"><p className="text-sm font-black uppercase italic text-white">My Wallet</p><p className="text-[9px] text-white/30 font-bold mt-1 uppercase tracking-widest">Available Balance: <span className={(wallet?.balance || 0) >= financials.finalTotal ? 'text-green-400' : 'text-red-500/50'}>₹{wallet?.balance?.toLocaleString()}</span></p></div>

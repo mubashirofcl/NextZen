@@ -14,7 +14,7 @@ import categoryRoutes from "./modules/admin/categorieManagement/category.routes.
 import productRoutes from "./modules/admin/productManagement/product.routes.js";
 import brandRoutes from "./modules/admin/brandManagement/brand.routes.js";
 import adminOrderRoutes from "./modules/admin/orderManagement/order.routes.js";
-import couponRoutes from './modules/admin/couponManagemen/coupon.routes.js';
+import couponRoutes from './modules/admin/couponManagement/coupon.routes.js';
 import offerRoutes from './modules/admin/offerManagement/offer.routes.js';
 import dashboardRoutes from "./modules/admin/dashboard/dashboard.routes.js";
 
@@ -22,7 +22,7 @@ import productListRoutes from "./modules/user/productListing/product.routes.js"
 import userCategoryRoutes from "./modules/user/category/category.routes.js";
 import userBrandRoutes from "./modules/user/brand/brand.routes.js";
 import cartRoutes from "./modules/user/cart/cart.routes.js";
-import wishlistRoutes from "./modules/user/wishlist/wishlist.routes.js";
+import wishlistRoutes from "./modules/user/Wishlist/wishlist.routes.js";
 import orderRoutes from "./modules/user/order/order.routes.js";
 import paymentRoutes from "./modules/user/payment/payment.routes.js";
 import walletRoutes from './modules/user/wallet/wallet.routes.js';
@@ -31,7 +31,7 @@ import chatbotRoutes from "./modules/user/chatbot/chatbot.routes.js";
 const app = express();
 
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 }));

@@ -104,7 +104,7 @@ const Home = () => {
                             playsInline
                             className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                         >
-                            <source src="/bg_promo.mp4" type="video/mp4" />
+                            <source src="https://d3kspkscsewpy5.cloudfront.net/promo-video.mp4" type="video/mp4" />
                         </video>
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
                         <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-[#7a6af6]/20 to-transparent opacity-60 pointer-events-none" />

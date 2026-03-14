@@ -1,4 +1,4 @@
-import wishlistModel from "../wishlist/wishlist.model.js";
+import wishlistModel from "../Wishlist/wishlist.model.js";
 import Order from "../order/order.model.js"; 
 import * as cartRepo from "./cart.repository.js";
 

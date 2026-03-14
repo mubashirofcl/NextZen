@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import orderModel from "../order/order.model.js";
 import variantModel from "../../admin/productManagement/variant.model.js";
 import productModel from "../../admin/productManagement/product.model.js";
-import couponModel from "../../admin/couponManagemen/coupon.model.js";
+import couponModel from "../../admin/couponManagement/coupon.model.js";
 import SERVER_MESSAGES from "../../../utils/errorMessages.js";
 
 dotenv.config();
