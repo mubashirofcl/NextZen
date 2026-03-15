@@ -310,6 +310,7 @@ const Home = () => {
 
             <Footer />
 
+
             <style dangerouslySetInnerHTML={{
                 __html: `
                 .text-outline-white { -webkit-text-stroke: 1px rgba(255,255,255,1); }
