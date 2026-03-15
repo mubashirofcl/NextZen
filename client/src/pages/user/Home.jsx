@@ -114,7 +114,7 @@ const Home = () => {
                 <div className="absolute inset-0 z-30 flex flex-col justify-between p-6 md:p-14 pointer-events-none">
                     <div className="max-w-2xl mt-4 md:mt-10 animate-fade-in-up">
                         <h1 className="text-[clamp(2.5rem,7vw,5.5rem)] font-black uppercase tracking-tighter leading-[0.85] text-white">
-                            Production. <br />
+                            watch. <br />
                             Shop. Own.
                         </h1>
                     </div>
