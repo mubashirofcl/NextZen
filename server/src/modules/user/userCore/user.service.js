@@ -97,7 +97,12 @@ const verifySignupOTP = async (email, otp, name, password, referralCode) => {
 
 const loginUser = async (email, password) => {
   const user = await userRepo.findByEmail(email.toLowerCase());
+
   if (!user) throw new Error("Invalid credentials");
+
+  if (user.googleId && !user.password) {
+    throw new Error("This account uses Google Sign-In. Please log in using Google.");
+  }
 
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) throw new Error("Invalid credentials");
