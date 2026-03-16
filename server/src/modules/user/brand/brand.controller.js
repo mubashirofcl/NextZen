@@ -5,7 +5,7 @@ export const getUserBrands = async (req, res, next) => {
         const brands = await brandModel.find({
             isActive: true,
             isDeleted: false,
-        }).select("_id name");
+        }).select("_id name logo");
 
         res.status(200).json(brands);
     } catch (err) {
