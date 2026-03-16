@@ -59,7 +59,6 @@ export const getProductsRepository = async (filters) => {
     const skip = (Number(page) - 1) * Number(limit);
     const pipeline = [];
 
-    // 1. Initial Match
     const baseMatch = { isActive: true, isDeleted: false };
     if (isFeatured !== undefined) baseMatch.isFeatured = isFeatured;
     if (category && mongoose.Types.ObjectId.isValid(category)) baseMatch.categoryId = new mongoose.Types.ObjectId(category);
@@ -67,7 +66,6 @@ export const getProductsRepository = async (filters) => {
 
     pipeline.push({ $match: baseMatch });
 
-    // 2. JOIN CATEGORIES EARLY (Required for Name Search and UI Display)
     pipeline.push({
         $lookup: {
             from: "categories",
@@ -77,7 +75,6 @@ export const getProductsRepository = async (filters) => {
         }
     });
 
-    // 3. APPLY MULTI-FIELD SEARCH
     if (search) {
         pipeline.push({
             $match: {
@@ -89,10 +86,8 @@ export const getProductsRepository = async (filters) => {
         });
     }
 
-    // 4. Offer & Brand Lookup Hierarchy
     pipeline.push(...lookupOffersHierarchy);
 
-    // 5. Variant & Size Unwinding
     pipeline.push(
         { $lookup: { from: "variants", localField: "_id", foreignField: "productId", as: "variantDocs" } },
         { $unwind: "$variantDocs" },
@@ -100,7 +95,6 @@ export const getProductsRepository = async (filters) => {
         { $unwind: "$variantDocs.sizes" }
     );
 
-    // Filter Brands & Sizes
     if (brand && brand.length > 0) {
         const brandIds = Array.isArray(brand) ? brand : brand.split(",");
         pipeline.push({ $match: { brandId: { $in: brandIds.map(id => new mongoose.Types.ObjectId(id)) } } });
@@ -110,7 +104,6 @@ export const getProductsRepository = async (filters) => {
         pipeline.push({ $match: { "variantDocs.sizes.size": { $in: sizeList } } });
     }
 
-    // 6. Price Calculations
     pipeline.push({
         $addFields: {
             campaignPrice: {
@@ -129,7 +122,6 @@ export const getProductsRepository = async (filters) => {
         }
     });
 
-    // 7. FINAL GROUPING (Fixed for Header UI)
     pipeline.push({
         $group: {
             _id: "$_id",
@@ -152,7 +144,6 @@ export const getProductsRepository = async (filters) => {
         }
     });
 
-    // Sorting & Facet
     let sortObj = { createdAt: -1 };
     if (sort === "price_asc") sortObj = { minSalePrice: 1 };
     else if (sort === "price_desc") sortObj = { minSalePrice: -1 };

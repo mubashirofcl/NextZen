@@ -6,16 +6,12 @@ import userRepo from "./user.repository.js";
 import User from "./user.model.js";
 import SERVER_MESSAGES from "../../../utils/errorMessages.js";
 
-// ==================== COOKIE CONFIG ====================
-
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,   
   sameSite: "none", 
   path: "/",
 };
-
-// ==================== SIGNUP OTP ====================
 
 export const requestSignupOTP = async (req, res) => {
   const errors = validationResult(req);
@@ -37,8 +33,6 @@ export const requestSignupOTP = async (req, res) => {
   }
 };
 
-// ==================== RESEND SIGNUP OTP ====================
-
 export const resendSignupOTP = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -58,8 +52,6 @@ export const resendSignupOTP = async (req, res) => {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
-
-// ==================== VERIFY SIGNUP OTP ====================
 
 export const verifySignupOTP = async (req, res) => {
   const errors = validationResult(req);
@@ -97,8 +89,6 @@ export const verifySignupOTP = async (req, res) => {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
-
-// ==================== LOGIN ====================
 
 export const loginUser = async (req, res) => {
   const errors = validationResult(req);
@@ -139,8 +129,6 @@ export const loginUser = async (req, res) => {
     return res.status(401).json({ success: false, message: err.message });
   }
 };
-
-// ==================== REFRESH TOKEN ====================
 
 export const refreshUserToken = async (req, res) => {
   const cookieRefreshToken = req.cookies.userRefreshToken;
@@ -199,8 +187,6 @@ export const refreshUserToken = async (req, res) => {
   }
 };
 
-// ==================== FORGOT / RESET PASSWORD ====================
-
 export const requestForgotPasswordOTP = async (req, res) => {
   try {
     await userService.requestForgotPasswordOTP(req.body.email);
@@ -233,8 +219,6 @@ export const resetPassword = async (req, res) => {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
-
-// ==================== LOGOUT ====================
 
 export const logoutUser = async (req, res) => {
   try {

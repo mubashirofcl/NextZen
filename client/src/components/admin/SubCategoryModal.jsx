@@ -43,12 +43,10 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
 
     if (!isOpen || !parentCategory?._id) return null;
 
-    // 🟢 FIXED: Toggle logic with Parent Status Guard
     const toggleSubCategoryStatus = async (sub) => {
         try {
             const newStatus = !sub.isActive;
 
-            // Prevent unblocking if Parent is Restricted
             if (newStatus === true && !parentCategory.isActive) {
                 return adminToast.error(
                     "Action Restricted", 
@@ -119,7 +117,6 @@ const SubCategoryModal = ({ isOpen, onClose, parentCategory }) => {
                     </p>
                 </div>
 
-                {/* 🟢 NEW: Parent Restricted Warning Banner */}
                 {!parentCategory.isActive && (
                     <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 animate-pulse">
                         <AlertTriangle size={18} className="text-amber-500 shrink-0" />

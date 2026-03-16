@@ -15,7 +15,6 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
 
     const [cropSrc, setCropSrc] = useState(null);
 
-    // 🟢 Deep extraction of error paths
     const variantErrors = errors?.variants?.[index];
     const imageError = variantErrors?.images;
     const colorError = variantErrors?.color;
@@ -38,7 +37,6 @@ const VariantCard = ({ index, register, watch, onRemove, setValue, errors }) => 
     return (
         <div className={`bg-white rounded-[24px] p-6 shadow-xl border relative mt-3 animate-in zoom-in-95 transition-all duration-300 ${imageError || variantErrors ? 'border-red-200 ring-4 ring-red-50/50' : 'border-slate-100'}`}>
 
-            {/* Hidden field for image array validation */}
             <input
                 type="hidden"
                 {...register(`variants.${index}.images`, {

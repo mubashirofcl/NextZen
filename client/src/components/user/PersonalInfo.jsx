@@ -55,7 +55,6 @@ const PersonalInfo = () => {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    // Inside PersonalInfo.jsx
     const handleUpdateProfile = async (data) => {
         try {
             const response = await updateProfile(data);

@@ -5,8 +5,6 @@ import * as otpService from "../common/otp.service.js";
 import User from "./user.model.js";
 import walletModel from "../wallet/wallet.model.js";
 
-// ==================== SIGNUP OTP ====================
-
 const requestSignupOTP = async (email) => {
   const existingUser = await userRepo.findByEmail(email.toLowerCase());
   if (existingUser) throw new Error("Email already registered");
@@ -93,7 +91,6 @@ const verifySignupOTP = async (email, otp, name, password, referralCode) => {
   return { accessToken, refreshToken, user };
 };
 
-// ==================== LOGIN ====================
 
 const loginUser = async (email, password) => {
   const user = await userRepo.findByEmail(email.toLowerCase());
@@ -123,8 +120,6 @@ const loginUser = async (email, password) => {
 
   return { accessToken, refreshToken };
 };
-
-// ==================== FORGOT PASSWORD ====================
 
 const requestForgotPasswordOTP = async (email) => {
   const user = await userRepo.findByEmail(email.toLowerCase());

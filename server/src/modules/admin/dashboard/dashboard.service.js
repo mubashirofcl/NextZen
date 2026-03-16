@@ -47,12 +47,10 @@ const getDashboardStats = async ({ range, startDate, endDate }) => {
         end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
     } else {
-        // DEFAULT: Show Last 30 Days if no range is selected
         start.setDate(start.getDate() - 30);
         start.setHours(0, 0, 0, 0);
     }
 
-    // Now passing the CALCULATED start and end to the repository
     const stats = await dashboardRepository.getDashboardAnalytics(start, end);
 
     if (!stats) {

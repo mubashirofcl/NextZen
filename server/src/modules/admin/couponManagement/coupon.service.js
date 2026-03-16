@@ -24,7 +24,6 @@ export const createCoupon = async (couponData) => {
         throw new Error("Expiry date cannot be in the past.");
     }
 
-    // 4. Save with cleaned data
     return await couponRepo.saveCoupon({
         ...couponData,
         code: codeToCreate

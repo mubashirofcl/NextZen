@@ -28,7 +28,6 @@ const Addresses = () => {
     const [addresses, setAddresses] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Common Glass Style for internal sections
     const glassStyle = "bg-gradient-to-br from-white/[0.08] to-transparent backdrop-blur-xl border border-white/10 rounded-[2rem] shadow-2xl";
 
     useEffect(() => {
@@ -79,8 +78,7 @@ const Addresses = () => {
 
     return (
         <div className="max-w-full lg:max-w-[900px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
-            
-            {/* HEADER GLASS PLATE */}
+
             <div className={`${glassStyle} p-8 mb-8 flex items-center justify-between`}>
                 <div className="space-y-1">
                     <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">
@@ -105,7 +103,6 @@ const Addresses = () => {
                 </div>
             )}
 
-            {/* ==================== ADDRESS LIST ==================== */}
             {!isLoading && addresses.length > 0 && (
                 <div className="space-y-4">
                     {addresses.map((addr) => (
@@ -180,7 +177,6 @@ const Addresses = () => {
                 </div>
             )}
 
-            {/* ==================== EMPTY STATE ==================== */}
             {!isLoading && addresses.length === 0 && (
                 <div className="py-32 text-center bg-white/[0.02] backdrop-blur-md rounded-[2.5rem] border border-white/5 border-dashed">
                     <MapPin size={40} className="mx-auto text-white/5 mb-4" />
@@ -190,7 +186,6 @@ const Addresses = () => {
                 </div>
             )}
 
-            {/* MODALS */}
             <AddressModal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}

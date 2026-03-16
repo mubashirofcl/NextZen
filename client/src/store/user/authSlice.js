@@ -1,9 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { getUserMe } from "../../api/user/user.api";
 
-// =======================
-// Fetch user session
-// =======================
 export const fetchUser = createAsyncThunk(
   "userAuth/fetchUser",
   async (_, { rejectWithValue }) => {
@@ -16,9 +13,7 @@ export const fetchUser = createAsyncThunk(
   }
 );
 
-// =======================
-// Slice
-// =======================
+
 const userAuthSlice = createSlice({
   name: "userAuth",
   initialState: {
@@ -33,7 +28,6 @@ const userAuthSlice = createSlice({
       state.loading = false;
     },
 
-    // Used after profile update / email change
     setUser: (state, action) => {
       state.user = state.user
         ? { ...state.user, ...action.payload }
@@ -43,7 +37,6 @@ const userAuthSlice = createSlice({
       state.loading = false;
     },
 
-    // Used when app decides auth check is complete
     stopLoading: (state) => {
       state.loading = false;
     },

@@ -1,9 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { getAdminMe, adminLogout } from "../../api/admin/admin.api";
 
-// =======================
-// Fetch admin session
-// =======================
+
 export const fetchAdmin = createAsyncThunk(
   "adminAuth/fetchAdmin",
   async (_, { rejectWithValue }) => {
@@ -16,9 +14,7 @@ export const fetchAdmin = createAsyncThunk(
   }
 );
 
-// =======================
-// Logout admin
-// =======================
+
 export const logoutAdmin = createAsyncThunk(
   "adminAuth/logoutAdmin",
   async (_, { rejectWithValue }) => {
@@ -31,9 +27,6 @@ export const logoutAdmin = createAsyncThunk(
   }
 );
 
-// =======================
-// Slice
-// =======================
 const adminAuthSlice = createSlice({
   name: "adminAuth",
   initialState: {
@@ -61,7 +54,7 @@ const adminAuthSlice = createSlice({
       .addCase(fetchAdmin.rejected, (state) => {
         state.admin = null;
         state.isAuthenticated = false;
-        state.loading = false; // This gets you off the spinner
+        state.loading = false;
       })
       .addCase(logoutAdmin.fulfilled, (state) => {
         state.admin = null;

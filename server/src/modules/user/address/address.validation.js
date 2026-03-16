@@ -1,7 +1,5 @@
 import { body, param } from "express-validator";
 
-/* ==================== CREATE ADDRESS ==================== */
-
 export const createAddressSchema = [
   body("fullName")
     .trim()
@@ -46,8 +44,6 @@ export const createAddressSchema = [
     .isBoolean()
     .withMessage("isDefault must be boolean"),
 ];
-
-/* ==================== UPDATE ADDRESS ==================== */
 
 export const updateAddressSchema = [
   param("id")
@@ -104,8 +100,6 @@ export const updateAddressSchema = [
     .isBoolean()
     .withMessage("isDefault must be boolean"),
 ];
-
-/* ==================== DELETE / SET DEFAULT ==================== */
 
 export const addressIdParamSchema = [
   param("id")

@@ -56,7 +56,6 @@ const AdminConfirmContent = ({ id, title, message, onConfirm }) => {
 };
 
 export const adminToast = {
-    // Success: High-contrast Slate/Green
     success(title = "Task Completed", message = "") {
         baseAdminToast((id) => (
             <div className="bg-white border border-slate-100 p-4 mb-4 rounded-[20px] shadow-[0_10px_30px_rgba(0,0,0,0.08)] flex items-center gap-4 pointer-events-auto min-w-[320px]">
@@ -91,7 +90,6 @@ export const adminToast = {
         ));
     },
 
-    // Confirm: System Modal
     confirm(title, message, onConfirm) {
         toast.custom((id) => (
             <AdminConfirmContent id={id} title={title} message={message} onConfirm={onConfirm} />

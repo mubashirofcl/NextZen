@@ -2,8 +2,6 @@ import mongoose from "mongoose";
 import productModel from "./product.model.js";
 import Variant from "./variant.model.js";
 
-/* ---------- PRODUCT ---------- */
-
 export const createProductRepo = (data) =>
     productModel.create(data);
 
@@ -23,7 +21,6 @@ export const updateProductById = (id, data) =>
 export const softDeleteProduct = (id) =>
     productModel.findByIdAndUpdate(id, { isDeleted: true });
 
-/* ---------- VARIANTS ---------- */
 
 export const createVariantsRepo = (variants) =>
     Variant.insertMany(variants);
@@ -63,10 +60,7 @@ export const getAdminProductsRepo = async ({ page, limit, search }) => {
     const pipeline = [
 
         { $match: matchStage },
-
         { $sort: { createdAt: -1 } },
-
-        // 2. Offer Hierarchy Lookups (Product, Sub-Cat, Category, Brand)
         { $lookup: { from: "offers", localField: "offerId", foreignField: "_id", as: "prodOffer" } },
         { $lookup: { from: "categories", localField: "subcategoryId", foreignField: "_id", as: "subDoc" } },
         { $unwind: { path: "$subDoc", preserveNullAndEmptyArrays: true } },
@@ -78,7 +72,6 @@ export const getAdminProductsRepo = async ({ page, limit, search }) => {
         { $unwind: { path: "$brandDoc", preserveNullAndEmptyArrays: true } },
         { $lookup: { from: "offers", localField: "brandDoc.offerId", foreignField: "_id", as: "brandOffer" } },
 
-        // 3. Resolve the Winning (Highest %) Campaign Offer
         {
             $addFields: {
                 winningDiscount: {
@@ -103,7 +96,6 @@ export const getAdminProductsRepo = async ({ page, limit, search }) => {
             }
         },
 
-        // 4. Pull Variants for Stock and Pricing
         {
             $lookup: {
                 from: "variants",
@@ -115,7 +107,6 @@ export const getAdminProductsRepo = async ({ page, limit, search }) => {
             }
         },
 
-        // 5. Calculate Final Display Values
         {
             $addFields: {
                 variantCount: { $size: "$variantDocs" },
@@ -143,7 +134,6 @@ export const getAdminProductsRepo = async ({ page, limit, search }) => {
             }
         },
 
-        // 6. Final Projection
         {
             $project: {
                 name: 1,

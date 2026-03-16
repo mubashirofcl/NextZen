@@ -1,5 +1,5 @@
 import Cart from "./cart.model.js";
-import Wishlist from "../wishlist/wishlist.model.js";
+import Wishlist from "../Wishlist/wishlist.model.js";
 import Product from "../../admin/productManagement/product.model.js";
 import Variant from "../../admin/productManagement/variant.model.js";
 

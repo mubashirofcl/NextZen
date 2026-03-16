@@ -108,7 +108,6 @@ export const validateUserCoupon = async (req, res, next) => {
     }
 };
 
-// 🟢 USER: Fetch list of available active coupons
 export const getActiveCoupons = async (req, res, next) => {
     try {
         const now = new Date();
@@ -125,7 +124,6 @@ export const getActiveCoupons = async (req, res, next) => {
     }
 };
 
-// Add this to your existing backend/controllers/coupon.controller.js
 export const toggleCouponStatus = async (req, res, next) => {
     try {
         const { id } = req.params;

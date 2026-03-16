@@ -5,7 +5,7 @@ import { useAddress } from '../../hooks/user/useAddress';
 import { useOrder } from '../../hooks/user/useOrder';
 import { useWallet } from '../../hooks/user/useWallet';
 
-import { updateAddress, createAddress } from '../../api/user/address.api'; 
+import { updateAddress, createAddress } from '../../api/user/address.api';
 import userAxios from '../../api/baseAxios';
 
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -31,7 +31,7 @@ const CheckoutPage = () => {
     const { data: wallet, isLoading: isWalletLoading } = useWallet();
 
     const [selectedAddress, setSelectedAddress] = useState(null);
-    const [paymentMethod, setPaymentMethod] = useState('cashOnDelivery');
+    const [paymentMethod, setPaymentMethod] = useState('razorpay');
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
     const [addressToEdit, setAddressToEdit] = useState(null);
@@ -105,15 +105,15 @@ const CheckoutPage = () => {
         const finalTotal = Math.max(0, (subtotal + deliveryCharge) - couponDiscount);
         const totalDiscount = (totalMRP - subtotal) + couponDiscount;
 
-        return { 
-            subtotal, 
-            totalMRP, 
-            deliveryCharge, 
-            finalTotal, 
-            totalDiscount, 
+        return {
+            subtotal,
+            totalMRP,
+            deliveryCharge,
+            finalTotal,
+            totalDiscount,
             couponDiscount,
             subTotal: subtotal,
-            totalAmount: finalTotal 
+            totalAmount: finalTotal
         };
     }, [cart, appliedCoupon]);
 
@@ -165,21 +165,24 @@ const CheckoutPage = () => {
         try {
             const isLoaded = await loadRazorpayScript();
             if (!isLoaded) return nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Payment gateway offline");
-            
+
             const { data } = await userAxios.post("/user/payment/create-order", {
                 amount: financials.finalTotal,
                 items: cart.items,
                 totals: financials,
                 orderId: `TMP_${Date.now()}`
             });
+
             if (!data.success) return nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Payment initialization failed");
+
+            const rzpOrderId = data.order.id;
 
             const options = {
                 key: import.meta.env.VITE_RAZORPAY_KEY_ID,
                 amount: data.order.amount,
                 currency: "INR",
                 name: "NextZen Clothing",
-                order_id: data.order.id,
+                order_id: rzpOrderId,
                 handler: async function (response) {
                     try {
                         const verifyRes = await userAxios.post("/user/payment/verify-payment", response);
@@ -187,7 +190,7 @@ const CheckoutPage = () => {
                             setIsProcessing(true);
                             const finalRes = await placeOrder.mutateAsync({
                                 ...orderPayload,
-                                razorpayOrderId: data.order.id,
+                                razorpayOrderId: rzpOrderId,
                                 status: "pending",
                                 paymentInfo: { id: response.razorpay_payment_id, status: "Paid", method: "razorpay" }
                             });
@@ -195,29 +198,52 @@ const CheckoutPage = () => {
                             navigate(`/checkout/success/${finalRes.orderId}`, { replace: true });
                         }
                     } catch (err) {
-                        nxToast.security(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Payment synchronization error");
+                        nxToast.security("Error", "Payment verification failed");
                         setIsProcessing(false);
                     }
                 },
                 modal: {
-                    ondismiss: async function () {
-                        try {
-                            setIsProcessing(true);
-                            const failRes = await placeOrder.mutateAsync({
-                                ...orderPayload,
-                                razorpayOrderId: data.order.id,
-                                status: "payment_failed"
-                            });
-                            clearCartUI();
-                            navigate(`/payment-failed/${failRes.orderId}`, { replace: true });
-                        } catch (err) {
-                            setIsProcessing(false);
-                        }
+                    ondismiss: function () {
+                        setIsProcessing(false);
+
+                        document.body.style.overflow = 'auto';
+                        const container = document.querySelector('.razorpay-container');
+                        if (container) container.remove();
                     }
                 },
                 theme: { color: "#0F172A" }
             };
-            new window.Razorpay(options).open();
+
+            const rzp = new window.Razorpay(options);
+
+            rzp.on('payment.failed', async function (response) {
+                console.error("Payment Failed:", response.error.description);
+
+                setTimeout(async () => {
+                    try {
+                        const rzpOverlay = document.querySelector('.razorpay-container');
+                        if (rzpOverlay) rzpOverlay.remove();
+                        document.body.style.overflow = 'auto';
+
+                        setIsProcessing(true);
+
+                        const failRes = await placeOrder.mutateAsync({
+                            ...orderPayload,
+                            razorpayOrderId: rzpOrderId,
+                            status: "payment_failed"
+                        });
+
+                        clearCartUI();
+                        navigate(`/payment-failed/${failRes.orderId}`, { replace: true });
+                    } catch (err) {
+                        setIsProcessing(false);
+                        document.body.style.overflow = 'auto';
+                    }
+                }, 2000);
+            });
+
+            rzp.open();
+
         } catch (error) {
             nxToast.security(TOAST_MESSAGES.SYSTEM.SERVER_ERROR.title, TOAST_MESSAGES.SYSTEM.SERVER_ERROR.message);
             setIsProcessing(false);
@@ -248,7 +274,7 @@ const CheckoutPage = () => {
                 totalAmount: item.currentPrice * item.quantity
             })),
             paymentMethod,
-            totals: frozenTotals, 
+            totals: frozenTotals,
             couponCode: appliedCoupon?.code || null
         };
 
@@ -264,7 +290,6 @@ const CheckoutPage = () => {
         }
     };
 
-    // 🟢 New function to open modal for Adding
     const handleAddNewAddress = () => {
         setAddressToEdit(null);
         setIsAddressModalOpen(true);
@@ -334,15 +359,15 @@ const CheckoutPage = () => {
                             <div className="flex justify-between items-center mb-8">
                                 <h2 className="text-[9px] font-black uppercase text-[#7a6af6] italic tracking-[0.4em] flex items-center gap-2"><MapPin size={14} /> 01 // Shipping Address</h2>
                                 <div className="flex gap-2">
-                                    {/* 🟢 Direct Modal Trigger for adding address */}
-                                    <button 
-                                        onClick={handleAddNewAddress} 
+                                   
+                                    <button
+                                        onClick={handleAddNewAddress}
                                         className="text-[8px] font-black uppercase px-5 py-2 rounded-xl border border-[#7a6af6]/30 bg-[#7a6af6]/10 text-[#7a6af6] hover:bg-[#7a6af6] hover:text-white transition-all"
                                     >
                                         + Add New
                                     </button>
-                                    <button 
-                                        onClick={() => navigate('/profile/address')} 
+                                    <button
+                                        onClick={() => navigate('/profile/address')}
                                         className="text-[8px] font-black uppercase px-5 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-white/40"
                                     >
                                         Manage
@@ -368,13 +393,13 @@ const CheckoutPage = () => {
                                     </div>
                                 ))}
                                 {addressData?.length === 0 && (
-                                     <div 
+                                    <div
                                         onClick={handleAddNewAddress}
                                         className="border-2 border-dashed border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center gap-3 hover:border-[#7a6af6]/50 cursor-pointer transition-all group"
-                                     >
+                                    >
                                         <MapPin className="text-white/10 group-hover:text-[#7a6af6]" size={24} />
                                         <p className="text-[9px] font-black uppercase tracking-widest text-white/20 group-hover:text-white">No address found. Click to add.</p>
-                                     </div>
+                                    </div>
                                 )}
                             </div>
                         </section>
@@ -482,18 +507,17 @@ const CheckoutPage = () => {
                 </div>
             </main>
             <OrderConfirmModal couponCode={appliedCoupon?.code} isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} onConfirm={handleFinalOrderPlacement} isPending={placeOrder.isPending} totals={frozenTotals} inventoryConflict={hasInventoryConflict} paymentMethod={paymentMethod} />
-            
-            {/* 🟢 Modal handles both 'add' and 'edit' now */}
+
             {isAddressModalOpen && (
-                <AddressModal 
-                    isOpen={isAddressModalOpen} 
+                <AddressModal
+                    isOpen={isAddressModalOpen}
                     onClose={() => {
                         setIsAddressModalOpen(false);
                         setAddressToEdit(null);
-                    }} 
-                    mode={addressToEdit ? "edit" : "add"} 
-                    initialData={addressToEdit} 
-                    onSubmit={handleAddressMutation} 
+                    }}
+                    mode={addressToEdit ? "edit" : "add"}
+                    initialData={addressToEdit}
+                    onSubmit={handleAddressMutation}
                 />
             )}
             <Footer />

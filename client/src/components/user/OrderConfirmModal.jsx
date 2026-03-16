@@ -14,8 +14,6 @@ const OrderConfirmModal = ({
 }) => {
     const navigate = useNavigate();
 
-    // 🟢 Dynamic Financial Mapping
-    // This ensures we catch cases where 'couponDiscount' might be named differently in the parent prop
     const displayTotals = useMemo(() => {
         if (!totals) return null;
         
@@ -87,7 +85,6 @@ const OrderConfirmModal = ({
                                 <span className="text-zinc-900 font-black">₹{displayTotals.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                             </div>
 
-                            {/* 🟢 Corrected Discount Logic */}
                             {displayTotals.discount > 0 && (
                                 <div className="flex justify-between text-[11px] font-bold uppercase text-indigo-600 tracking-tighter italic">
                                     <span className="flex items-center gap-1">

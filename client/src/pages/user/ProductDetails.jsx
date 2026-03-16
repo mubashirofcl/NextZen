@@ -78,10 +78,17 @@ const ProductDetails = () => {
     useEffect(() => {
         if (currentVariant) {
             setActiveImg(currentVariant.images[0]);
-            setSelectedSize(null); 
             setQty(1);
+
+            const firstAvailableSize = currentVariant.sizes.find(s => s.stock > 0);
+
+            if (firstAvailableSize) {
+                setSelectedSize(firstAvailableSize);
+            } else {
+                setSelectedSize(null);
+            }
         }
-    }, [selectedVariantIdx, id]);
+    }, [selectedVariantIdx, id, currentVariant]);
 
     useEffect(() => {
         window.scrollTo(0, 0);

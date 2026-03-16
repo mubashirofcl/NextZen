@@ -6,10 +6,8 @@ import { useUserCategories } from '../../hooks/user/useUserCategories';
 const Footer = () => {
     const navigate = useNavigate();
     
-    // 🟢 Fetch real categories from your registry
     const { data: categories = [] } = useUserCategories();
 
-    // 🟢 Handle dynamic navigation to Shop with auto-filter
     const handleCategoryClick = (category) => {
         navigate(`/shop?category=${category._id}`);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -19,7 +17,6 @@ const Footer = () => {
         <footer className="bg-transparent text-white pt-16 pb-8 px-6 md:px-12 border-t border-white/10 rounded-t-[1.2rem] mt-20 relative z-10">
             <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
 
-                {/* BRAND BLOCK */}
                 <div className="space-y-6 text-center md:text-left">
                     <h2 className="text-2xl font-black tracking-tighter uppercase italic leading-none cursor-pointer" onClick={() => navigate('/')}>
                         NEXT<span className="text-[#7a6af6]">ZEN</span>
@@ -38,7 +35,6 @@ const Footer = () => {
                     </div>
                 </div>
 
-                {/* DYNAMIC CATEGORIES */}
                 <div className="text-center md:text-left">
                     <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-[#7a6af6] mb-6">Archive</h3>
                     <ul className="space-y-3 text-[10px] font-bold uppercase tracking-widest text-white/30">
@@ -57,7 +53,6 @@ const Footer = () => {
                     </ul>
                 </div>
 
-                {/* ACCOUNT & SERVICE */}
                 <div className="text-center md:text-left">
                     <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-[#7a6af6] mb-6">Manifest</h3>
                     <ul className="space-y-3 text-[10px] font-bold uppercase tracking-widest text-white/30">
@@ -67,7 +62,6 @@ const Footer = () => {
                     </ul>
                 </div>
 
-                {/* NEWSLETTER */}
                 <div className="text-center md:text-left">
                     <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-[#7a6af6] mb-6">Newsletter</h3>
                     <p className="text-white/20 text-[10px] font-bold uppercase tracking-widest mb-5 leading-relaxed">
@@ -86,7 +80,6 @@ const Footer = () => {
                 </div>
             </div>
 
-            {/* COPYRIGHT BAR */}
             <div className="max-w-[1400px] mx-auto border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center text-[8px] text-white/10 font-black uppercase tracking-[0.3em] gap-6">
                 <p>© {new Date().getFullYear()} NextZen Outfit // Crafted for the Bold.</p>
                 <div className="flex gap-8">

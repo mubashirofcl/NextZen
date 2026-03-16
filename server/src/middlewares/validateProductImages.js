@@ -12,10 +12,8 @@ const validateProductImages = (req, res, next) => {
             });
         }
         for (const img of variant.images) {
-            // Allow already uploaded Cloudinary URLs
             if (typeof img === "string" && img.startsWith("http")) continue;
 
-            // Validate base64
             if (!img.startsWith("data:image/")) {
                 return res.status(400).json({
                     message: "Invalid image format",

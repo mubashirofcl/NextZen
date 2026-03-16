@@ -1,13 +1,12 @@
 const validateProfileImage = (req, res, next) => {
     const { profilePicture } = req.body;
 
-    // 1. If no image is provided, or it's a Cloudinary URL (already uploaded), skip validation
     if (!profilePicture || profilePicture.startsWith('http')) {
         return next();
     }
 
     try {
-        // 2. Only validate if it's a new Base64 string
+
         if (!profilePicture.startsWith('data:image/')) {
             return res.status(400).json({
                 success: false,
@@ -15,11 +14,9 @@ const validateProfileImage = (req, res, next) => {
             });
         }
 
-        // 3. Extract the base64 data correctly
         const base64Data = profilePicture.split(',')[1];
         if (!base64Data) throw new Error("Malformed base64");
 
-        // 4. Check file size (Original bytes = (Base64Length * 3) / 4)
         const sizeInBytes = (base64Data.length * 3) / 4;
         const sizeInMB = sizeInBytes / (1024 * 1024);
 
@@ -30,7 +27,6 @@ const validateProfileImage = (req, res, next) => {
             });
         }
 
-        // 5. Check for valid image types
         const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
         const mimeType = profilePicture.match(/data:([^;]+);/)?.[1];
 

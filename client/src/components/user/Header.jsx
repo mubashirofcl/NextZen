@@ -23,7 +23,6 @@ const Header = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [liveCoupons, setLiveCoupons] = useState([]);
 
-    // --- LIVE SEARCH STATES ---
     const [searchInput, setSearchInput] = useState(searchParams.get("search") || "");
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -36,11 +35,10 @@ const Header = () => {
     const cartCount = cart?.items?.length || 0;
     const wishlistCount = wishlist?.length || 0;
 
-    // 🟢 1. FIX: Added missing useEffect to fetch coupons
     useEffect(() => {
         const fetchLiveOffers = async () => {
             try {
-                // Ensure this matches your backend route in app.js
+            
                 const { data } = await userAxios.get("/users/coupons");
                 if (data.success) setLiveCoupons(data.coupons);
             } catch (err) {
@@ -50,16 +48,15 @@ const Header = () => {
         fetchLiveOffers();
     }, []);
 
-    // 🟢 2. LIVE SEARCH LOGIC (Debounced)
     useEffect(() => {
         const delayDebounce = setTimeout(async () => {
             const query = searchInput.trim();
             if (query.length > 1) {
                 setIsSearching(true);
                 try {
-                    // Path synced to: app.use("/api/products", productListRoutes)
+                   
                     const { data } = await userAxios.get(`/products?search=${query}&limit=4`);
-                    // data.products is used because your repository returns { products: [], totalCount: X }
+          
                     setSearchResults(data.products || []);
                     setShowResults(true);
                 } catch (err) {
@@ -76,7 +73,6 @@ const Header = () => {
         return () => clearTimeout(delayDebounce);
     }, [searchInput]);
 
-    // Close results when clicking outside
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (searchRef.current && !searchRef.current.contains(e.target)) setShowResults(false);
@@ -139,7 +135,6 @@ const Header = () => {
     return (
         <div className="w-full fixed top-0 z-50 font-sans selection:bg-[#7a6af6]/30">
 
-            {/* LIVE COUPON MARQUEE */}
             <div className={`bg-black text-white overflow-hidden transition-all duration-500 ease-in-out border-b border-white/5 ${isScrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'}`}>
                 <div className="py-2 whitespace-nowrap flex animate-marquee">
                     {[...Array(2)].map((_, outerIdx) => (
@@ -173,7 +168,6 @@ const Header = () => {
                 }`}>
                 <div className="max-w-[1500px] mx-auto px-6 h-14 flex items-center justify-between relative">
 
-                    {/* LEFT SECTION: NAVIGATION */}
                     <nav className="hidden lg:flex items-center gap-8 flex-1">
                         {['Shop', 'Apparel', 'Accessories'].map((name) => (
                             <button
@@ -187,17 +181,14 @@ const Header = () => {
                         ))}
                     </nav>
 
-                    {/* CENTER SECTION: LOGO */}
                     <div onClick={() => navigate('/')} className="absolute left-1/2 -translate-x-1/2 cursor-pointer group z-20">
                         <h1 className="text-lg md:text-xl font-black tracking-tighter text-white uppercase italic group-hover:scale-105 transition-transform">
                             NEXT<span className="text-[#7a6af6]">ZEN</span>
                         </h1>
                     </div>
 
-                    {/* RIGHT SECTION: SEARCH & ICONS */}
                     <div className="flex items-center gap-5 flex-1 justify-end">
 
-                        {/* 🟢 SEARCH BAR & LIVE DROPDOWN (Correct positioning) */}
                         <div className="relative group hidden md:block" ref={searchRef}>
                             <form onSubmit={handleSearchSubmit} className="relative flex items-center">
                                 <input
@@ -216,7 +207,6 @@ const Header = () => {
                                 )}
                             </form>
 
-                            {/* 🟢 FLOATING LIVE RESULTS DROPDOWN (Matches Image UI) */}
                             {showResults && (
                                 <div className="absolute top-full right-0 mt-3 w-[340px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-[100] border border-gray-100 text-gray-900">
                                     <div className="p-4 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
@@ -255,7 +245,6 @@ const Header = () => {
                             )}
                         </div>
 
-                        {/* WISHLIST ICON */}
                         <div className="relative cursor-pointer group p-1" onClick={() => handleProtectedNavigation('/wishlist')}>
                             <Heart size={18} className={`transition-colors ${wishlistCount > 0 && isAuthenticated ? 'text-[#7a6af6]' : 'text-white group-hover:text-[#7a6af6]'}`} fill={wishlistCount > 0 && isAuthenticated ? "currentColor" : "none"} />
                             {wishlistCount > 0 && isAuthenticated && (
@@ -265,7 +254,6 @@ const Header = () => {
                             )}
                         </div>
 
-                        {/* CART ICON */}
                         <div className="relative cursor-pointer group p-1" onClick={() => handleProtectedNavigation('/cart')}>
                             <ShoppingBag size={18} className="text-white group-hover:text-[#7a6af6] transition-colors" />
                             {cartCount > 0 && isAuthenticated && (
@@ -275,7 +263,6 @@ const Header = () => {
                             )}
                         </div>
 
-                        {/* PROFILE DROPDOWN */}
                         <div className="relative">
                             {isAuthenticated ? (
                                 <div className="relative">

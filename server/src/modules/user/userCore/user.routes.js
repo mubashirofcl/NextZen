@@ -34,8 +34,6 @@ const loginLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
-// ==================== PUBLIC AUTH ROUTES ====================
-
 router.post("/signup/request-otp", emailValidator, requestSignupOTP);
 router.post("/signup/resend-otp", emailValidator, resendSignupOTP);
 router.post("/signup/verify-otp", verifyOTPValidator, verifySignupOTP);
@@ -55,8 +53,6 @@ router.post(
   [emailValidator, otpValidator, passwordValidator],
   resetPassword
 );
-
-// ==================== PROTECTED AUTH ROUTES ====================
 
 router.use(userAuth);
 router.use(checkBlockedUser);
