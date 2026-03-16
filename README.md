@@ -6,6 +6,11 @@
   <img src="https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" />
   <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
   <img src="https://img.shields.io/badge/AWS_EC2-FF9900?style=for-the-badge&logo=amazonec2&logoColor=white" />
+  <img src="https://img.shields.io/badge/AWS_S3-569A31?style=for-the-badge&logo=amazons3&logoColor=white" />
+  <img src="https://img.shields.io/badge/CloudFront-8C4FFF?style=for-the-badge&logo=amazoncloudwatch&logoColor=white" />
+  <img src="https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white" />
+  <img src="https://img.shields.io/badge/Let's_Encrypt-003A70?style=for-the-badge&logo=letsencrypt&logoColor=white" />
+  <img src="https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" />
 </p>
 
 **NEXTZEN** is a high-performance, enterprise-grade e-commerce ecosystem. It isn't just a store; it's a fully automated retail engine combining the **MERN Stack** with a custom **DevOps Pipeline** and a **Context-Aware AI Styling Concierge**.
@@ -23,13 +28,55 @@ NEXTZEN integrates a proprietary **Product-Specific AI Assistant** that bridges 
 
 ---
 
-## 🏗️ Professional Infrastructure & DevOps
-Unlike standard portfolio projects, NEXTZEN is architected for high availability and production-grade automated deployment.
+## 🏗️ Infrastructure & Deployment Architecture
+Unlike standard portfolio projects, NEXTZEN is architected with a production-grade cloud infrastructure spanning multiple AWS services, custom DNS, reverse proxying, and automated CI/CD.
 
-- **Containerization**: The entire backend is **Dockerized** with a production-optimized `Dockerfile`, ensuring environment parity from local development to cloud deployment.
-- **Automated CI/CD Pipeline**: A fully integrated **GitHub Actions** workflow triggers on every push to the `production` branch. The pipeline automatically builds a new Docker image, pushes it to **Docker Hub**, and deploys it to a live **AWS EC2** instance via secure SSH — achieving zero-touch deployments.
-- **Cloud Media Pipeline**: High-fidelity product imagery and assets are managed and optimized through **Cloudinary**, ensuring fast global delivery and reducing backend server load.
-- **Vercel Edge Deployment**: The React frontend is deployed on **Vercel's Edge Network**, leveraging its global CDN for sub-second page loads and automatic SSL.
+### ☁️ AWS S3 — Static Asset Storage
+- A general-purpose S3 bucket (`nextzen-assets`) was created in the **Asia Pacific (Mumbai)** region to store large static assets like background videos.
+- Media files are organized inside a `videos/` folder. Public access was initially enabled with a bucket policy for read access.
+- Offloading assets to S3 keeps the frontend build lightweight and improves loading performance on Vercel.
+
+### 🌐 AWS CloudFront — CDN Distribution
+- A **CloudFront distribution** was configured with the S3 bucket as the origin and `/videos` as the origin path.
+- Videos were **compressed using FFmpeg** before upload to reduce file size and improve streaming performance.
+- CloudFront caches video files at global **edge locations**, delivering content from the nearest CDN server.
+- **Origin Access Control (OAC)** was enabled so media is served exclusively through CloudFront while keeping the S3 bucket private.
+- The frontend uses CloudFront domain URLs to stream videos efficiently with faster load times.
+
+### 🐳 Docker — Backend Containerization
+- The backend is containerized using a lightweight `node:20-alpine` base image for minimal container size.
+- Production dependencies are installed via `npm ci --omit=dev` to ensure a clean, reproducible build.
+- The container exposes **port 5000** for the Express server, with environment variables injected at runtime via `.env`.
+- The containerized setup guarantees environment parity from local development to AWS EC2 deployment.
+
+### ⚡ CI/CD Pipeline — GitHub Actions
+- A fully integrated **GitHub Actions** workflow triggers on every push to the `production` branch.
+- The pipeline automatically builds a new Docker image, pushes it to **Docker Hub**, and deploys it to a live **AWS EC2** instance via secure SSH — achieving **zero-touch deployments**.
+
+### 🌍 Domain & DNS — Hostinger
+- A **split-subdomain architecture** was implemented using **Hostinger DNS** for clear separation of concerns:
+  - `nextzen.mubashiir.in` → **Frontend** (pointed to Vercel via A/CNAME records)
+  - `api.mubashiir.in` → **Backend** (pointed to AWS EC2 Elastic IP)
+- This separation enables independent scaling and cleaner SSL certificate management.
+
+### 🔁 Nginx — Reverse Proxy
+- **Nginx** was deployed on the EC2 instance as a reverse proxy in front of the Dockerized backend.
+- Nginx listens on standard web ports (**80** and **443**), forwarding requests for `api.mubashiir.in` to the internal Docker container on port 5000.
+- This hides the backend port from the public internet and provides header optimization and request logging.
+
+### 🔒 SSL/TLS — Certbot & Let's Encrypt
+- Automated **SSL/TLS certificates** were issued for the backend subdomain using **Certbot** with the **Let's Encrypt** authority.
+- Nginx enforces a global **HTTP → HTTPS redirect**, ensuring all traffic is encrypted in transit.
+- Sensitive data (login credentials, payment tokens) are protected end-to-end between the Vercel frontend and the AWS backend.
+
+### 🛡️ CORS & Cookie Security
+- A strict **CORS policy** on the Express backend allows requests only from the production frontend domain.
+- **JWT authentication** uses **HttpOnly**, **Secure**, and **SameSite=None** cookies, enabling the Vercel frontend (`nextzen.mubashiir.in`) to securely transmit credentials to the AWS backend (`api.mubashiir.in`).
+- This configuration protects against **CSRF** and **XSS** attacks in the multi-domain environment.
+
+### 📦 Additional Cloud Services
+- **Cloudinary**: Cloud-based image storage, transformation, and optimization for product imagery.
+- **Vercel Edge Network**: Frontend deployed on Vercel's global CDN for sub-second page loads and automatic SSL.
 
 ---
 
@@ -67,6 +114,20 @@ Unlike standard portfolio projects, NEXTZEN is architected for high availability
 | **Razorpay SDK** | Payment gateway (UPI, Cards, Netbanking) |
 | **Cloudinary** | Cloud-based image storage and optimization |
 | **Nodemailer** | Automated transactional emails (OTP, receipts) |
+
+### DevOps & Infrastructure
+| Technology | Purpose |
+| :--- | :--- |
+| **AWS EC2** | Cloud compute instance for backend hosting |
+| **AWS S3** | Static asset storage (background videos) |
+| **AWS CloudFront** | CDN distribution with OAC for edge caching |
+| **Docker** | Backend containerization (`node:20-alpine`) |
+| **GitHub Actions** | CI/CD pipeline (Build → Docker Hub → EC2) |
+| **Nginx** | Reverse proxy on EC2 (ports 80/443 → 5000) |
+| **Certbot / Let's Encrypt** | Automated SSL/TLS certificate provisioning |
+| **FFmpeg** | Video compression before S3 upload |
+| **Hostinger DNS** | Custom domain & split-subdomain routing |
+| **Vercel** | Frontend edge deployment with global CDN |
 
 ---
 
