@@ -1,4 +1,4 @@
-# NEXTZEN 🚀 — The Future of Automated Commerce
+# NEXTZEN  — The Future of Automated Commerce
 
 <p align="center">
   <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
@@ -290,5 +290,5 @@ docker run -p 5000:5000 --env-file .env nextzen-server
 
 <p align="center">
   <b>NEXTZEN</b> — Redefining Digital Commerce through AI and Automation.<br/>
-  Developed by <a href="https://github.com/mubashirofcl">Mubashir</a>
+  Developed by <a href="https://github.com/mubashirofcl">Mubashir Palapadiyan</a>
 </p>
