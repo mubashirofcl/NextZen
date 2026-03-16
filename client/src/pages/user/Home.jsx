@@ -5,6 +5,7 @@ import Header from '../../components/user/Header';
 import Footer from '../../components/user/Footer';
 import { useProducts } from "../../hooks/user/useProducts";
 import { useUserCategories } from '../../hooks/user/useUserCategories';
+import { useUserBrands } from '../../hooks/user/useUserBrands';
 import { useSelector } from 'react-redux';
 import { nxToast } from '../../utils/userToast';
 import { useWishlist } from '../../hooks/user/useWishlist';
@@ -28,6 +29,7 @@ const NewCollectionRib = ({ rotation, top, text = "NEW ARRIVALS" }) => (
 const Home = () => {
     const navigate = useNavigate();
     const { data: categories = [], isLoading: catLoading } = useUserCategories();
+    const { data: brands = [], isLoading: brandsLoading } = useUserBrands();
     const { data: featuredData } = useProducts({ limit: 4, isFeatured: true });
     const { data: freshData } = useProducts({ limit: 8, sort: "createdAt" });
     const [latestCoupon, setLatestCoupon] = useState(null);
@@ -96,7 +98,7 @@ const Home = () => {
                 </div>
 
                 <div className="relative z-20 flex justify-center items-center h-full w-full animate-fade-in-up">
-                    <div className="relative w-[70vw] md:w-[320px] aspect-[9/15.5] rounded-[3rem] md:rounded-[4rem] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.8)] ring-1 ring-white/5 group transition-all duration-500 hover:shadow-[0_60px_100px_rgba(224,31,31,0.2)]">
+                    <div className="relative w-[70vw] md:w-[320px] aspect-[9/15.5] rounded-[3rem] md:rounded-[4rem] overflow-hidden shadow-[0_40px_80px_rgba(0,0,0,0.8)] ring-1 ring-white/5 group transition-all duration-500 hover:shadow-[0_60px_100px_rgba(122,106,246,1)]">
                         <video
                             autoPlay
                             loop
@@ -180,6 +182,63 @@ const Home = () => {
                         ))}
                     </div>
                 </section>
+
+               
+                {!brandsLoading && brands.length > 0 && (
+                    <section className="w-full mb-40">
+                        <div className="flex flex-col items-center mb-16">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="h-px w-10 bg-[#7a6af6]" />
+                                <span className="text-[#7a6af6] text-[11px] font-black uppercase tracking-[0.5em]">Official Partners</span>
+                                <div className="h-px w-10 bg-[#7a6af6]" />
+                            </div>
+                            <h3 className="text-4xl md:text-6xl font-black uppercase tracking-tighter italic leading-none text-center">Brands We Carry</h3>
+                        </div>
+
+                        <div className="relative overflow-hidden py-6">
+
+                      
+                            <div className="brand-marquee-track mb-6 group/marquee">
+                                <div className="brand-marquee-scroll brand-scroll-left group-hover/marquee:[animation-play-state:paused]">
+                                    {[...brands, ...brands, ...brands, ...brands].map((brand, i) => (
+                                        <div
+                                            key={`r1-${brand._id}-${i}`}
+                                            onClick={() => navigate(`/shop?brand=${brand._id}`)}
+                                            className="flex-shrink-0 w-[160px] md:w-[200px] h-[90px] md:h-[110px] bg-white/[0.03] border border-white/5 rounded-2xl md:rounded-3xl flex items-center justify-center mx-3 cursor-pointer transition-all duration-500 hover:bg-[#7a6af6]/10 hover:border-[#7a6af6]/40 hover:shadow-[0_0_40px_rgba(122,106,246,0.15)] group/card"
+                                        >
+                                            <img
+                                                src={brand.logo}
+                                                alt={brand.name}
+                                                className="max-h-[50px] md:max-h-[60px] max-w-[120px] md:max-w-[150px] object-contain opacity-70 group-hover/card:opacity-100 transition-all duration-500"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Row 2 — scrolls right */}
+                            {brands.length > 3 && (
+                                <div className="brand-marquee-track group/marquee">
+                                    <div className="brand-marquee-scroll brand-scroll-right group-hover/marquee:[animation-play-state:paused]">
+                                        {[...brands.slice().reverse(), ...brands.slice().reverse(), ...brands.slice().reverse(), ...brands.slice().reverse()].map((brand, i) => (
+                                            <div
+                                                key={`r2-${brand._id}-${i}`}
+                                                onClick={() => navigate(`/shop?brand=${brand._id}`)}
+                                                className="flex-shrink-0 w-[160px] md:w-[200px] h-[90px] md:h-[110px] bg-white/[0.03] border border-white/5 rounded-2xl md:rounded-3xl flex items-center justify-center mx-3 cursor-pointer transition-all duration-500 hover:bg-[#7a6af6]/10 hover:border-[#7a6af6]/40 hover:shadow-[0_0_40px_rgba(122,106,246,0.15)] group/card"
+                                            >
+                                                <img
+                                                    src={brand.logo}
+                                                    alt={brand.name}
+                                                    className="max-h-[50px] md:max-h-[60px] max-w-[120px] md:max-w-[150px] object-contain opacity-70 group-hover/card:opacity-100 transition-all duration-500"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                )}
 
                 <section className="mb-40">
                     <div className="flex flex-col md:flex-row justify-between items-end mb-16 border-b border-white/10 pb-10">
@@ -307,7 +366,6 @@ const Home = () => {
                 </section>
 
             </main>
-
             <Footer />
 
             <style dangerouslySetInnerHTML={{
@@ -335,6 +393,14 @@ const Home = () => {
                 .delay-200 { animation-delay: 200ms; }
                 .delay-300 { animation-delay: 400ms; }
                 .delay-400 { animation-delay: 600ms; }
+
+                /* Brand Marquee Animations */
+                .brand-marquee-track { overflow: hidden; width: 100%; }
+                .brand-marquee-scroll { display: flex; width: max-content; }
+                @keyframes brand-scroll-left { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+                @keyframes brand-scroll-right { 0% { transform: translateX(-50%); } 100% { transform: translateX(0); } }
+                .brand-scroll-left { animation: brand-scroll-left 30s linear infinite; }
+                .brand-scroll-right { animation: brand-scroll-right 35s linear infinite; }
             `}} />
         </div>
     );

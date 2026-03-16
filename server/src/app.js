@@ -27,6 +27,7 @@ import orderRoutes from "./modules/user/order/order.routes.js";
 import paymentRoutes from "./modules/user/payment/payment.routes.js";
 import walletRoutes from './modules/user/wallet/wallet.routes.js';
 import chatbotRoutes from "./modules/user/chatbot/chatbot.routes.js";
+import newsletterRoutes from "./modules/user/newsletter/newsletter.routes.js";
 
 const app = express();
 
@@ -78,6 +79,7 @@ app.use("/api/user/payment", paymentRoutes);
 app.use('/api/users/wallet', walletRoutes);
 app.use('/api/users/coupons', couponRoutes);
 app.use("/api/user/chatbot", chatbotRoutes);
+app.use("/api/newsletter", newsletterRoutes);
 
 
 
