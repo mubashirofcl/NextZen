@@ -13,9 +13,9 @@ export const useCart = () => {
             const res = await userAxios.get("/user/cart");
             return res.data;
         },
-        refetchOnWindowFocus: true, 
-        staleTime: 0,             
-        refetchInterval: 30000,     
+        refetchOnWindowFocus: true,
+        staleTime: 0,
+        refetchInterval: 30000,
     });
 
     const addToCart = useMutation({
@@ -26,6 +26,10 @@ export const useCart = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
             nxToast.success(TOAST_MESSAGES.CART_WISHLIST.ADDED_TO_CART.title, TOAST_MESSAGES.CART_WISHLIST.ADDED_TO_CART.message);
+        },
+        onError: (error) => {
+            const serverMessage = error.response?.data?.message || "Item was not added to your bag.";
+            nxToast.error("Request Blocked", serverMessage);
         }
     });
 
@@ -38,8 +42,14 @@ export const useCart = () => {
             queryClient.invalidateQueries({ queryKey: ["cart"] });
         },
         onError: (error) => {
-            nxToast.security(TOAST_MESSAGES.PRODUCT.STOCK_LIMIT.title, error.response?.data?.message || TOAST_MESSAGES.PRODUCT.STOCK_LIMIT.message);
-            queryClient.invalidateQueries({ queryKey: ["cart"] }); 
+
+            const serverMessage = error.response?.data?.message || "Operation failed";
+
+            console.log("Triggering Toast with message:", serverMessage);
+
+            nxToast.error("Inventory Update", serverMessage);
+
+            queryClient.invalidateQueries({ queryKey: ["cart"] });
         }
     });
 
@@ -70,12 +80,12 @@ export const useCart = () => {
 
     return {
         cart,
-        addToCart, 
+        addToCart,
         updateQty,
         remove,
         validateStock,
         isLoading,
-        isFetching, 
+        isFetching,
         refetch
     };
 };

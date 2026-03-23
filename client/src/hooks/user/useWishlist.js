@@ -16,10 +16,11 @@ export const useWishlist = () => {
     });
 
     const toggleMutation = useMutation({
-        mutationFn: async ({ productId, variantId }) => {
+        mutationFn: async ({ productId, variantId, size }) => {
             const payload = {
                 productId,
-                variantId: variantId || null
+                variantId: variantId || null,
+                size
             };
             const res = await userAxios.post("/user/wishlist/toggle", payload);
             return res.data;
@@ -67,15 +68,21 @@ export const useWishlist = () => {
         }
     });
 
-    const toggleWishlist = (productId, variantId = null) => {
-        toggleMutation.mutate({ productId, variantId });
+    const toggleWishlist = (productId, variantId = null, size = null) => {
+        toggleMutation.mutate({ productId, variantId, size });
     };
 
-    const isInWishlist = (productId) => {
+    const isInWishlist = (productId, variantId = null, size = null) => {
         if (!wishlist || !productId) return false;
         return wishlist.some(item => {
             const itemPid = item.productId?._id || item.productId || item._id;
-            return String(itemPid) === String(productId);
+            const itemVid = item.variantId?._id || item.variantId || null;
+            
+            const pMatch = String(itemPid) === String(productId);
+            const vMatch = variantId ? String(itemVid) === String(variantId) : true;
+            const sMatch = size ? item.size === size : true;
+
+            return pMatch && vMatch && sMatch;
         });
     };
 

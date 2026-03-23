@@ -82,24 +82,16 @@ const ConfirmToastContent = ({ id, title, message, onConfirm }) => {
 export const nxToast = {
     success(title = "Success", message = "") {
         baseToast((id) => (
-            <div className="bg-white/60 backdrop-blur-xl border-2 border-[#7a6af6]/20 p-3 mb-4 rounded-[1rem] shadow-2xl flex items-center gap-4 pointer-events-auto">
-                <div className="bg-[#7a6af6] p-2 rounded-xl text-white">
-                    <CheckCircle2 size={20} />
+            <div className="mt-[70px] bg-white border border-black/[0.05] p-2 px-5 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.05)] flex items-center gap-3 pointer-events-auto sm:min-w-[300px] max-w-[95vw] animate-in slide-in-from-top-2 duration-300">
+                <div className="flex-shrink-0 text-[#7a6af6]">
+                    <CheckCircle2 size={14} strokeWidth={3} />
                 </div>
-
-                <div className="flex-1">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-[#0F172A]">
-                        {title}
-                    </h4>
-                    {message && (
-                        <p className="text-[9px] font-bold text-slate-500 mt-1">
-                            {message}
-                        </p>
-                    )}
+                <div className="flex-1 flex flex-col pt-0.5">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-black leading-none">{title}</span>
+                    {message && <span className="text-[7.5px] font-black text-slate-400 mt-1 uppercase tracking-widest">{message}</span>}
                 </div>
-
-                <button onClick={() => toast.dismiss(id)}>
-                    <X size={16} />
+                <button onClick={() => toast.dismiss(id)} className="text-slate-200 hover:text-black transition-colors pl-1">
+                    <X size={12} strokeWidth={4} />
                 </button>
             </div>
         ));
@@ -107,24 +99,33 @@ export const nxToast = {
 
     security(title = "Action Blocked", message = "") {
         baseToast((id) => (
-            <div className="bg-[#0F172A]/90 backdrop-blur-xl border-2 border-[#7a6af6]/20 p-3 mb-4 rounded-[1rem] shadow-2xl flex items-center gap-4 pointer-events-auto">
-                <div className="bg-[#7a6af6]/20 p-2 rounded-xl text-[#7a6af6]">
-                    <ShieldCheck size={20} />
+            <div className="mt-[70px] bg-black border border-white/[0.05] p-2 px-5 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.15)] flex items-center gap-3 pointer-events-auto sm:min-w-[300px] max-w-[95vw] animate-in slide-in-from-top-2 duration-300">
+                <div className="flex-shrink-0 text-[#7a6af6]">
+                    <ShieldCheck size={14} strokeWidth={3} />
                 </div>
-
-                <div className="flex-1">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-white">
-                        {title}
-                    </h4>
-                    {message && (
-                        <p className="text-[9px] font-bold text-slate-400 mt-1">
-                            {message}
-                        </p>
-                    )}
+                <div className="flex-1 flex flex-col pt-0.5">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-white leading-none">{title}</span>
+                    {message && <span className="text-[7.5px] font-black text-slate-500 mt-1 uppercase tracking-widest">{message}</span>}
                 </div>
+                <button onClick={() => toast.dismiss(id)} className="text-slate-700 hover:text-white transition-colors pl-1">
+                    <X size={12} strokeWidth={4} />
+                </button>
+            </div>
+        ));
+    },
 
-                <button onClick={() => toast.dismiss(id)}>
-                    <X size={16} />
+    error(title = "Error", message = "") {
+        baseToast((id) => (
+            <div className="mt-[70px] bg-white border border-red-500/[0.05] p-2 px-5 rounded-full shadow-[0_8px_30px_rgba(239,68,68,0.04)] flex items-center gap-3 pointer-events-auto sm:min-w-[300px] max-w-[95vw] animate-in slide-in-from-top-2 duration-300">
+                <div className="flex-shrink-0 text-red-500">
+                    <X size={14} strokeWidth={4} />
+                </div>
+                <div className="flex-1 flex flex-col pt-0.5">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-black leading-none">{title}</span>
+                    {message && <span className="text-[7.5px] font-black text-slate-400 mt-1 uppercase tracking-widest">{message}</span>}
+                </div>
+                <button onClick={() => toast.dismiss(id)} className="text-slate-200 hover:text-black transition-colors pl-1">
+                    <X size={12} strokeWidth={4} />
                 </button>
             </div>
         ));
