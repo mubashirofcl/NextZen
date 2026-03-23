@@ -18,13 +18,21 @@ const WishlistPage = () => {
     const handleMoveToCart = (item) => {
         const product = item.productId;
         const variant = item.variantId;
+        const storedSize = item.size;
 
         if (!variant || !variant.sizes || variant.sizes.length === 0) {
             return nxToast.error(TOAST_MESSAGES.SYSTEM.ACTION_FAILED.title, "Product information is missing.");
         }
 
-        const targetSize = variant.sizes.find(s => s.stock > 0);
-        if (!targetSize) return nxToast.error(TOAST_MESSAGES.PRODUCT.OUT_OF_STOCK.title, TOAST_MESSAGES.PRODUCT.OUT_OF_STOCK.message);
+        let targetSize = variant.sizes.find(s => s.size === storedSize);
+        
+        if (!targetSize) {
+            targetSize = variant.sizes.find(s => s.stock > 0);
+        }
+
+        if (!targetSize || targetSize.stock < 1) {
+             return nxToast.error(TOAST_MESSAGES.PRODUCT.OUT_OF_STOCK.title, TOAST_MESSAGES.PRODUCT.OUT_OF_STOCK.message);
+        }
 
         addToCart.mutate({
             productId: product._id,
@@ -37,7 +45,8 @@ const WishlistPage = () => {
             onSuccess: () => {
                 removeItem.mutate({ 
                     productId: product._id, 
-                    variantId: variant._id 
+                    variantId: variant._id,
+                    size: targetSize.size
                 });
 
                 nxToast.success(TOAST_MESSAGES.CART_WISHLIST.ADDED_TO_CART.title, TOAST_MESSAGES.CART_WISHLIST.ADDED_TO_CART.message);
@@ -90,15 +99,16 @@ const WishlistPage = () => {
                             if (!product.name) return null;
 
                             const imageUrl = variant.images?.[0] || '/placeholder.jpg';
-                            const prices = variant.sizes?.map(s => s.salePrice).filter(p => p > 0) || [];
-                            const displayPrice = prices.length > 0 ? Math.min(...prices) : 0;
+                            
+                            const exactSizeData = variant.sizes?.find(s => s.size === item.size);
+                            const displayPrice = exactSizeData ? exactSizeData.salePrice : (variant.sizes?.length > 0 ? Math.min(...variant.sizes.map(s => s.salePrice).filter(p => p > 0)) : 0);
 
                             return (
                                 <div key={item._id} className="group bg-white/[0.02] border border-white/5 p-4 rounded-[2rem] hover:border-[#7a6af6]/50 transition-all">
                                     <div className="aspect-[3/4] rounded-[1.5rem] overflow-hidden bg-black mb-4 relative">
                                         <img src={imageUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={product.name} />
                                         <button 
-                                            onClick={() => toggleWishlist(product._id, variant._id)} 
+                                            onClick={() => toggleWishlist(product._id, variant._id, item.size)} 
                                             className="absolute top-4 right-4 p-2.5 bg-black/60 rounded-full text-white/40 hover:text-red-500 z-10 transition-all"
                                         >
                                             <Trash2 size={16} />
@@ -107,7 +117,10 @@ const WishlistPage = () => {
 
                                     <div className="space-y-1 px-1">
                                         <h3 className="text-[11px] font-black uppercase text-white italic truncate">{product.name}</h3>
-                                        <p className="text-[10px] text-white/40 uppercase">Color: {variant.color || 'Standard'}</p>
+                                        <div className="flex flex-wrap gap-2 text-[10px] text-white/40 uppercase font-medium">
+                                            <span>Color: {variant.color || 'Std'}</span>
+                                            {item.size && <span>// Size: {item.size}</span>}
+                                        </div>
                                         <div className="flex justify-between items-end pt-4">
                                             <p className="text-sm font-black italic text-[#7a6af6]">₹{displayPrice.toLocaleString()}</p>
                                             <div className="flex gap-2">

@@ -103,13 +103,9 @@ export const App = () => {
   return (
     <>
       <Toaster
-        position="bottom-right"
+        position="top-center"
         toastOptions={{
-          style: {
-            borderRadius: '1rem',
-            border: '1px solid #f1f5f9',
-            boxShadow: '0 10px 1px -3px rgba(0,0,0,0.05)',
-          },
+          unstyled: true,
         }}
       />
 

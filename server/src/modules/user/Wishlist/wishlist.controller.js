@@ -4,7 +4,7 @@ import SERVER_MESSAGES from "../../../utils/errorMessages.js";
 
 export const handleToggle = async (req, res) => {
     try {
-        const { productId, variantId } = req.body;
+        const { productId, variantId, size } = req.body;
         const userId = req.user?.userId;
 
         if (!userId) {
@@ -18,7 +18,8 @@ export const handleToggle = async (req, res) => {
         const result = await wishlistService.toggleWishlist(
             userId,
             productId,
-            variantId
+            variantId,
+            size
         );
 
         res.status(200).json({
@@ -71,10 +72,10 @@ export const clearWishlist = async (req, res) => {
 
 export const removeFromWishlist = async (req, res) => {
     try {
-        const { productId, variantId } = req.body;
+        const { productId, variantId, size } = req.body;
         const userId = req.user?.userId;
 
-        await wishlistService.removeFromWishlist(userId, productId, variantId);
+        await wishlistService.removeFromWishlist(userId, productId, variantId, size);
 
         res.status(SERVER_MESSAGES.CART_WISHLIST.REMOVED.status).json({ success: true, message: SERVER_MESSAGES.CART_WISHLIST.REMOVED.message });
     } catch (error) {

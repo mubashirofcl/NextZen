@@ -184,7 +184,7 @@ export const getUserCart = async (userId) => {
             ...item,
             isCheckoutReady: isLive && hasStock,
             priceDropped: item.currentPrice < item.unitPrice,
-            errorMessage: !isLive ? "Item no longer available." : !hasStock ? "Stock depleted." : null
+            errorMessage: !isLive ? "Item no longer available." : !hasStock ? "Out of Stock." : null
         };
     });
 

@@ -59,7 +59,7 @@ const ProductDetails = () => {
         item.size === selectedSize?.size
     );
 
-    const isWishlisted = isInWishlist(id);
+    const isWishlisted = isInWishlist(id, currentVariant?._id, selectedSize?.size);
 
     const quickSuggestions = useMemo(() => {
         if (!product) return [];
@@ -146,7 +146,7 @@ const ProductDetails = () => {
         if (!selectedSize) {
             return nxToast.security(TOAST_MESSAGES.PRODUCT.DIMENSION_REQUIRED.title, TOAST_MESSAGES.PRODUCT.DIMENSION_REQUIRED.message);
         }
-        toggleWishlist(id, currentVariant._id);
+        toggleWishlist(id, currentVariant._id, selectedSize.size);
     };
 
     const handleAskAI = async (overrideMessage = null) => {

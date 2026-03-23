@@ -2,7 +2,7 @@ import Wishlist from "./wishlist.model.js";
 import mongoose from "mongoose";
 
 
-export const toggleWishlist = async (userId, productId, variantId) => {
+export const toggleWishlist = async (userId, productId, variantId, size) => {
     if (!productId) throw new Error("Product ID is required.");
 
     if (!variantId || variantId === productId) {
@@ -18,7 +18,7 @@ export const toggleWishlist = async (userId, productId, variantId) => {
     if (!wishlist) {
         wishlist = new Wishlist({
             userId,
-            products: [{ productId, variantId: variantId || undefined }],
+            products: [{ productId, variantId: variantId || undefined, size }],
         });
         await wishlist.save();
         return { action: "added" };
@@ -30,13 +30,19 @@ export const toggleWishlist = async (userId, productId, variantId) => {
     const index = wishlist.products.findIndex((item) => {
         const dbPid = String(item.productId?._id || item.productId);
         const dbVid = item.variantId ? String(item.variantId?._id || item.variantId) : null;
-        return dbPid === targetPid && dbVid === targetVid;
+        
+        const pMatch = dbPid === targetPid && dbVid === targetVid;
+        // If size is provided, it must match exactly.
+        // If size is not provided, any size of this product/variant matches.
+        const sMatch = size ? item.size === size : true;
+        
+        return pMatch && sMatch;
     });
 
     if (index > -1) {
         wishlist.products.splice(index, 1);
     } else {
-        wishlist.products.push({ productId, variantId });
+        wishlist.products.push({ productId, variantId, size });
     }
 
     await wishlist.save();
@@ -56,27 +62,14 @@ export const getUserWishlist = async (userId) => {
 
     if (!wishlist) return [];
 
-    const validItems = wishlist.products.filter(item =>
+    return wishlist.products.filter(item =>
         item.productId &&
         !item.productId.isDeleted &&
         (!item.variantId || !item.variantId.isDeleted)
     );
-
-    const unique = [];
-    const seen = new Set();
-    validItems.forEach(item => {
-        const vKey = item.variantId?._id || "base";
-        const id = `${item.productId._id}-${vKey}`;
-        if (!seen.has(id)) {
-            seen.add(id);
-            unique.push(item);
-        }
-    });
-
-    return unique;
 };
 
-export const removeFromWishlist = async (userId, productId, variantId) => {
+export const removeFromWishlist = async (userId, productId, variantId, size) => {
     const wishlist = await Wishlist.findOne({ userId });
     if (!wishlist) return;
 
@@ -87,7 +80,8 @@ export const removeFromWishlist = async (userId, productId, variantId) => {
     wishlist.products = wishlist.products.filter(p => {
         const pId = String(p.productId?._id || p.productId);
         const vId = String(p.variantId?._id || p.variantId);
-        return !(pId === targetPid && vId === targetVid);
+        const vSize = p.size;
+        return !(pId === targetPid && vId === targetVid && vSize === size);
     });
 
     if (wishlist.products.length !== originalLength) {

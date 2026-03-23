@@ -20,6 +20,10 @@ const wishlistSchema = new mongoose.Schema(
           ref: "Variant",
           required: false,
         },
+        size: {
+          type: String,
+          required: false,
+        },
         addedAt: {
           type: Date,
           default: Date.now,
